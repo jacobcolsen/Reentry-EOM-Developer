@@ -21,7 +21,8 @@ pattern = r'  <script type="module">.*?</script>'
 replacement = '  <script type="module">\n' + js + '\n  </script>'
 
 if re.search(pattern, src, re.DOTALL):
-    out = re.sub(pattern, replacement, src, flags=re.DOTALL)
+    # Use a callable so re.sub doesn't process backslash escape sequences in replacement
+    out = re.sub(pattern, lambda m: replacement, src, flags=re.DOTALL)
 elif '<script type="module" src="app.js"></script>' in src:
     out = src.replace('<script type="module" src="app.js"></script>', replacement)
 else:

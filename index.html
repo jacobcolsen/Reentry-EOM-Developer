@@ -129,6 +129,8 @@ const STATE = {
   orbitT:         0,
   earthT:         0,
   gsapTween:      null,
+  gammaAnim:      null,        // GSAP tween for γ oscillation on slide 5
+  vrfAnim:        null,        // GSAP tween for RST→VRF rotation on slide 7
   spacecraft:     null,
   slideObjects:   [],          // objects added by current slide; cleared on exit
   persistent: {
@@ -354,8 +356,7 @@ function buildECEFAxes() {
   const L = 3.0;
   const O = new THREE.Vector3(0, 0, 0);
   const group = new THREE.Group();
-  // Rotate ~30° about North Pole axis to visually distinguish from ECI at t=0
-  group.rotation.y = Math.PI / 6;
+  // rotation.y is driven every frame by STATE.earthT in animate()
 
   group.add(makeArrow(new THREE.Vector3(1, 0, 0), O, L, COLORS.ecef.x, 'x̂_E'));
   group.add(makeArrow(new THREE.Vector3(0, 0, 1), O, L, COLORS.ecef.y, 'ŷ_E'));
@@ -372,14 +373,21 @@ function buildRSTAxes() {
   const pos = s.pos;
   const group = new THREE.Group();
 
-  group.add(makeArrow(s.R_hat,            pos, L, COLORS.rst.r, 'R̂'));
-  group.add(makeArrow(s.S_hat,            pos, L, COLORS.rst.s, 'Ŝ'));
-  group.add(makeArrow(s.T_hat,            pos, L, COLORS.rst.t, 'T̂'));
+  // Small sphere marks the RST origin — at the spacecraft, not Earth's center
+  const originMark = new THREE.Mesh(
+    new THREE.SphereGeometry(0.038, 14, 14),
+    new THREE.MeshBasicMaterial({ color: COLORS.rst.r })
+  );
+  originMark.position.copy(pos);
+  group.add(originMark);
 
-  // Secondary descriptive labels
-  group.add(makeAxisLabel('Radial',   pos.clone().addScaledVector(s.R_hat, L + 0.1), COLORS.rst.r));
-  group.add(makeAxisLabel('East',     pos.clone().addScaledVector(s.S_hat, L + 0.1), COLORS.rst.s));
-  group.add(makeAxisLabel('North',    pos.clone().addScaledVector(s.T_hat, L + 0.1), COLORS.rst.t));
+  group.add(makeArrow(s.R_hat, pos, L, COLORS.rst.r, 'R'));
+  group.add(makeArrow(s.S_hat, pos, L, COLORS.rst.s, 'S'));
+  group.add(makeArrow(s.T_hat, pos, L, COLORS.rst.t, 'T'));
+
+  group.add(makeAxisLabel('Radial',   pos.clone().addScaledVector(s.R_hat, L + 0.12), COLORS.rst.r));
+  group.add(makeAxisLabel('East',     pos.clone().addScaledVector(s.S_hat, L + 0.12), COLORS.rst.s));
+  group.add(makeAxisLabel('North',    pos.clone().addScaledVector(s.T_hat, L + 0.12), COLORS.rst.t));
 
   scene.add(group);
   setGroupVisible(group, false);
@@ -399,44 +407,67 @@ function buildVRFAxes() {
   const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
 
   const group = new THREE.Group();
-  group.add(makeArrow(x_v, pos, L, COLORS.vrf.x, 'x̂_v'));
-  group.add(makeArrow(y_v, pos, L, COLORS.vrf.y, 'ŷ_v'));
-  group.add(makeArrow(z_v, pos, L, COLORS.vrf.z, 'ẑ_v'));
 
-  group.add(makeAxisLabel('Velocity', pos.clone().addScaledVector(x_v, L + 0.1), COLORS.vrf.x));
-  group.add(makeAxisLabel('Normal',   pos.clone().addScaledVector(y_v, L + 0.1), COLORS.vrf.y));
-  group.add(makeAxisLabel('Wing',     pos.clone().addScaledVector(z_v, L + 0.1), COLORS.vrf.z));
+  // Small sphere marks the VRF origin at the spacecraft
+  const originMark = new THREE.Mesh(
+    new THREE.SphereGeometry(0.032, 14, 14),
+    new THREE.MeshBasicMaterial({ color: COLORS.vrf.x })
+  );
+  originMark.position.copy(pos);
+  group.add(originMark);
+
+  group.add(makeArrow(x_v, pos, L, COLORS.vrf.x, 'xv'));
+  group.add(makeArrow(y_v, pos, L, COLORS.vrf.y, 'yv'));
+  group.add(makeArrow(z_v, pos, L, COLORS.vrf.z, 'zv'));
+
+  group.add(makeAxisLabel('Velocity', pos.clone().addScaledVector(x_v, L + 0.12), COLORS.vrf.x));
+  group.add(makeAxisLabel('Normal',   pos.clone().addScaledVector(y_v, L + 0.12), COLORS.vrf.y));
+  group.add(makeAxisLabel('Wing',     pos.clone().addScaledVector(z_v, L + 0.12), COLORS.vrf.z));
 
   scene.add(group);
   setGroupVisible(group, false);
   STATE.persistent.vrfGroup = group;
 }
 
-// CSS2DRenderer ignores Object3D.visible — must hide DOM elements manually
+function buildVelocityArrow() {
+  const s = getSpacecraftState(0.72);
+  const arrow = new THREE.ArrowHelper(
+    s.vel.clone().normalize(), s.pos, 0.82, COLORS.vel, 0.14, 0.07
+  );
+  arrow.visible = false;
+  scene.add(arrow);
+  STATE.persistent.velArrow = arrow;
+}
+
+// CSS2DRenderer resets element.style.display every frame based on CSS2DObject.visible.
+// Must set both .visible AND .element.style.display to reliably hide labels.
 function setGroupVisible(group, visible) {
   if (!group) return;
   group.visible = visible;
   group.traverse(obj => {
-    if (obj.isCSS2DObject) obj.element.style.display = visible ? '' : 'none';
+    if (obj.isCSS2DObject) {
+      obj.visible = visible;
+      obj.element.style.display = visible ? '' : 'none';
+    }
   });
 }
 
-// Show/hide the four persistent frame groups — call from every slide enter()
-function setFrameVisibility({ eci = false, ecef = false, rst = false, vrf = false } = {}) {
+// Show/hide persistent frame groups — call from every slide enter()
+function setFrameVisibility({ eci = false, ecef = false, rst = false, vrf = false, vel = false } = {}) {
   setGroupVisible(STATE.persistent.eciGroup,  eci);
   setGroupVisible(STATE.persistent.ecefGroup, ecef);
   setGroupVisible(STATE.persistent.rstGroup,  rst);
   setGroupVisible(STATE.persistent.vrfGroup,  vrf);
+  if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = vel;
 }
 
 // Grow arrows in with a stagger spring; labels appear only after all arrows land
 function animateGroupIn(group, baseDelay = 0) {
-  // Hide all CSS2D labels until animation completes
+  // Hide labels until animation completes (set both flags)
   group.traverse(obj => {
-    if (obj.isCSS2DObject) obj.element.style.display = 'none';
+    if (obj.isCSS2DObject) { obj.visible = false; obj.element.style.display = 'none'; }
   });
 
-  // Only scale ArrowHelper children, not CSS2DObject children
   const arrows = group.children.filter(c => c.isArrowHelper);
   arrows.forEach((arrow, i) => {
     arrow.scale.set(0, 0, 0);
@@ -448,7 +479,7 @@ function animateGroupIn(group, baseDelay = 0) {
       onComplete: i === arrows.length - 1 ? () => {
         // Reveal labels once the last arrow finishes growing
         group.traverse(obj => {
-          if (obj.isCSS2DObject) obj.element.style.display = '';
+          if (obj.isCSS2DObject) { obj.visible = true; obj.element.style.display = ''; }
         });
       } : undefined,
     });
@@ -540,6 +571,10 @@ function getSpacecraftState(t) {
 
 function clearSlideObjects() {
   for (const obj of STATE.slideObjects) {
+    // Hide CSS2D DOM elements immediately to avoid one-frame flash
+    obj.traverse(c => {
+      if (c.isCSS2DObject) { c.visible = false; c.element.style.display = 'none'; }
+    });
     scene.remove(obj);
     obj.traverse(c => {
       if (c.geometry) c.geometry.dispose();
@@ -561,6 +596,64 @@ function addSlideObj(obj) {
 function setVisible(key, val) {
   const obj = STATE.persistent[key];
   if (obj) obj.visible = val;
+}
+
+// ── Phase 3 scene helpers ──────────────────────────────────────────────────
+
+// Translucent disc + ring outline perpendicular to `normal`, at `center`
+function makeHorizDisc(center, normal, radius = 0.6) {
+  const group = new THREE.Group();
+
+  // Solid translucent fill (CircleGeometry is in XY plane, normal = +Z)
+  const fill = new THREE.Mesh(
+    new THREE.CircleGeometry(radius, 64),
+    new THREE.MeshBasicMaterial({ color: 0x2244aa, transparent: true, opacity: 0.10, side: THREE.DoubleSide })
+  );
+  // Ring border (points in XY plane → normal = +Z)
+  const ringPts = [];
+  for (let i = 0; i <= 64; i++) {
+    const a = (i / 64) * Math.PI * 2;
+    ringPts.push(new THREE.Vector3(Math.cos(a) * radius, Math.sin(a) * radius, 0));
+  }
+  const ring = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(ringPts),
+    new THREE.LineBasicMaterial({ color: 0x4488cc, transparent: true, opacity: 0.7 })
+  );
+  group.add(fill, ring);
+  group.position.copy(center);
+  const n = normal.clone().normalize();
+  const defN = new THREE.Vector3(0, 0, 1);
+  if (Math.abs(defN.dot(n)) < 0.9999) group.quaternion.setFromUnitVectors(defN, n);
+  return group;
+}
+
+// Arc in the plane defined by two orthogonal directions (xDir, yDir),
+// sweeping from angle startA to endA, at `center` offset
+function makeAngleArc(center, xDir, yDir, arcRadius, startA, endA, hexColor, segments = 48) {
+  const pts = [];
+  for (let i = 0; i <= segments; i++) {
+    const a = startA + (endA - startA) * (i / segments);
+    const pt = xDir.clone().multiplyScalar(Math.cos(a) * arcRadius)
+      .addScaledVector(yDir, Math.sin(a) * arcRadius);
+    pts.push(center.clone().add(pt));
+  }
+  const line = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({ color: hexColor, linewidth: 2 })
+  );
+  return line;
+}
+
+// Small floating text label (CSS2DObject) at a world position
+function makeFloatLabel(text, worldPos, hexColor = 0xFFEE77) {
+  const div = document.createElement('div');
+  div.className = 'label3d';
+  div.textContent = text;
+  div.style.color = '#' + hexColor.toString(16).padStart(6, '0');
+  div.style.fontSize = '0.9rem';
+  const obj = new CSS2DObject(div);
+  obj.position.copy(worldPos);
+  return obj;
 }
 
 // ── KaTeX rendering ────────────────────────────────────────────────────────
@@ -608,7 +701,7 @@ const SLIDES = [
     camera: { pos: [0, 12, 20], target: [0, 0, 0], dur: 0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({});
+      setFrameVisibility({}); // intro: no frames yet
     },
     exit() {},
   },
@@ -634,7 +727,7 @@ const SLIDES = [
     camera: { pos: [8, 6, 8], target: [0, 0, 0], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true });
+      setFrameVisibility({ eci: true }); // ECI only
       animateGroupIn(STATE.persistent.eciGroup);
     },
     exit() {},
@@ -666,7 +759,7 @@ const SLIDES = [
     camera: { pos: [8, 8, 6], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true });
+      setFrameVisibility({ eci: true, ecef: true }); // ECI stays for reference, ECEF rotates in
       animateGroupIn(STATE.persistent.ecefGroup, 0.3);
     },
     exit() {},
@@ -676,8 +769,8 @@ const SLIDES = [
   {
     title: 'Vehicle-Pointing Frame (RST)',
     html: `
-      <p>The <span class="chip chip-rst">RST Frame</span> has its origin at Earth's center
-      but its axes track the vehicle's position.</p>
+      <p>The <span class="chip chip-rst">RST Frame</span> has its origin at the
+      <strong>spacecraft position</strong> — the small dot marks the origin in the 3D view.</p>
       <div class="eq-block">
         <div class="eq-label">Axis definitions</div>
         \\[\\hat{R} = \\frac{\\vec{r}}{|\\vec{r}|}\\quad(\\text{radial, outward})\\]
@@ -692,7 +785,7 @@ const SLIDES = [
     camera: { pos: [5, 4, 9], target: [0, 0, 0], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true });
+      setFrameVisibility({ rst: true }); // RST only — origin marker at spacecraft
       animateGroupIn(STATE.persistent.rstGroup, 0.3);
     },
     exit() {},
@@ -716,7 +809,72 @@ const SLIDES = [
     camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true });
+      setFrameVisibility({ ecef: true, rst: true }); // ECEF (planet-fixed) + RST (vehicle-pointing)
+
+      const s = getSpacecraftState(0.72);
+      const R = s.R_hat;
+      // Geocentric latitude (North Pole = +Y in scene)
+      const phi    = Math.asin(R.y);
+      // Longitude in the equatorial XZ-plane
+      const lambda = Math.atan2(R.z, R.x);
+
+      // ── Latitude ring (magenta) — full circle at spacecraft latitude ──
+      const latPts = [];
+      for (let i = 0; i <= 96; i++) {
+        const a = (i / 96) * Math.PI * 2;
+        latPts.push(new THREE.Vector3(
+          Math.cos(phi) * Math.cos(a) * (EARTH_RADIUS + 0.008),
+          Math.sin(phi)              * (EARTH_RADIUS + 0.008),
+          Math.cos(phi) * Math.sin(a) * (EARTH_RADIUS + 0.008)
+        ));
+      }
+      const latRing = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(latPts),
+        new THREE.LineBasicMaterial({ color: 0xFF44CC, transparent: true, opacity: 0.85 })
+      );
+      addSlideObj(latRing);
+
+      // ── Meridian arc (cyan) — from equator to spacecraft subpoint ──
+      const merPts = [];
+      const steps = 48;
+      for (let i = 0; i <= steps; i++) {
+        const p = (i / steps) * phi;
+        merPts.push(new THREE.Vector3(
+          Math.cos(p) * Math.cos(lambda) * (EARTH_RADIUS + 0.008),
+          Math.sin(p)                    * (EARTH_RADIUS + 0.008),
+          Math.cos(p) * Math.sin(lambda) * (EARTH_RADIUS + 0.008)
+        ));
+      }
+      const merLine = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(merPts),
+        new THREE.LineBasicMaterial({ color: 0x44FFEE, transparent: true, opacity: 0.85 })
+      );
+      addSlideObj(merLine);
+
+      // ── Radial altitude line from surface to spacecraft ──
+      const subPt = R.clone().multiplyScalar(EARTH_RADIUS + 0.008);
+      const altGeo = new THREE.BufferGeometry().setFromPoints([subPt, s.pos]);
+      const altLine = new THREE.Line(altGeo,
+        new THREE.LineDashedMaterial({ color: 0x334466, dashSize: 0.04, gapSize: 0.03, opacity: 0.6, transparent: true })
+      );
+      altLine.computeLineDistances();
+      addSlideObj(altLine);
+
+      // ── Labels ──
+      const phiLabelPos = new THREE.Vector3(
+        Math.cos(phi * 0.55) * Math.cos(lambda) * (EARTH_RADIUS + 0.15),
+        Math.sin(phi * 0.55)                    * (EARTH_RADIUS + 0.15),
+        Math.cos(phi * 0.55) * Math.sin(lambda) * (EARTH_RADIUS + 0.15)
+      );
+      const lG = new THREE.Group();
+      lG.add(makeFloatLabel('φ (lat)', phiLabelPos, 0x44FFEE));
+      const latMidPt = new THREE.Vector3(
+        Math.cos(phi) * Math.cos(lambda + Math.PI * 0.3) * (EARTH_RADIUS + 0.2),
+        Math.sin(phi)                                    * (EARTH_RADIUS + 0.2),
+        Math.cos(phi) * Math.sin(lambda + Math.PI * 0.3) * (EARTH_RADIUS + 0.2)
+      );
+      lG.add(makeFloatLabel('λ (lon)', latMidPt, 0xFF44CC));
+      addSlideObj(lG);
     },
     exit() {},
   },
@@ -741,9 +899,62 @@ const SLIDES = [
     camera: { pos: [4, 3, 8], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true });
+      setFrameVisibility({ rst: true, vel: true }); // RST defines horizontal; velocity arrow shows γ
+
+      const s = getSpacecraftState(0.72);
+      const R = s.R_hat;
+      const vel0 = s.vel.clone().normalize();
+      // Horizontal component of velocity (in local horizontal plane)
+      const vel_h = vel0.clone().addScaledVector(R, -vel0.dot(R)).normalize();
+      const gamma0 = Math.asin(vel0.dot(R));
+
+      // ── Local horizontal disc ──
+      addSlideObj(makeHorizDisc(s.pos, R, 0.62));
+
+      // ── Static γ arc at the actual flight-path angle ──
+      const gammaArc = makeAngleArc(s.pos, vel_h, R, 0.32, 0, gamma0, COLORS.arc);
+      addSlideObj(gammaArc);
+
+      // ── Horizontal reference dashes (from spacecraft outward along vel_h) ──
+      const h0 = s.pos.clone();
+      const h1 = s.pos.clone().addScaledVector(vel_h, 0.65);
+      const hRefLine = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([h0, h1]),
+        new THREE.LineDashedMaterial({ color: 0x4488cc, dashSize: 0.04, gapSize: 0.03, opacity: 0.7, transparent: true })
+      );
+      hRefLine.computeLineDistances();
+      addSlideObj(hRefLine);
+
+      // ── γ label at arc midpoint ──
+      const gamMid = vel_h.clone().multiplyScalar(Math.cos(gamma0 * 0.5) * 0.42)
+        .addScaledVector(R, Math.sin(gamma0 * 0.5) * 0.42);
+      const lG = new THREE.Group();
+      lG.add(makeFloatLabel('γ', s.pos.clone().add(gamMid), COLORS.arc));
+      addSlideObj(lG);
+
+      // ── Oscillating γ animation on velArrow ──
+      const swing = { g: -28 * Math.PI / 180 };
+      STATE.gammaAnim = gsap.to(swing, {
+        g: 28 * Math.PI / 180,
+        duration: 2.2,
+        yoyo: true,
+        repeat: -1,
+        ease: 'sine.inOut',
+        onUpdate() {
+          const dir = vel_h.clone()
+            .multiplyScalar(Math.cos(swing.g))
+            .addScaledVector(R, Math.sin(swing.g))
+            .normalize();
+          STATE.persistent.velArrow.setDirection(dir);
+        }
+      });
     },
-    exit() {},
+    exit() {
+      // Kill animation and reset velArrow to true velocity direction
+      if (STATE.gammaAnim) { STATE.gammaAnim.kill(); STATE.gammaAnim = null; }
+      const s = getSpacecraftState(0.72);
+      if (STATE.persistent.velArrow) STATE.persistent.velArrow.setDirection(s.vel.clone().normalize());
+    },
   },
 
   // ── 6: Heading Angle ψ ─────────────────────────────────────────────────
@@ -766,7 +977,49 @@ const SLIDES = [
     camera: { pos: [0, 9, 6], target: [0, 0, 0], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true });
+      setFrameVisibility({ rst: true, vel: true }); // ψ measured in RST horizontal plane
+
+      const s = getSpacecraftState(0.72);
+      const R = s.R_hat;
+      const vel0 = s.vel.clone().normalize();
+
+      // Horizontal velocity component (in local horizontal plane)
+      const vel_h = vel0.clone().addScaledVector(R, -vel0.dot(R)).normalize();
+
+      // ψ: angle from S_hat (East) to vel_h about R_hat, in horizontal plane
+      const psi = Math.atan2(vel_h.dot(s.T_hat), vel_h.dot(s.S_hat));
+
+      // ── Horizontal disc ──
+      addSlideObj(makeHorizDisc(s.pos, R, 0.62));
+
+      // ── ψ arc from S_hat to vel_h in horizontal plane ──
+      const psiArc = makeAngleArc(s.pos, s.S_hat, s.T_hat, 0.38, 0, psi, COLORS.arc);
+      addSlideObj(psiArc);
+
+      // ── Horizontal velocity projection line ──
+      const projLine = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([s.pos, s.pos.clone().addScaledVector(vel_h, 0.68)]),
+        new THREE.LineDashedMaterial({ color: 0xFFDD55, dashSize: 0.045, gapSize: 0.03, opacity: 0.75, transparent: true })
+      );
+      projLine.computeLineDistances();
+      addSlideObj(projLine);
+
+      // ── East reference line (S_hat direction) ──
+      const eastLine = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([s.pos, s.pos.clone().addScaledVector(s.S_hat, 0.52)]),
+        new THREE.LineDashedMaterial({ color: COLORS.ecef.y, dashSize: 0.04, gapSize: 0.03, opacity: 0.7, transparent: true })
+      );
+      eastLine.computeLineDistances();
+      addSlideObj(eastLine);
+
+      // ── Labels ──
+      const psiMidAngle = psi * 0.5;
+      const psiMidDir = s.S_hat.clone().multiplyScalar(Math.cos(psiMidAngle))
+        .addScaledVector(s.T_hat, Math.sin(psiMidAngle));
+      const lG = new THREE.Group();
+      lG.add(makeFloatLabel('ψ', s.pos.clone().addScaledVector(psiMidDir, 0.48), COLORS.arc));
+      lG.add(makeFloatLabel('East (S)', s.pos.clone().addScaledVector(s.S_hat, 0.60), COLORS.ecef.y));
+      addSlideObj(lG);
     },
     exit() {},
   },
@@ -792,10 +1045,51 @@ const SLIDES = [
     camera: { pos: [3, 3, 7], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
-      animateGroupIn(STATE.persistent.vrfGroup, 0.3);
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true });
+
+      const s = getSpacecraftState(0.72);
+      const x_v = s.vel.clone().normalize();
+      const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
+      const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
+
+      // Rotation Q_start that maps VRF arrows → RST directions visually:
+      // Q_start * [x_v, y_v, z_v] = [R_hat, S_hat, T_hat]
+      // Q_start = M_rst * M_vrf^T  (since rotation matrices are orthogonal)
+      const M_vrf   = new THREE.Matrix4().makeBasis(x_v, y_v, z_v);
+      const M_rst   = new THREE.Matrix4().makeBasis(s.R_hat, s.S_hat, s.T_hat);
+      const M_start = new THREE.Matrix4().multiplyMatrices(M_rst,
+        new THREE.Matrix4().copy(M_vrf).transpose());
+      const Q_start = new THREE.Quaternion().setFromRotationMatrix(M_start);
+      const Q_end   = new THREE.Quaternion(); // identity = final VRF orientation
+
+      const vrfGroup = STATE.persistent.vrfGroup;
+      // Hide labels until rotation completes
+      vrfGroup.traverse(obj => {
+        if (obj.isCSS2DObject) { obj.visible = false; obj.element.style.display = 'none'; }
+      });
+      vrfGroup.quaternion.copy(Q_start);
+
+      const proxy = { t: 0 };
+      STATE.vrfAnim = gsap.to(proxy, {
+        t: 1,
+        duration: 1.5,
+        ease: 'power2.inOut',
+        delay: 0.5,       // let camera settle first
+        onUpdate() {
+          vrfGroup.quaternion.slerpQuaternions(Q_start, Q_end, proxy.t);
+        },
+        onComplete() {
+          vrfGroup.traverse(obj => {
+            if (obj.isCSS2DObject) { obj.visible = true; obj.element.style.display = ''; }
+          });
+        }
+      });
     },
-    exit() {},
+    exit() {
+      if (STATE.vrfAnim) { STATE.vrfAnim.kill(); STATE.vrfAnim = null; }
+      // Reset group rotation so downstream slides start clean
+      if (STATE.persistent.vrfGroup) STATE.persistent.vrfGroup.quaternion.identity();
+    },
   },
 
   // ── 8: Newton's 2nd Law ────────────────────────────────────────────────
@@ -820,7 +1114,7 @@ const SLIDES = [
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+      setFrameVisibility({ eci: true, vrf: true, vel: true }); // ECI (inertial) + VRF where forces act
     },
     exit() {},
   },
@@ -846,7 +1140,7 @@ const SLIDES = [
     camera: { pos: [5, 5, 8], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+      setFrameVisibility({ eci: true, ecef: true, rst: true }); // show rotating vs inertial
     },
     exit() {},
   },
@@ -871,7 +1165,7 @@ const SLIDES = [
     camera: { pos: [4, 2, 9], target: [0, 0, 0], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+      setFrameVisibility({ rst: true }); // gravity acts along -R_hat
     },
     exit() {},
   },
@@ -901,7 +1195,7 @@ const SLIDES = [
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+      setFrameVisibility({ vrf: true, vel: true }); // drag acts along -xv
     },
     exit() {},
   },
@@ -927,7 +1221,7 @@ const SLIDES = [
     camera: { pos: [3, 4, 6], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+      setFrameVisibility({ rst: true, vrf: true, vel: true }); // lift perpendicular to velocity
     },
     exit() {},
   },
@@ -952,7 +1246,7 @@ const SLIDES = [
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+      setFrameVisibility({ vrf: true, vel: true }); // thrust expressed in VRF
     },
     exit() {},
   },
@@ -979,7 +1273,7 @@ const SLIDES = [
     camera: { pos: [6, 5, 10], target: [0, 0, 0], dur: 1.5 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true }); // all frames for full EOM
     },
     exit() {},
   },
@@ -1009,7 +1303,7 @@ const SLIDES = [
     camera: { pos: [0, 12, 20], target: [0, 0, 0], dur: 2.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true }); // all frames wide view
     },
     exit() {},
   },
@@ -1064,7 +1358,12 @@ function goToSlide(idx) {
 // ── Render loop ────────────────────────────────────────────────────────────
 function animate() {
   requestAnimationFrame(animate);
-  clock.getDelta(); // keep clock ticking for future use
+  const delta = clock.getDelta();
+
+  // Earth rotation — ECEF group stays locked to Earth texture
+  STATE.earthT += delta * EARTH_ROT_SPD;
+  if (STATE.persistent.earthMesh) STATE.persistent.earthMesh.rotation.y = STATE.earthT;
+  if (STATE.persistent.ecefGroup) STATE.persistent.ecefGroup.rotation.y = STATE.earthT;
 
   controls.update();
   renderer.render(scene, camera);
@@ -1207,6 +1506,7 @@ async function boot() {
   buildECEFAxes();
   buildRSTAxes();
   buildVRFAxes();
+  buildVelocityArrow();
 
   // Remove loading indicator
   const li = document.getElementById('loading-indicator');
