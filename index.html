@@ -368,26 +368,21 @@ function buildECEFAxes() {
 }
 
 function buildRSTAxes() {
-  const s   = getSpacecraftState(0.72);
-  const L   = 0.72;
-  const pos = s.pos;
+  const s = getSpacecraftState(0.72);
+  const L = 2.1;               // long enough to reach past the spacecraft (at ~1.55)
+  const O = new THREE.Vector3(0, 0, 0);  // origin at planetary center
   const group = new THREE.Group();
 
-  // Small sphere marks the RST origin — at the spacecraft, not Earth's center
-  const originMark = new THREE.Mesh(
-    new THREE.SphereGeometry(0.038, 14, 14),
-    new THREE.MeshBasicMaterial({ color: COLORS.rst.r })
-  );
-  originMark.position.copy(pos);
-  group.add(originMark);
+  // x₂: along spacecraft position vector (radially outward from planetary center)
+  group.add(makeArrow(s.R_hat, O, L, COLORS.rst.r, 'x₂'));
+  // y₂: parallel to equatorial plane (East)
+  group.add(makeArrow(s.S_hat, O, L, COLORS.rst.s, 'y₂'));
+  // z₂: orthogonal, completes right-hand system
+  group.add(makeArrow(s.T_hat, O, L, COLORS.rst.t, 'z₂'));
 
-  group.add(makeArrow(s.R_hat, pos, L, COLORS.rst.r, 'R'));
-  group.add(makeArrow(s.S_hat, pos, L, COLORS.rst.s, 'S'));
-  group.add(makeArrow(s.T_hat, pos, L, COLORS.rst.t, 'T'));
-
-  group.add(makeAxisLabel('Radial',   pos.clone().addScaledVector(s.R_hat, L + 0.12), COLORS.rst.r));
-  group.add(makeAxisLabel('East',     pos.clone().addScaledVector(s.S_hat, L + 0.12), COLORS.rst.s));
-  group.add(makeAxisLabel('North',    pos.clone().addScaledVector(s.T_hat, L + 0.12), COLORS.rst.t));
+  group.add(makeAxisLabel('Radial (x₂)', O.clone().addScaledVector(s.R_hat, L + 0.14), COLORS.rst.r));
+  group.add(makeAxisLabel('East (y₂)',   O.clone().addScaledVector(s.S_hat, L + 0.14), COLORS.rst.s));
+  group.add(makeAxisLabel('North (z₂)',  O.clone().addScaledVector(s.T_hat, L + 0.14), COLORS.rst.t));
 
   scene.add(group);
   setGroupVisible(group, false);
@@ -767,22 +762,22 @@ const SLIDES = [
 
   // ── 3: Vehicle-Pointing Frame ──────────────────────────────────────────
   {
-    title: 'Vehicle-Pointing Frame (RST)',
+    title: 'Vehicle-Pointing Frame (OX₂Y₂Z₂)',
     html: `
-      <p>The <span class="chip chip-rst">RST Frame</span> has its origin at the
-      <strong>spacecraft position</strong> — the small dot marks the origin in the 3D view.</p>
+      <p>The <span class="chip chip-rst">Vehicle-Pointing Frame</span> (notation:
+      <strong>OX₂Y₂Z₂</strong>) has its <strong>origin at the planetary center</strong>,
+      with axes defined by the vehicle's instantaneous position.</p>
       <div class="eq-block">
         <div class="eq-label">Axis definitions</div>
-        \\[\\hat{R} = \\frac{\\vec{r}}{|\\vec{r}|}\\quad(\\text{radial, outward})\\]
-        \\[\\hat{S} = \\hat{Z} \\times \\hat{R}\\quad(\\text{equatorial parallel})\\]
-        \\[\\hat{T} = \\hat{R} \\times \\hat{S}\\quad(\\text{completes right-hand system})\\]
+        \\[\\hat{e}_{x_2} = \\frac{\\vec{r}}{|\\vec{r}|}\\quad\\text{(points along position vector)}\\]
+        \\[\\hat{e}_{y_2} = \\hat{Z} \\times \\hat{e}_{x_2}\\quad\\text{(parallel to equatorial plane)}\\]
+        \\[\\hat{e}_{z_2} = \\hat{e}_{x_2} \\times \\hat{e}_{y_2}\\quad\\text{(completes right-hand system)}\\]
       </div>
-      <p>Two successive rotations transform from ECEF to RST using the vehicle's
-      <strong>longitude</strong> \\(\\lambda\\) and <strong>latitude</strong> \\(\\phi\\).</p>
       <div class="eq-block">
-        \\[\\mathbf{T}_{\\text{ECEF} \\to \\text{RST}} = R_Y(-\\phi)\\,R_Z(\\lambda)\\]
+        <div class="eq-label">ECEF → Vehicle-Pointing rotation</div>
+        \\[\\mathbf{T}_{\\text{ECEF} \\to \\text{VP}} = R_Y(-\\phi)\\,R_Z(\\lambda)\\]
       </div>`,
-    camera: { pos: [5, 4, 9], target: [0, 0, 0], dur: 1.2 },
+    camera: { pos: [6, 5, 10], target: [0, 0, 0], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
       setFrameVisibility({ rst: true }); // RST only — origin marker at spacecraft
