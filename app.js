@@ -620,7 +620,7 @@ const SLIDES = [
     title: 'Introduction',
     html: `
       <p>This interactive lesson walks you through the complete derivation of the
-      <strong>6-DOF Equations of Motion</strong> for atmospheric reentry vehicles.</p>
+      <strong>3-DOF Equations of Motion</strong> for atmospheric reentry vehicles.</p>
       <h3>What we'll build</h3>
       <ul>
         <li>Four nested coordinate frames</li>
@@ -736,28 +736,41 @@ const SLIDES = [
     html: `
       <p>The vehicle's position on the rotating planet is described by
       <strong>geocentric longitude</strong> \\(\\lambda\\) and
-      <strong>geocentric latitude</strong> \\(\\phi\\).</p>
+      <strong>geocentric latitude</strong> \\(\\phi\\).
+      The kinematic equations follow from a three-step decomposition of the velocity vector
+      — illustrated in the 3D scene.</p>
       <div class="eq-block">
-        <div class="eq-label">Kinematic equations (position)</div>
-        \\[\\dot{\\lambda} = \\frac{v\\cos\\gamma\\cos\\psi}{r\\cos\\phi}\\]
-        \\[\\dot{\\phi} = \\frac{v\\cos\\gamma\\sin\\psi}{r}\\]
+        <div class="eq-label">Step 1 — Split v by flight-path angle γ (radial vs. horizontal)</div>
+        \\[\\underbrace{v\\sin\\gamma}_{\\dot{r}\\ =\\ \\text{radial rate}}
+          \\qquad
+          \\underbrace{v\\cos\\gamma}_{v_h\\ =\\ \\text{horizontal speed}}\\]
       </div>
-      <p>These two equations, along with \\(\\dot{r} = v\\sin\\gamma\\), form the
-      <em>kinematic</em> half of our 6-DOF system — integrating them gives the
-      vehicle's position on Earth at any time.</p>`,
+      <div class="eq-block">
+        <div class="eq-label">Step 2 — Split v_h by heading angle ψ (east vs. north)</div>
+        \\[v_{\\text{east}} = v\\cos\\gamma\\cos\\psi
+          \\qquad
+          v_{\\text{north}} = v\\cos\\gamma\\sin\\psi\\]
+      </div>
+      <div class="eq-block">
+        <div class="eq-label">Step 3 — Convert speed to angular rate</div>
+        \\[\\dot{\\phi} = \\frac{v_{\\text{north}}}{r} = \\frac{v\\cos\\gamma\\sin\\psi}{r}\\]
+        \\[\\dot{\\lambda} = \\frac{v_{\\text{east}}}{r\\cos\\phi} = \\frac{v\\cos\\gamma\\cos\\psi}{r\\cos\\phi}\\]
+      </div>
+      <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.4rem;">
+        The extra \\(\\cos\\phi\\) in \\(\\dot\\lambda\\): a latitude circle at \\(\\phi\\)
+        has radius \\(r\\cos\\phi\\) — it shrinks toward the poles, so the same eastward
+        speed covers more degrees of longitude at high latitudes.</p>`,
     camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ ecef: true, rst: true }); // ECEF (planet-fixed) + RST (vehicle-pointing)
+      setFrameVisibility({ ecef: true, rst: true, vel: true });
 
-      const s = getSpacecraftState(0.72);
-      const R = s.R_hat;
-      // Geocentric latitude (North Pole = +Y in scene)
+      const s      = getSpacecraftState(0.72);
+      const R      = s.R_hat;
       const phi    = Math.asin(R.y);
-      // Longitude in the equatorial XZ-plane
       const lambda = Math.atan2(R.z, R.x);
 
-      // ── Latitude ring (magenta) — full circle at spacecraft latitude ──
+      // ── Latitude ring (magenta) ──
       const latPts = [];
       for (let i = 0; i <= 96; i++) {
         const a = (i / 96) * Math.PI * 2;
@@ -767,53 +780,121 @@ const SLIDES = [
           Math.cos(phi) * Math.sin(a) * (EARTH_RADIUS + 0.008)
         ));
       }
-      const latRing = new THREE.Line(
+      addSlideObj(new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(latPts),
         new THREE.LineBasicMaterial({ color: 0xFF44CC, transparent: true, opacity: 0.85 })
-      );
-      addSlideObj(latRing);
+      ));
 
-      // ── Meridian arc (cyan) — from equator to spacecraft subpoint ──
+      // ── Meridian arc (cyan) ──
       const merPts = [];
-      const steps = 48;
-      for (let i = 0; i <= steps; i++) {
-        const p = (i / steps) * phi;
+      for (let i = 0; i <= 48; i++) {
+        const p = (i / 48) * phi;
         merPts.push(new THREE.Vector3(
           Math.cos(p) * Math.cos(lambda) * (EARTH_RADIUS + 0.008),
           Math.sin(p)                    * (EARTH_RADIUS + 0.008),
           Math.cos(p) * Math.sin(lambda) * (EARTH_RADIUS + 0.008)
         ));
       }
-      const merLine = new THREE.Line(
+      addSlideObj(new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(merPts),
         new THREE.LineBasicMaterial({ color: 0x44FFEE, transparent: true, opacity: 0.85 })
-      );
-      addSlideObj(merLine);
+      ));
 
-      // ── Radial altitude line from surface to spacecraft ──
-      const subPt = R.clone().multiplyScalar(EARTH_RADIUS + 0.008);
-      const altGeo = new THREE.BufferGeometry().setFromPoints([subPt, s.pos]);
-      const altLine = new THREE.Line(altGeo,
+      // ── Radial altitude line ──
+      const subPt  = R.clone().multiplyScalar(EARTH_RADIUS + 0.008);
+      const altLine = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([subPt, s.pos]),
         new THREE.LineDashedMaterial({ color: 0x334466, dashSize: 0.04, gapSize: 0.03, opacity: 0.6, transparent: true })
       );
       altLine.computeLineDistances();
       addSlideObj(altLine);
 
-      // ── Labels ──
+      // ── φ / λ labels ──
       const phiLabelPos = new THREE.Vector3(
         Math.cos(phi * 0.55) * Math.cos(lambda) * (EARTH_RADIUS + 0.15),
         Math.sin(phi * 0.55)                    * (EARTH_RADIUS + 0.15),
         Math.cos(phi * 0.55) * Math.sin(lambda) * (EARTH_RADIUS + 0.15)
       );
-      const lG = new THREE.Group();
-      lG.add(makeFloatLabel('φ (lat)', phiLabelPos, 0x44FFEE));
       const latMidPt = new THREE.Vector3(
         Math.cos(phi) * Math.cos(lambda + Math.PI * 0.3) * (EARTH_RADIUS + 0.2),
         Math.sin(phi)                                    * (EARTH_RADIUS + 0.2),
         Math.cos(phi) * Math.sin(lambda + Math.PI * 0.3) * (EARTH_RADIUS + 0.2)
       );
+      const lG = new THREE.Group();
+      lG.add(makeFloatLabel('φ (lat)', phiLabelPos, 0x44FFEE));
       lG.add(makeFloatLabel('λ (lon)', latMidPt, 0xFF44CC));
       addSlideObj(lG);
+
+      // ── Velocity decomposition right-triangle (Step 1: γ) ──────────────
+      const v_hat = s.vel.clone().normalize();
+      const sinG  = v_hat.dot(R);
+      const cosG  = Math.sqrt(Math.max(0, 1 - sinG * sinG));
+      const v_h   = v_hat.clone().addScaledVector(R, -sinG).normalize();
+      const vLen  = 0.82; // same length as velArrow
+
+      // h_end = tip of horizontal component; v_tip = tip of velocity arrow
+      const h_end = s.pos.clone().addScaledVector(v_h, vLen * cosG);
+      const v_tip = s.pos.clone().addScaledVector(v_hat, vLen);
+
+      // Orange arrow: v cosγ (horizontal component)
+      addSlideObj(new THREE.ArrowHelper(v_h, s.pos, vLen * cosG, 0xFFAA00, 0.07, 0.035));
+
+      // Yellow dashed: v sinγ (vertical component, from h_end up to velocity tip)
+      const vSeg = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([h_end, v_tip]),
+        new THREE.LineDashedMaterial({ color: 0xFFDD44, dashSize: 0.025, gapSize: 0.015, transparent: true, opacity: 0.9 })
+      );
+      vSeg.computeLineDistances();
+      addSlideObj(vSeg);
+
+      // Right-angle marker at h_end corner
+      const ra = 0.036;
+      addSlideObj(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          h_end.clone().addScaledVector(R, ra),
+          h_end.clone().addScaledVector(R, ra).addScaledVector(v_h, -ra),
+          h_end.clone().addScaledVector(v_h, -ra),
+        ]),
+        new THREE.LineBasicMaterial({ color: 0xFFDD44, transparent: true, opacity: 0.55 })
+      ));
+
+      // Labels on triangle sides
+      const triG = new THREE.Group();
+      triG.add(makeFloatLabel('v cosγ',
+        s.pos.clone().addScaledVector(v_h, vLen * cosG * 0.5).addScaledVector(R, 0.12),
+        0xFFAA00));
+      triG.add(makeFloatLabel('v sinγ',
+        h_end.clone().lerp(v_tip, 0.5).addScaledVector(v_h, -0.13),
+        0xFFDD44));
+      addSlideObj(triG);
+
+      // ── East / north split (Step 2: ψ) — dashed projection ─────────────
+      const psi      = Math.atan2(v_h.dot(s.T_hat), v_h.dot(s.S_hat));
+      const hLen     = vLen * cosG;
+      const east_end = s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi));
+
+      // East arrow along S_hat
+      if (Math.abs(Math.cos(psi)) > 0.05) {
+        addSlideObj(new THREE.ArrowHelper(
+          s.S_hat, s.pos, hLen * Math.abs(Math.cos(psi)), 0x88DDFF, 0.06, 0.03));
+      }
+      // North dashed: from east_end to h_end
+      const nSeg = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([east_end, h_end]),
+        new THREE.LineDashedMaterial({ color: 0xAABBFF, dashSize: 0.025, gapSize: 0.015, transparent: true, opacity: 0.75 })
+      );
+      nSeg.computeLineDistances();
+      addSlideObj(nSeg);
+
+      // East / north labels
+      const enG = new THREE.Group();
+      enG.add(makeFloatLabel('v cosγ cosψ',
+        s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi) * 0.5).addScaledVector(R, -0.11),
+        0x88DDFF));
+      enG.add(makeFloatLabel('v cosγ sinψ',
+        east_end.clone().lerp(h_end, 0.5).addScaledVector(s.S_hat, -0.14),
+        0xAABBFF));
+      addSlideObj(enG);
     },
     exit() {},
   },
@@ -1315,12 +1396,13 @@ const SLIDES = [
     exit() { setForceVisibility({}); },
   },
 
-  // ── 14: Complete 6-DOF EOM ─────────────────────────────────────────────
+  // ── 14: Complete 3-DOF EOM ─────────────────────────────────────────────
   {
-    title: 'Complete 6-DOF Equations of Motion',
+    title: 'Complete 3-DOF Equations of Motion',
     html: `
-      <p>Assembling all forces and frames yields six coupled scalar ODEs — the full
-      trajectory model.</p>
+      <p>Assembling all forces and frames yields six coupled scalar ODEs — the
+      complete <strong>3-DOF point-mass</strong> trajectory model
+      (3 translational states, no attitude dynamics).</p>
       <div class="eq-block">
         <div class="eq-label">3 Kinematic equations</div>
         \\[\\dot{r} = v\\sin\\gamma\\]
