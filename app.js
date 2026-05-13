@@ -104,8 +104,8 @@ function initScene() {
   sun.position.set(8, 5, 10);
   scene.add(sun);
 
-  // Controls
-  controls = new OrbitControls(camera, css2d.domElement);
+  // Controls — must attach to WebGL canvas, NOT the CSS2D overlay
+  controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.06;
   controls.minDistance = 1.5;
@@ -246,8 +246,8 @@ function buildECIAxes() {
   group.add(makeAxisLabel('Vernal Equinox', new THREE.Vector3(L + 0.15, 0, 0),      COLORS.eci.x));
   group.add(makeAxisLabel('North Pole',     new THREE.Vector3(0,         L + 0.15, 0), COLORS.eci.z));
 
-  group.visible = false;
   scene.add(group);
+  setGroupVisible(group, false);
   STATE.persistent.eciGroup = group;
 }
 
@@ -262,9 +262,98 @@ function buildECEFAxes() {
   group.add(makeArrow(new THREE.Vector3(0, 0, 1), O, L, COLORS.ecef.y, 'ŷ_E'));
   group.add(makeArrow(new THREE.Vector3(0, 1, 0), O, L, COLORS.ecef.z, 'ẑ_E'));
 
-  group.visible = false;
   scene.add(group);
+  setGroupVisible(group, false);
   STATE.persistent.ecefGroup = group;
+}
+
+function buildRSTAxes() {
+  const s   = getSpacecraftState(0.72);
+  const L   = 0.72;
+  const pos = s.pos;
+  const group = new THREE.Group();
+
+  group.add(makeArrow(s.R_hat,            pos, L, COLORS.rst.r, 'R̂'));
+  group.add(makeArrow(s.S_hat,            pos, L, COLORS.rst.s, 'Ŝ'));
+  group.add(makeArrow(s.T_hat,            pos, L, COLORS.rst.t, 'T̂'));
+
+  // Secondary descriptive labels
+  group.add(makeAxisLabel('Radial',   pos.clone().addScaledVector(s.R_hat, L + 0.1), COLORS.rst.r));
+  group.add(makeAxisLabel('East',     pos.clone().addScaledVector(s.S_hat, L + 0.1), COLORS.rst.s));
+  group.add(makeAxisLabel('North',    pos.clone().addScaledVector(s.T_hat, L + 0.1), COLORS.rst.t));
+
+  scene.add(group);
+  setGroupVisible(group, false);
+  STATE.persistent.rstGroup = group;
+}
+
+function buildVRFAxes() {
+  const s   = getSpacecraftState(0.72);
+  const L   = 0.62;
+  const pos = s.pos;
+
+  // x_v: velocity direction
+  const x_v = s.vel.clone().normalize();
+  // z_v: horizontal, perpendicular to both velocity and radial (the "wing" axis)
+  const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
+  // y_v: completes right-hand system (roughly radially outward for level flight)
+  const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
+
+  const group = new THREE.Group();
+  group.add(makeArrow(x_v, pos, L, COLORS.vrf.x, 'x̂_v'));
+  group.add(makeArrow(y_v, pos, L, COLORS.vrf.y, 'ŷ_v'));
+  group.add(makeArrow(z_v, pos, L, COLORS.vrf.z, 'ẑ_v'));
+
+  group.add(makeAxisLabel('Velocity', pos.clone().addScaledVector(x_v, L + 0.1), COLORS.vrf.x));
+  group.add(makeAxisLabel('Normal',   pos.clone().addScaledVector(y_v, L + 0.1), COLORS.vrf.y));
+  group.add(makeAxisLabel('Wing',     pos.clone().addScaledVector(z_v, L + 0.1), COLORS.vrf.z));
+
+  scene.add(group);
+  setGroupVisible(group, false);
+  STATE.persistent.vrfGroup = group;
+}
+
+// CSS2DRenderer ignores Object3D.visible — must hide DOM elements manually
+function setGroupVisible(group, visible) {
+  if (!group) return;
+  group.visible = visible;
+  group.traverse(obj => {
+    if (obj.isCSS2DObject) obj.element.style.display = visible ? '' : 'none';
+  });
+}
+
+// Show/hide the four persistent frame groups — call from every slide enter()
+function setFrameVisibility({ eci = false, ecef = false, rst = false, vrf = false } = {}) {
+  setGroupVisible(STATE.persistent.eciGroup,  eci);
+  setGroupVisible(STATE.persistent.ecefGroup, ecef);
+  setGroupVisible(STATE.persistent.rstGroup,  rst);
+  setGroupVisible(STATE.persistent.vrfGroup,  vrf);
+}
+
+// Grow arrows in with a stagger spring; labels appear only after all arrows land
+function animateGroupIn(group, baseDelay = 0) {
+  // Hide all CSS2D labels until animation completes
+  group.traverse(obj => {
+    if (obj.isCSS2DObject) obj.element.style.display = 'none';
+  });
+
+  // Only scale ArrowHelper children, not CSS2DObject children
+  const arrows = group.children.filter(c => c.isArrowHelper);
+  arrows.forEach((arrow, i) => {
+    arrow.scale.set(0, 0, 0);
+    gsap.to(arrow.scale, {
+      x: 1, y: 1, z: 1,
+      duration: 0.5,
+      delay: baseDelay + i * 0.12,
+      ease: 'back.out(1.4)',
+      onComplete: i === arrows.length - 1 ? () => {
+        // Reveal labels once the last arrow finishes growing
+        group.traverse(obj => {
+          if (obj.isCSS2DObject) obj.element.style.display = '';
+        });
+      } : undefined,
+    });
+  });
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -420,6 +509,7 @@ const SLIDES = [
     camera: { pos: [0, 12, 20], target: [0, 0, 0], dur: 0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({});
     },
     exit() {},
   },
@@ -444,14 +534,9 @@ const SLIDES = [
       <p>All other frames we introduce will be defined relative to this one.</p>`,
     camera: { pos: [8, 6, 8], target: [0, 0, 0], dur: 1.2 },
     enter() {
-      STATE.persistent.orbitLine.visible  = true;
-      STATE.persistent.eciGroup.visible   = true;
-      STATE.persistent.ecefGroup.visible  = false; // not introduced yet
-      // Stagger the three arrows growing in (skip if re-entering from a later slide)
-      STATE.persistent.eciGroup.children.forEach((child, i) => {
-        child.scale.set(0, 0, 0);
-        gsap.to(child.scale, { x: 1, y: 1, z: 1, duration: 0.5, delay: i * 0.15, ease: 'back.out(1.4)' });
-      });
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true });
+      animateGroupIn(STATE.persistent.eciGroup);
     },
     exit() {},
   },
@@ -481,14 +566,9 @@ const SLIDES = [
       angle \\(\\theta_E\\). As Earth spins, this offset grows at rate \\(\\Omega\\).</p>`,
     camera: { pos: [8, 8, 6], target: [0, 0, 0], dur: 1.0 },
     enter() {
-      STATE.persistent.orbitLine.visible  = true;
-      STATE.persistent.eciGroup.visible   = true;
-      STATE.persistent.ecefGroup.visible  = true;
-      // ECEF axes grow in after a short delay
-      STATE.persistent.ecefGroup.children.forEach((child, i) => {
-        child.scale.set(0, 0, 0);
-        gsap.to(child.scale, { x: 1, y: 1, z: 1, duration: 0.5, delay: 0.3 + i * 0.15, ease: 'back.out(1.4)' });
-      });
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true });
+      animateGroupIn(STATE.persistent.ecefGroup, 0.3);
     },
     exit() {},
   },
@@ -511,8 +591,12 @@ const SLIDES = [
         \\[\\mathbf{T}_{\\text{ECEF} \\to \\text{RST}} = R_Y(-\\phi)\\,R_Z(\\lambda)\\]
       </div>`,
     camera: { pos: [5, 4, 9], target: [0, 0, 0], dur: 1.2 },
-    enter() {},
-    exit()  {},
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true, rst: true });
+      animateGroupIn(STATE.persistent.rstGroup, 0.3);
+    },
+    exit() {},
   },
 
   // ── 4: Longitude & Latitude ────────────────────────────────────────────
@@ -531,8 +615,11 @@ const SLIDES = [
       <em>kinematic</em> half of our 6-DOF system — integrating them gives the
       vehicle's position on Earth at any time.</p>`,
     camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 1.0 },
-    enter() {},
-    exit()  {},
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true, rst: true });
+    },
+    exit() {},
   },
 
   // ── 5: Flight-Path Angle γ ─────────────────────────────────────────────
@@ -553,8 +640,11 @@ const SLIDES = [
       <p>Watch the gold velocity arrow sweep relative to the horizontal disc as
       \\(\\gamma\\) varies.</p>`,
     camera: { pos: [4, 3, 8], target: [0, 0, 0], dur: 1.0 },
-    enter() {},
-    exit()  {},
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true, rst: true });
+    },
+    exit() {},
   },
 
   // ── 6: Heading Angle ψ ─────────────────────────────────────────────────
@@ -575,8 +665,11 @@ const SLIDES = [
       <p>Look down from above — the arc shows the heading angle in the local
       horizontal plane.</p>`,
     camera: { pos: [0, 9, 6], target: [0, 0, 0], dur: 1.2 },
-    enter() {},
-    exit()  {},
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true, rst: true });
+    },
+    exit() {},
   },
 
   // ── 7: Velocity-Referenced Frame ───────────────────────────────────────
@@ -598,8 +691,12 @@ const SLIDES = [
       <p>Forces are most naturally expressed in this frame, then transformed back to
       RST for the equations of motion.</p>`,
     camera: { pos: [3, 3, 7], target: [0, 0, 0], dur: 1.0 },
-    enter() {},
-    exit()  {},
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+      animateGroupIn(STATE.persistent.vrfGroup, 0.3);
+    },
+    exit() {},
   },
 
   // ── 8: Newton's 2nd Law ────────────────────────────────────────────────
@@ -622,8 +719,11 @@ const SLIDES = [
       <p>The superscript \\(I\\) on \\(\\ddot{\\vec{r}}\\) emphasizes the derivative is taken
       with respect to the <em>inertial</em> frame.</p>`,
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 1.0 },
-    enter() {},
-    exit()  {},
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+    },
+    exit() {},
   },
 
   // ── 9: Rotating Frame Conversion ───────────────────────────────────────
@@ -645,8 +745,11 @@ const SLIDES = [
       <p>Both terms update in real-time as the spacecraft moves — watch the arrows change
       direction along the orbit.</p>`,
     camera: { pos: [5, 5, 8], target: [0, 0, 0], dur: 1.0 },
-    enter() {},
-    exit()  {},
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+    },
+    exit() {},
   },
 
   // ── 10: Gravitational Force ────────────────────────────────────────────
@@ -667,8 +770,11 @@ const SLIDES = [
       <p>The <span class="chip chip-grav">blue arrow</span> grows longer as the spacecraft
       descends closer to Earth.</p>`,
     camera: { pos: [4, 2, 9], target: [0, 0, 0], dur: 1.2 },
-    enter() {},
-    exit()  {},
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+    },
+    exit() {},
   },
 
   // ── 11: Drag Force ─────────────────────────────────────────────────────
@@ -694,8 +800,11 @@ const SLIDES = [
         \\end{bmatrix}_{\\text{RST}}\\]
       </div>`,
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
-    enter() {},
-    exit()  {},
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+    },
+    exit() {},
   },
 
   // ── 12: Lift Force & Bank Angle ────────────────────────────────────────
@@ -717,8 +826,11 @@ const SLIDES = [
       axis as bank angle \\(\\theta\\) changes — this is how a lifting entry vehicle controls
       its trajectory.</p>`,
     camera: { pos: [3, 4, 6], target: [0, 0, 0], dur: 1.0 },
-    enter() {},
-    exit()  {},
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+    },
+    exit() {},
   },
 
   // ── 13: Thrust Force ───────────────────────────────────────────────────
@@ -739,8 +851,11 @@ const SLIDES = [
       thrust components used in the force equations.</p>
       <p>All four forces are now simultaneously visible on the vehicle.</p>`,
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
-    enter() {},
-    exit()  {},
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+    },
+    exit() {},
   },
 
   // ── 14: Complete 6-DOF EOM ─────────────────────────────────────────────
@@ -763,8 +878,11 @@ const SLIDES = [
       </div>
       <p>State vector: \\(\\mathbf{x} = (r,\\,v,\\,\\gamma,\\,\\psi,\\,\\lambda,\\,\\phi)^T\\)</p>`,
     camera: { pos: [6, 5, 10], target: [0, 0, 0], dur: 1.5 },
-    enter() {},
-    exit()  {},
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+    },
+    exit() {},
   },
 
   // ── 15: Summary ────────────────────────────────────────────────────────
@@ -790,8 +908,11 @@ const SLIDES = [
         Source: Hicks, K. D. <em>Introduction to Astrodynamic Reentry, 2nd ed.</em> 2014.
       </p>`,
     camera: { pos: [0, 12, 20], target: [0, 0, 0], dur: 2.0 },
-    enter() {},
-    exit()  {},
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true });
+    },
+    exit() {},
   },
 ];
 
@@ -866,6 +987,8 @@ async function main() {
   buildOrbitTrail();
   buildECIAxes();
   buildECEFAxes();
+  buildRSTAxes();
+  buildVRFAxes();
 
   // Remove loading indicator
   const li = document.getElementById('loading-indicator');
