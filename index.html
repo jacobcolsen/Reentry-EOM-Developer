@@ -326,7 +326,7 @@ function buildOrbitTrail() {
   }
   const line = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(pts),
-    new THREE.LineBasicMaterial({ color: 0x1a4466, transparent: true, opacity: 0.45 }),
+    new THREE.LineBasicMaterial({ color: 0x4499bb, transparent: true, opacity: 0.65 }),
   );
   line.visible = false;
   scene.add(line);
@@ -864,7 +864,7 @@ const SLIDES = [
     camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ vel: true });
+      setFrameVisibility({});  // all persistent arrows hidden; we draw everything as slide objects
 
       const s      = getSpacecraftState(0.72);
       const R      = s.R_hat;
@@ -926,76 +926,99 @@ const SLIDES = [
       lG.add(makeFloatLabel('λ (lon)', latMidPt, 0xFF44CC));
       addSlideObj(lG);
 
-      // ── Velocity decomposition right-triangle (Step 1: γ) ──────────────
-      const v_hat = s.vel.clone().normalize();
-      const sinG  = v_hat.dot(R);
-      const cosG  = Math.sqrt(Math.max(0, 1 - sinG * sinG));
-      const v_h   = v_hat.clone().addScaledVector(R, -sinG).normalize();
-      const vLen  = 0.82; // same length as velArrow
+      // ── Velocity decomposition — demo γ=25°, using actual heading ψ ─────
+      // The circular orbit has γ=0 exactly; we use γ_demo=25° so the right-triangle
+      // is non-degenerate and clearly shows where cos γ and sin γ come from.
+      const GAMMA_DEMO = 25 * Math.PI / 180;
+      const sinG_demo  = Math.sin(GAMMA_DEMO);
+      const cosG_demo  = Math.cos(GAMMA_DEMO);
 
-      // h_end = tip of horizontal component; v_tip = tip of velocity arrow
-      const h_end = s.pos.clone().addScaledVector(v_h, vLen * cosG);
-      const v_tip = s.pos.clone().addScaledVector(v_hat, vLen);
+      // h_dir = actual horizontal velocity direction (circular orbit ⇒ vel ⊥ R exactly)
+      const h_dir = s.vel.clone().normalize();
 
-      // Orange arrow: v cosγ (horizontal component)
-      addSlideObj(new THREE.ArrowHelper(v_h, s.pos, vLen * cosG, 0xFFAA00, 0.07, 0.035));
+      // demo full velocity: tilted radially upward by γ_demo from h_dir
+      const v_hat_demo = h_dir.clone().multiplyScalar(cosG_demo)
+                             .addScaledVector(R, sinG_demo).normalize();
 
-      // Yellow dashed: v sinγ (vertical component, from h_end up to velocity tip)
-      const vSeg = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([h_end, v_tip]),
-        new THREE.LineDashedMaterial({ color: 0xFFDD44, dashSize: 0.025, gapSize: 0.015, transparent: true, opacity: 0.9 })
+      // actual heading angle ψ from the current RST frame
+      const psi = Math.atan2(h_dir.dot(s.T_hat), h_dir.dot(s.S_hat));
+
+      const vLen   = 0.82;
+      const hLen   = vLen * cosG_demo;
+      const vTip   = s.pos.clone().addScaledVector(v_hat_demo, vLen);
+      const hEnd   = s.pos.clone().addScaledVector(h_dir, hLen);
+      const eastEnd = s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi));
+
+      // Full velocity vector — gold
+      addSlideObj(new THREE.ArrowHelper(v_hat_demo, s.pos, vLen, 0xFFD700, 0.09, 0.045));
+
+      // v cosγ horizontal component — cyan arrow
+      addSlideObj(new THREE.ArrowHelper(h_dir, s.pos, hLen, 0x00DDFF, 0.07, 0.035));
+
+      // v sinγ radial component — red dashed line from hEnd to vTip
+      const sinSeg = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([hEnd, vTip]),
+        new THREE.LineDashedMaterial({ color: 0xFF5555, dashSize: 0.025, gapSize: 0.015, transparent: true, opacity: 0.9 })
       );
-      vSeg.computeLineDistances();
-      addSlideObj(vSeg);
+      sinSeg.computeLineDistances();
+      addSlideObj(sinSeg);
 
-      // Right-angle marker at h_end corner
+      // Right-angle marker at hEnd corner
       const ra = 0.036;
       addSlideObj(new THREE.Line(
         new THREE.BufferGeometry().setFromPoints([
-          h_end.clone().addScaledVector(R, ra),
-          h_end.clone().addScaledVector(R, ra).addScaledVector(v_h, -ra),
-          h_end.clone().addScaledVector(v_h, -ra),
+          hEnd.clone().addScaledVector(R, ra),
+          hEnd.clone().addScaledVector(R, ra).addScaledVector(h_dir, -ra),
+          hEnd.clone().addScaledVector(h_dir, -ra),
         ]),
-        new THREE.LineBasicMaterial({ color: 0xFFDD44, transparent: true, opacity: 0.55 })
+        new THREE.LineBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.55 })
       ));
 
-      // Labels on triangle sides
-      const triG = new THREE.Group();
-      triG.add(makeFloatLabel('v cosγ',
-        s.pos.clone().addScaledVector(v_h, vLen * cosG * 0.5).addScaledVector(R, 0.12),
-        0xFFAA00));
-      triG.add(makeFloatLabel('v sinγ',
-        h_end.clone().lerp(v_tip, 0.5).addScaledVector(v_h, -0.13),
-        0xFFDD44));
-      addSlideObj(triG);
-
-      // ── East / north split (Step 2: ψ) — dashed projection ─────────────
-      const psi      = Math.atan2(v_h.dot(s.T_hat), v_h.dot(s.S_hat));
-      const hLen     = vLen * cosG;
-      const east_end = s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi));
-
-      // East arrow along S_hat
+      // v cosγ cosψ east component — magenta arrow along S_hat
       if (Math.abs(Math.cos(psi)) > 0.05) {
         addSlideObj(new THREE.ArrowHelper(
-          s.S_hat, s.pos, hLen * Math.abs(Math.cos(psi)), 0x88DDFF, 0.06, 0.03));
+          s.S_hat.clone().multiplyScalar(Math.sign(Math.cos(psi))),
+          s.pos, hLen * Math.abs(Math.cos(psi)), 0xFF44CC, 0.06, 0.03));
       }
-      // North dashed: from east_end to h_end
+
+      // v cosγ sinψ north component — green dashed from eastEnd to hEnd
       const nSeg = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([east_end, h_end]),
-        new THREE.LineDashedMaterial({ color: 0xAABBFF, dashSize: 0.025, gapSize: 0.015, transparent: true, opacity: 0.75 })
+        new THREE.BufferGeometry().setFromPoints([eastEnd, hEnd]),
+        new THREE.LineDashedMaterial({ color: 0x44FF88, dashSize: 0.025, gapSize: 0.015, transparent: true, opacity: 0.75 })
       );
       nSeg.computeLineDistances();
       addSlideObj(nSeg);
 
-      // East / north labels
-      const enG = new THREE.Group();
-      enG.add(makeFloatLabel('v cosγ cosψ',
-        s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi) * 0.5).addScaledVector(R, -0.11),
-        0x88DDFF));
-      enG.add(makeFloatLabel('v cosγ sinψ',
-        east_end.clone().lerp(h_end, 0.5).addScaledVector(s.S_hat, -0.14),
-        0xAABBFF));
-      addSlideObj(enG);
+      // Right-angle marker at eastEnd corner (ψ split)
+      const rb = 0.030;
+      const perp2 = new THREE.Vector3().crossVectors(s.S_hat, R).normalize();
+      addSlideObj(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          eastEnd.clone().addScaledVector(perp2, rb),
+          eastEnd.clone().addScaledVector(perp2, rb).addScaledVector(s.S_hat, rb),
+          eastEnd.clone().addScaledVector(s.S_hat, rb),
+        ]),
+        new THREE.LineBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.5 })
+      ));
+
+      // Labels
+      const lblG = new THREE.Group();
+      lblG.add(makeFloatLabel('v  (γ=25° demo)',
+        s.pos.clone().addScaledVector(v_hat_demo, vLen * 0.52).addScaledVector(R, 0.13),
+        0xFFD700));
+      lblG.add(makeFloatLabel('v cosγ',
+        s.pos.clone().addScaledVector(h_dir, hLen * 0.5).addScaledVector(R, -0.12),
+        0x00DDFF));
+      lblG.add(makeFloatLabel('v sinγ',
+        hEnd.clone().lerp(vTip, 0.5).addScaledVector(h_dir, -0.15),
+        0xFF5555));
+      lblG.add(makeFloatLabel('v cosγ cosψ',
+        s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi) * 0.5).addScaledVector(R, -0.13),
+        0xFF44CC));
+      lblG.add(makeFloatLabel('v cosγ sinψ',
+        eastEnd.clone().lerp(hEnd, 0.5).addScaledVector(s.S_hat, -0.16),
+        0x44FF88));
+      addSlideObj(lblG);
     },
     exit() {},
   },
@@ -1532,8 +1555,8 @@ const SLIDES = [
     exit() {
       controls.autoRotate = false;
       if (STATE.persistent.orbitLine) {
-        STATE.persistent.orbitLine.material.color.setHex(0x1a4466);
-        STATE.persistent.orbitLine.material.opacity = 0.45;
+        STATE.persistent.orbitLine.material.color.setHex(0x4499bb);
+        STATE.persistent.orbitLine.material.opacity = 0.65;
       }
       setForceVisibility({});
     },
@@ -1576,8 +1599,8 @@ const SLIDES = [
     exit() {
       controls.autoRotate = false;
       if (STATE.persistent.orbitLine) {
-        STATE.persistent.orbitLine.material.color.setHex(0x1a4466);
-        STATE.persistent.orbitLine.material.opacity = 0.45;
+        STATE.persistent.orbitLine.material.color.setHex(0x4499bb);
+        STATE.persistent.orbitLine.material.opacity = 0.65;
       }
       setForceVisibility({});
     },
