@@ -763,7 +763,7 @@ const SLIDES = [
     camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ ecef: true, rst: true, vel: true });
+      setFrameVisibility({ vel: true });
 
       const s      = getSpacecraftState(0.72);
       const R      = s.R_hat;
@@ -919,7 +919,7 @@ const SLIDES = [
     camera: { pos: [4, 3, 8], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ rst: true, vel: true }); // RST defines horizontal; velocity arrow shows γ
+      setFrameVisibility({ vel: true });
 
       const s = getSpacecraftState(0.72);
       const R = s.R_hat;
@@ -997,7 +997,7 @@ const SLIDES = [
     camera: { pos: [0, 9, 6], target: [0, 0, 0], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ rst: true, vel: true }); // ψ measured in RST horizontal plane
+      setFrameVisibility({ vel: true });
 
       const s = getSpacecraftState(0.72);
       const R = s.R_hat;
@@ -1147,7 +1147,7 @@ const SLIDES = [
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, vrf: true, vel: true });
+      setFrameVisibility({ vrf: true, vel: true });
       setForceVisibility({ grav: true, drag: true, lift: true });
       [STATE.persistent.gravArrow, STATE.persistent.dragArrow, STATE.persistent.liftArrow]
         .forEach((a, i) => {
@@ -1186,7 +1186,7 @@ const SLIDES = [
     camera: { pos: [5, 5, 8], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true });
+      setFrameVisibility({ eci: true, ecef: true });
       setForceVisibility({ coriolis: true, centrip: true });
       [STATE.persistent.coriolisArrow, STATE.persistent.centripArrow].forEach((a, i) => {
         if (!a) return;
@@ -1294,7 +1294,7 @@ const SLIDES = [
     camera: { pos: [3, 4, 6], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ rst: true, vrf: true, vel: true });
+      setFrameVisibility({ vrf: true, vel: true });
       setForceVisibility({ lift: true });
 
       const s = getSpacecraftState(0.72);
