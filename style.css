@@ -10,39 +10,108 @@ html, body {
   overflow: hidden;
 }
 
-/* ── CORS overlay ── */
-#cors-overlay {
-  display: none;
+/* ── Setup overlay ── */
+#setup-overlay {
   position: fixed;
   inset: 0;
-  background: #010308ee;
+  background: #010308;
   z-index: 999;
+  display: flex;
   align-items: center;
   justify-content: center;
 }
-#cors-overlay.visible { display: flex; }
-.cors-box {
-  background: #0d1a2a;
-  border: 1px solid #1e3a5f;
-  border-radius: 10px;
-  padding: 2.5rem 3rem;
-  max-width: 480px;
+#setup-overlay.hidden { display: none; }
+
+.setup-box {
+  background: #07121f;
+  border: 1px solid #1a3555;
+  border-radius: 14px;
+  padding: 2.8rem 3.2rem;
+  width: min(520px, 90vw);
   text-align: center;
+  box-shadow: 0 0 60px #0a2a4a44;
 }
-.cors-box h2 { color: #ff6b6b; margin-bottom: 1rem; font-size: 1.4rem; }
-.cors-box p { margin-bottom: 0.8rem; line-height: 1.6; color: #a0b8cc; }
-.cors-box pre {
-  background: #061122;
+.setup-logo {
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  color: #3a88cc;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+.setup-box h2 {
+  font-size: 1.5rem;
+  color: #c8dff2;
+  margin-bottom: 0.6rem;
+}
+.setup-sub {
+  color: #6a90b0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+.pick-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+  padding: 0.8rem 1rem;
+  background: #04101e;
+  border: 1px solid #112235;
+  border-radius: 8px;
+  text-align: left;
+}
+.pick-label { flex: 1; }
+.pick-name  { display: block; font-size: 0.88rem; color: #c8dff2; font-weight: 600; }
+.pick-label code { font-size: 0.76rem; color: #3a6a9a; }
+.pick-btn {
+  padding: 0.4rem 0.9rem;
+  background: #0a1e35;
   border: 1px solid #1e3a5f;
   border-radius: 6px;
-  padding: 0.8rem 1.2rem;
-  font-size: 1rem;
-  color: #7fdbff;
-  margin: 0.8rem 0;
-  letter-spacing: 0.03em;
+  color: #7faacc;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
 }
-.cors-box code { color: #ffdd57; }
-.cors-box strong { color: #7fdbff; }
+.pick-btn:hover { background: #0f2a48; color: #c8dff2; }
+input[type="file"] { display: none; }
+.pick-check {
+  font-size: 1.1rem;
+  width: 1.4rem;
+  text-align: center;
+  color: #ff4444;
+  transition: color 0.2s;
+}
+.pick-check.ok { color: #44ff88; }
+.pick-row.ready { border-color: #1a4a2a; }
+
+#btn-launch {
+  margin-top: 1.4rem;
+  width: 100%;
+  padding: 0.75rem;
+  background: #0a2a48;
+  border: 1px solid #1e4a7a;
+  border-radius: 8px;
+  color: #7faacc;
+  font-size: 1rem;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+#btn-launch:not(:disabled):hover {
+  background: #0f3a68;
+  color: #c8dff2;
+  border-color: #3a7acc;
+}
+#btn-launch:disabled { opacity: 0.35; cursor: default; }
+
+.setup-note {
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  color: #2a4a6a;
+  line-height: 1.5;
+}
 
 /* ── Main layout — split screen ── */
 #app {

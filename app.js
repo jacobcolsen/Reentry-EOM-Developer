@@ -140,8 +140,7 @@ function loadAssets() {
     let loaded = 0;
     const done = () => { if (++loaded === 2) resolve(); };
 
-    // Earth texture
-    new THREE.TextureLoader().load('Earth_Blue_Marble.jpg', (tex) => {
+    new THREE.TextureLoader().load(window._EARTH_SRC, (tex) => {
       // Guard against texture size exceeding GPU max
       const maxSize = renderer.capabilities.maxTextureSize;
       if (tex.image.width > maxSize || tex.image.height > maxSize) {
@@ -156,8 +155,7 @@ function loadAssets() {
       done();
     }, undefined, () => { buildEarth(null); done(); });
 
-    // Spacecraft GLB
-    new GLTFLoader().load('x-37b.glb', (gltf) => {
+    new GLTFLoader().load(window._GLB_SRC, (gltf) => {
       const ship = gltf.scene;
       // Normalize scale — fit longest axis to ~0.22 scene units
       const box = new THREE.Box3().setFromObject(ship);
@@ -972,14 +970,97 @@ function animate() {
   css2d.render(scene, camera);
 }
 
+// ── Asset source resolution ────────────────────────────────────────────────
+const STORAGE_EARTH = 'eom_earth_v1';
+const STORAGE_GLB   = 'eom_glb_v1';
+
+function getStoredAssets() {
+  // Priority: pre-embedded (assets.js) > localStorage cache
+  const earth = window.EARTH_DATA_URL || localStorage.getItem(STORAGE_EARTH);
+  const glb   = window.GLB_DATA_URL   || localStorage.getItem(STORAGE_GLB);
+  return (earth && glb) ? { earth, glb } : null;
+}
+
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function initSetupOverlay(onReady) {
+  const overlay   = document.getElementById('setup-overlay');
+  const btnLaunch = document.getElementById('btn-launch');
+  const pickEarth = document.getElementById('pick-earth');
+  const pickGlb   = document.getElementById('pick-glb');
+  const checkEarth = document.getElementById('check-earth');
+  const checkGlb   = document.getElementById('check-glb');
+  const rowEarth  = document.getElementById('row-earth');
+  const rowGlb    = document.getElementById('row-glb');
+
+  let earthURL = null, glbURL = null;
+
+  function updateLaunch() {
+    btnLaunch.disabled = !(earthURL && glbURL);
+  }
+
+  pickEarth.addEventListener('change', async () => {
+    const file = pickEarth.files[0];
+    if (!file) return;
+    earthURL = await readFileAsDataURL(file);
+    checkEarth.textContent = '✓'; checkEarth.classList.add('ok');
+    rowEarth.classList.add('ready');
+    updateLaunch();
+  });
+
+  pickGlb.addEventListener('change', async () => {
+    const file = pickGlb.files[0];
+    if (!file) return;
+    glbURL = await readFileAsDataURL(file);
+    checkGlb.textContent = '✓'; checkGlb.classList.add('ok');
+    rowGlb.classList.add('ready');
+    updateLaunch();
+  });
+
+  btnLaunch.addEventListener('click', () => {
+    // Persist to localStorage so next open skips setup
+    try {
+      localStorage.setItem(STORAGE_EARTH, earthURL);
+      localStorage.setItem(STORAGE_GLB,   glbURL);
+    } catch (_) { /* quota exceeded — still works for this session */ }
+
+    overlay.classList.add('hidden');
+    document.getElementById('app').style.display = '';
+    onReady(earthURL, glbURL);
+  });
+}
+
 // ── Bootstrap ──────────────────────────────────────────────────────────────
 async function main() {
-  // CORS check
-  if (window.location.protocol === 'file:') {
-    document.getElementById('cors-overlay').classList.add('visible');
+  const stored = getStoredAssets();
+
+  if (!stored) {
+    // First-time: show file picker, launch when both files are selected
+    initSetupOverlay(async (earth, glb) => {
+      window._EARTH_SRC = earth;
+      window._GLB_SRC   = glb;
+      await boot();
+    });
     return;
   }
 
+  // Assets already available — go straight to app
+  window._EARTH_SRC = stored.earth;
+  window._GLB_SRC   = stored.glb;
+  document.getElementById('setup-overlay').classList.add('hidden');
+  document.getElementById('app').style.display = '';
+
+  await boot();
+}
+
+async function boot() {
   initScene();
   await loadAssets();
 
