@@ -838,24 +838,25 @@ const SLIDES = [
       <p>The vehicle's position on the rotating planet is described by
       <strong>geocentric longitude</strong> \\(\\lambda\\) and
       <strong>geocentric latitude</strong> \\(\\phi\\).
-      The kinematic equations follow from a three-step decomposition of the velocity vector
+      The kinematic equations follow from a three-step decomposition of the
+      <span style="color:#FFD700;font-weight:600">velocity vector <em>v</em></span>
       — illustrated in the 3D scene.</p>
       <div class="eq-block">
         <div class="eq-label">Step 1 — Split v by flight-path angle γ (radial vs. horizontal)</div>
-        \\[\\underbrace{v\\sin\\gamma}_{\\dot{r}\\ =\\ \\text{radial rate}}
+        \\[\\underbrace{\\textcolor{#FF5555}{v\\sin\\gamma}}_{\\dot{r}\\ =\\ \\text{radial rate}}
           \\qquad
-          \\underbrace{v\\cos\\gamma}_{v_h\\ =\\ \\text{horizontal speed}}\\]
+          \\underbrace{\\textcolor{#00DDFF}{v\\cos\\gamma}}_{v_h\\ =\\ \\text{horizontal speed}}\\]
       </div>
       <div class="eq-block">
         <div class="eq-label">Step 2 — Split v_h by heading angle ψ (east vs. north)</div>
-        \\[v_{\\text{east}} = v\\cos\\gamma\\cos\\psi
+        \\[v_{\\text{east}} = \\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}
           \\qquad
-          v_{\\text{north}} = v\\cos\\gamma\\sin\\psi\\]
+          v_{\\text{north}} = \\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}\\]
       </div>
       <div class="eq-block">
         <div class="eq-label">Step 3 — Convert speed to angular rate</div>
-        \\[\\dot{\\phi} = \\frac{v_{\\text{north}}}{r} = \\frac{v\\cos\\gamma\\sin\\psi}{r}\\]
-        \\[\\dot{\\lambda} = \\frac{v_{\\text{east}}}{r\\cos\\phi} = \\frac{v\\cos\\gamma\\cos\\psi}{r\\cos\\phi}\\]
+        \\[\\dot{\\phi} = \\frac{v_{\\text{north}}}{r} = \\frac{\\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}}{r}\\]
+        \\[\\dot{\\lambda} = \\frac{v_{\\text{east}}}{r\\cos\\phi} = \\frac{\\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}}{r\\cos\\phi}\\]
       </div>
       <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.4rem;">
         The extra \\(\\cos\\phi\\) in \\(\\dot\\lambda\\): a latitude circle at \\(\\phi\\)
