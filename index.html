@@ -131,6 +131,7 @@ const STATE = {
   gsapTween:      null,
   gammaAnim:      null,        // GSAP tween for γ oscillation on slide 5
   vrfAnim:        null,        // GSAP tween for RST→VRF rotation on slide 7
+  bankAnim:       null,        // GSAP tween for bank-angle animation on slide 12
   spacecraft:     null,
   slideObjects:   [],          // objects added by current slide; cleared on exit
   persistent: {
@@ -434,6 +435,40 @@ function buildVelocityArrow() {
   STATE.persistent.velArrow = arrow;
 }
 
+function buildForceArrows() {
+  const s    = getSpacecraftState(0.72);
+  const R    = s.R_hat;
+  const v_h  = s.vel.clone().normalize();
+  const lift_hat = R.clone().addScaledVector(v_h, -R.dot(v_h)).normalize();
+
+  const grav   = makeArrow(R.clone().negate(),   s.pos, 0.55, COLORS.grav,   'Fg');
+  const drag   = makeArrow(v_h.clone().negate(), s.pos, 0.50, COLORS.drag,   'FD');
+  const lift   = makeArrow(lift_hat,              s.pos, 0.50, COLORS.lift,   'FL');
+  const thrust = makeArrow(v_h.clone(),           s.pos, 0.44, COLORS.thrust, 'FT');
+
+  // Coriolis: 2Ω × v — Ω along scene +Y (north pole)
+  const Omega   = new THREE.Vector3(0, 1, 0).multiplyScalar(EARTH_ROT_SPD);
+  const cor_dir = new THREE.Vector3().crossVectors(Omega, v_h).normalize();
+  const coriolis = makeArrow(cor_dir, s.pos, 0.44, 0x44FFFF, 'Cor');
+
+  // Centripetal: Ω×(Ω×r) — points toward spin axis (inward from spacecraft)
+  const cpVec = new THREE.Vector3()
+    .crossVectors(Omega, new THREE.Vector3().crossVectors(Omega, s.pos))
+    .normalize();
+  const centrip = makeArrow(cpVec, s.pos, 0.38, 0xAA44FF, 'Cen');
+
+  for (const a of [grav, drag, lift, thrust, coriolis, centrip]) {
+    setGroupVisible(a, false);
+    scene.add(a);
+  }
+  STATE.persistent.gravArrow     = grav;
+  STATE.persistent.dragArrow     = drag;
+  STATE.persistent.liftArrow     = lift;
+  STATE.persistent.thrustArrow   = thrust;
+  STATE.persistent.coriolisArrow = coriolis;
+  STATE.persistent.centripArrow  = centrip;
+}
+
 // CSS2DRenderer resets element.style.display every frame based on CSS2DObject.visible.
 // Must set both .visible AND .element.style.display to reliably hide labels.
 function setGroupVisible(group, visible) {
@@ -454,6 +489,15 @@ function setFrameVisibility({ eci = false, ecef = false, rst = false, vrf = fals
   setGroupVisible(STATE.persistent.rstGroup,  rst);
   setGroupVisible(STATE.persistent.vrfGroup,  vrf);
   if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = vel;
+}
+
+function setForceVisibility({ grav=false, drag=false, lift=false, thrust=false, coriolis=false, centrip=false } = {}) {
+  setGroupVisible(STATE.persistent.gravArrow,     grav);
+  setGroupVisible(STATE.persistent.dragArrow,     drag);
+  setGroupVisible(STATE.persistent.liftArrow,     lift);
+  setGroupVisible(STATE.persistent.thrustArrow,   thrust);
+  setGroupVisible(STATE.persistent.coriolisArrow, coriolis);
+  setGroupVisible(STATE.persistent.centripArrow,  centrip);
 }
 
 // Grow arrows in with a stagger spring; labels appear only after all arrows land
@@ -492,7 +536,8 @@ function makeArrow(dir, origin, length, hexColor, labelText) {
     div.textContent = labelText;
     div.style.color = '#' + hexColor.toString(16).padStart(6, '0');
     const obj = new CSS2DObject(div);
-    obj.position.copy(d.clone().multiplyScalar(length + 0.05));
+    // ArrowHelper's local Y-axis IS the shaft direction; place label along it
+    obj.position.set(0, length + 0.05, 0);
     arrow.add(obj);
   }
   return arrow;
@@ -1040,38 +1085,42 @@ const SLIDES = [
     camera: { pos: [3, 3, 7], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true });
+      setFrameVisibility({ rst: true, vrf: true, vel: true }); // VRF defined relative to RST
 
       const s = getSpacecraftState(0.72);
       const x_v = s.vel.clone().normalize();
       const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
       const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
 
-      // Rotation Q_start that maps VRF arrows → RST directions visually:
-      // Q_start * [x_v, y_v, z_v] = [R_hat, S_hat, T_hat]
-      // Q_start = M_rst * M_vrf^T  (since rotation matrices are orthogonal)
-      const M_vrf   = new THREE.Matrix4().makeBasis(x_v, y_v, z_v);
-      const M_rst   = new THREE.Matrix4().makeBasis(s.R_hat, s.S_hat, s.T_hat);
-      const M_start = new THREE.Matrix4().multiplyMatrices(M_rst,
-        new THREE.Matrix4().copy(M_vrf).transpose());
-      const Q_start = new THREE.Quaternion().setFromRotationMatrix(M_start);
-      const Q_end   = new THREE.Quaternion(); // identity = final VRF orientation
-
       const vrfGroup = STATE.persistent.vrfGroup;
-      // Hide labels until rotation completes
+      const arrows   = vrfGroup.children.filter(c => c.isArrowHelper);
+
+      // Define start (RST-aligned) and end (VRF) directions for each arrow
+      const startDirs = [s.R_hat.clone(), s.S_hat.clone(), s.T_hat.clone()];
+      const endDirs   = [x_v.clone(),    y_v.clone(),    z_v.clone()];
+
+      // Start arrows pointing along RST — visually coincides with RST frame
+      if (arrows[0]) arrows[0].setDirection(startDirs[0]);
+      if (arrows[1]) arrows[1].setDirection(startDirs[1]);
+      if (arrows[2]) arrows[2].setDirection(startDirs[2]);
+
+      // Hide labels until animation finishes
       vrfGroup.traverse(obj => {
         if (obj.isCSS2DObject) { obj.visible = false; obj.element.style.display = 'none'; }
       });
-      vrfGroup.quaternion.copy(Q_start);
 
+      // Animate each arrow direction: RST → VRF (lerp + normalize = slerp on unit sphere)
       const proxy = { t: 0 };
       STATE.vrfAnim = gsap.to(proxy, {
-        t: 1,
-        duration: 1.5,
-        ease: 'power2.inOut',
-        delay: 0.5,       // let camera settle first
+        t: 1, duration: 1.5, ease: 'power2.inOut', delay: 0.5,
         onUpdate() {
-          vrfGroup.quaternion.slerpQuaternions(Q_start, Q_end, proxy.t);
+          arrows.forEach((arrow, i) => {
+            if (!arrow) return;
+            const dir = new THREE.Vector3()
+              .lerpVectors(startDirs[i], endDirs[i], proxy.t)
+              .normalize();
+            arrow.setDirection(dir);
+          });
         },
         onComplete() {
           vrfGroup.traverse(obj => {
@@ -1082,8 +1131,17 @@ const SLIDES = [
     },
     exit() {
       if (STATE.vrfAnim) { STATE.vrfAnim.kill(); STATE.vrfAnim = null; }
-      // Reset group rotation so downstream slides start clean
-      if (STATE.persistent.vrfGroup) STATE.persistent.vrfGroup.quaternion.identity();
+      // Restore VRF arrows to their built directions so later slides see correct state
+      const s = getSpacecraftState(0.72);
+      const x_v = s.vel.clone().normalize();
+      const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
+      const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
+      const arrows = STATE.persistent.vrfGroup
+        ? STATE.persistent.vrfGroup.children.filter(c => c.isArrowHelper)
+        : [];
+      if (arrows[0]) arrows[0].setDirection(x_v);
+      if (arrows[1]) arrows[1].setDirection(y_v);
+      if (arrows[2]) arrows[2].setDirection(z_v);
     },
   },
 
@@ -1109,9 +1167,22 @@ const SLIDES = [
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, vrf: true, vel: true }); // ECI (inertial) + VRF where forces act
+      setFrameVisibility({ eci: true, vrf: true, vel: true });
+      setForceVisibility({ grav: true, drag: true, lift: true });
+      [STATE.persistent.gravArrow, STATE.persistent.dragArrow, STATE.persistent.liftArrow]
+        .forEach((a, i) => {
+          if (!a) return;
+          a.scale.set(0, 0, 0);
+          a.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+          gsap.to(a.scale, {
+            x: 1, y: 1, z: 1, duration: 0.5, delay: 0.3 + i * 0.25, ease: 'back.out(1.4)',
+            onComplete() {
+              a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+            }
+          });
+        });
     },
-    exit() {},
+    exit() { setForceVisibility({}); },
   },
 
   // ── 9: Rotating Frame Conversion ───────────────────────────────────────
@@ -1135,9 +1206,21 @@ const SLIDES = [
     camera: { pos: [5, 5, 8], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true }); // show rotating vs inertial
+      setFrameVisibility({ eci: true, ecef: true, rst: true });
+      setForceVisibility({ coriolis: true, centrip: true });
+      [STATE.persistent.coriolisArrow, STATE.persistent.centripArrow].forEach((a, i) => {
+        if (!a) return;
+        a.scale.set(0, 0, 0);
+        a.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+        gsap.to(a.scale, {
+          x: 1, y: 1, z: 1, duration: 0.5, delay: 0.3 + i * 0.22, ease: 'back.out(1.4)',
+          onComplete() {
+            a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+          }
+        });
+      });
     },
-    exit() {},
+    exit() { setForceVisibility({}); },
   },
 
   // ── 10: Gravitational Force ────────────────────────────────────────────
@@ -1160,9 +1243,19 @@ const SLIDES = [
     camera: { pos: [4, 2, 9], target: [0, 0, 0], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ rst: true }); // gravity acts along -R_hat
+      setFrameVisibility({ rst: true });
+      setForceVisibility({ grav: true });
+      if (STATE.persistent.gravArrow) STATE.persistent.gravArrow.scale.set(1.4, 1.4, 1.4);
+      const s = getSpacecraftState(0.72);
+      addSlideObj(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), s.pos]),
+        new THREE.LineBasicMaterial({ color: COLORS.grav, transparent: true, opacity: 0.30 })
+      ));
     },
-    exit() {},
+    exit() {
+      if (STATE.persistent.gravArrow) STATE.persistent.gravArrow.scale.set(1, 1, 1);
+      setForceVisibility({});
+    },
   },
 
   // ── 11: Drag Force ─────────────────────────────────────────────────────
@@ -1190,9 +1283,14 @@ const SLIDES = [
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ vrf: true, vel: true }); // drag acts along -xv
+      setFrameVisibility({ vrf: true, vel: true });
+      setForceVisibility({ drag: true });
+      if (STATE.persistent.dragArrow) STATE.persistent.dragArrow.scale.set(1.4, 1.4, 1.4);
     },
-    exit() {},
+    exit() {
+      if (STATE.persistent.dragArrow) STATE.persistent.dragArrow.scale.set(1, 1, 1);
+      setForceVisibility({});
+    },
   },
 
   // ── 12: Lift Force & Bank Angle ────────────────────────────────────────
@@ -1216,9 +1314,65 @@ const SLIDES = [
     camera: { pos: [3, 4, 6], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ rst: true, vrf: true, vel: true }); // lift perpendicular to velocity
+      setFrameVisibility({ rst: true, vrf: true, vel: true });
+      setForceVisibility({ lift: true });
+
+      const s = getSpacecraftState(0.72);
+      const v_h = s.vel.clone().normalize();
+      const R   = s.R_hat;
+      const lift_hat = R.clone().addScaledVector(v_h, -R.dot(v_h)).normalize();
+      const lat_hat  = new THREE.Vector3().crossVectors(v_h, lift_hat).normalize();
+
+      // L-V-N triad arrows (N = downward, L = lateral)
+      const lvnGroup = new THREE.Group();
+      lvnGroup.add(makeArrow(lift_hat.clone().negate(), s.pos, 0.38, 0x8888FF, 'N̂'));
+      lvnGroup.add(makeArrow(lat_hat,                   s.pos, 0.38, 0xFF88AA, 'L̂'));
+      addSlideObj(lvnGroup);
+
+      // θ arc (0° → 60°) in the perpendicular plane
+      const arcPts = [];
+      for (let i = 0; i <= 32; i++) {
+        const a = (i / 32) * (Math.PI / 3);
+        arcPts.push(s.pos.clone()
+          .addScaledVector(lift_hat, Math.cos(a) * 0.30)
+          .addScaledVector(lat_hat,  Math.sin(a) * 0.30));
+      }
+      addSlideObj(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(arcPts),
+        new THREE.LineBasicMaterial({ color: COLORS.arc })
+      ));
+
+      // θ label at arc midpoint (30°)
+      const lG = new THREE.Group();
+      lG.add(makeFloatLabel('θ',
+        s.pos.clone()
+          .addScaledVector(lift_hat, Math.cos(Math.PI / 6) * 0.42)
+          .addScaledVector(lat_hat,  Math.sin(Math.PI / 6) * 0.42),
+        COLORS.arc));
+      addSlideObj(lG);
+
+      // Bank angle animation: rotate lift around velocity axis, yoyo 0°→60°
+      const theta = { val: 0 };
+      STATE.bankAnim = gsap.to(theta, {
+        val: Math.PI / 3, duration: 2.2, ease: 'power2.inOut', repeat: -1, yoyo: true,
+        onUpdate() {
+          if (!STATE.persistent.liftArrow) return;
+          STATE.persistent.liftArrow.setDirection(
+            lift_hat.clone().multiplyScalar(Math.cos(theta.val))
+              .addScaledVector(lat_hat, Math.sin(theta.val))
+              .normalize()
+          );
+        }
+      });
     },
-    exit() {},
+    exit() {
+      if (STATE.bankAnim) { STATE.bankAnim.kill(); STATE.bankAnim = null; }
+      const s  = getSpacecraftState(0.72);
+      const vh = s.vel.clone().normalize();
+      const lh = s.R_hat.clone().addScaledVector(vh, -s.R_hat.dot(vh)).normalize();
+      if (STATE.persistent.liftArrow) STATE.persistent.liftArrow.setDirection(lh);
+      setForceVisibility({});
+    },
   },
 
   // ── 13: Thrust Force ───────────────────────────────────────────────────
@@ -1241,9 +1395,25 @@ const SLIDES = [
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ vrf: true, vel: true }); // thrust expressed in VRF
+      setFrameVisibility({ vrf: true, vel: true });
+      setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+      // Thrust fades in last
+      if (STATE.persistent.thrustArrow) {
+        STATE.persistent.thrustArrow.scale.set(0, 0, 0);
+        STATE.persistent.thrustArrow.traverse(o => {
+          if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; }
+        });
+        gsap.to(STATE.persistent.thrustArrow.scale, {
+          x: 1, y: 1, z: 1, duration: 0.55, delay: 0.4, ease: 'back.out(1.4)',
+          onComplete() {
+            STATE.persistent.thrustArrow.traverse(o => {
+              if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; }
+            });
+          }
+        });
+      }
     },
-    exit() {},
+    exit() { setForceVisibility({}); },
   },
 
   // ── 14: Complete 6-DOF EOM ─────────────────────────────────────────────
@@ -1268,9 +1438,23 @@ const SLIDES = [
     camera: { pos: [6, 5, 10], target: [0, 0, 0], dur: 1.5 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true }); // all frames for full EOM
+      if (STATE.persistent.orbitLine) {
+        STATE.persistent.orbitLine.material.color.setHex(0x2a88cc);
+        STATE.persistent.orbitLine.material.opacity = 0.88;
+      }
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true });
+      setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+      controls.autoRotate      = true;
+      controls.autoRotateSpeed = 0.5;
     },
-    exit() {},
+    exit() {
+      controls.autoRotate = false;
+      if (STATE.persistent.orbitLine) {
+        STATE.persistent.orbitLine.material.color.setHex(0x1a4466);
+        STATE.persistent.orbitLine.material.opacity = 0.45;
+      }
+      setForceVisibility({});
+    },
   },
 
   // ── 15: Summary ────────────────────────────────────────────────────────
@@ -1298,9 +1482,23 @@ const SLIDES = [
     camera: { pos: [0, 12, 20], target: [0, 0, 0], dur: 2.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true }); // all frames wide view
+      if (STATE.persistent.orbitLine) {
+        STATE.persistent.orbitLine.material.color.setHex(0x2a88cc);
+        STATE.persistent.orbitLine.material.opacity = 0.88;
+      }
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true });
+      setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+      controls.autoRotate      = true;
+      controls.autoRotateSpeed = 0.4;
     },
-    exit() {},
+    exit() {
+      controls.autoRotate = false;
+      if (STATE.persistent.orbitLine) {
+        STATE.persistent.orbitLine.material.color.setHex(0x1a4466);
+        STATE.persistent.orbitLine.material.opacity = 0.45;
+      }
+      setForceVisibility({});
+    },
   },
 ];
 
@@ -1502,6 +1700,7 @@ async function boot() {
   buildRSTAxes();
   buildVRFAxes();
   buildVelocityArrow();
+  buildForceArrows();
 
   // Remove loading indicator
   const li = document.getElementById('loading-indicator');
