@@ -1,0 +1,268 @@
+/* ── Reset & base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: #020408;
+  color: #dce8f5;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 15px;
+  overflow: hidden;
+}
+
+/* ── CORS overlay ── */
+#cors-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #010308ee;
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
+}
+#cors-overlay.visible { display: flex; }
+.cors-box {
+  background: #0d1a2a;
+  border: 1px solid #1e3a5f;
+  border-radius: 10px;
+  padding: 2.5rem 3rem;
+  max-width: 480px;
+  text-align: center;
+}
+.cors-box h2 { color: #ff6b6b; margin-bottom: 1rem; font-size: 1.4rem; }
+.cors-box p { margin-bottom: 0.8rem; line-height: 1.6; color: #a0b8cc; }
+.cors-box pre {
+  background: #061122;
+  border: 1px solid #1e3a5f;
+  border-radius: 6px;
+  padding: 0.8rem 1.2rem;
+  font-size: 1rem;
+  color: #7fdbff;
+  margin: 0.8rem 0;
+  letter-spacing: 0.03em;
+}
+.cors-box code { color: #ffdd57; }
+.cors-box strong { color: #7fdbff; }
+
+/* ── Main layout — split screen ── */
+#app {
+  display: grid;
+  grid-template-columns: 65fr 35fr;
+  height: 100vh;
+}
+
+/* ── Canvas container ── */
+#canvas-container {
+  position: relative;
+  overflow: hidden;
+  background: #020408;
+}
+#canvas-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+/* CSS2DRenderer sits absolutely over the canvas */
+#canvas-container .css2d-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ── Slide panel ── */
+#slide-panel {
+  display: flex;
+  flex-direction: column;
+  background: #050e1a;
+  border-left: 1px solid #0e2035;
+  overflow: hidden;
+}
+
+#slide-header {
+  padding: 1.4rem 1.6rem 0.8rem;
+  border-bottom: 1px solid #0e2035;
+  flex-shrink: 0;
+}
+#slide-counter {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: #3a6a9a;
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+#slide-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #c8dff2;
+  line-height: 1.3;
+}
+
+#slide-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.4rem 1.6rem;
+  line-height: 1.7;
+  color: #a8c0d8;
+  scrollbar-width: thin;
+  scrollbar-color: #1a3050 transparent;
+}
+#slide-body::-webkit-scrollbar { width: 4px; }
+#slide-body::-webkit-scrollbar-thumb { background: #1a3050; border-radius: 4px; }
+
+/* KaTeX equation blocks */
+#slide-body .eq-block {
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  background: #07162a;
+  border-left: 3px solid #1e4a7a;
+  border-radius: 0 6px 6px 0;
+  overflow-x: auto;
+}
+#slide-body .eq-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: #3a6a9a;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+#slide-body p { margin-bottom: 0.9rem; }
+#slide-body ul { margin: 0.5rem 0 0.9rem 1.2rem; }
+#slide-body li { margin-bottom: 0.4rem; }
+#slide-body h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #7faacc;
+  margin: 1.2rem 0 0.5rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* KaTeX color override */
+.katex { color: #dce8f5; }
+.katex-display { overflow-x: auto; }
+
+/* Frame color chips used in slide text */
+.chip {
+  display: inline-block;
+  padding: 0.1em 0.5em;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+.chip-eci   { background: #1a1a2a; border: 1px solid #FF3333; color: #FF9999; }
+.chip-ecef  { background: #1a1500; border: 1px solid #FF8800; color: #FFBB66; }
+.chip-rst   { background: #160a2a; border: 1px solid #CC44FF; color: #DD88FF; }
+.chip-vrf   { background: #0a1a0a; border: 1px solid #44FF44; color: #88FF88; }
+.chip-grav  { background: #0a0a1a; border: 1px solid #6699FF; color: #99BBFF; }
+.chip-drag  { background: #1a0e00; border: 1px solid #FF9944; color: #FFBB88; }
+.chip-lift  { background: #1a0a10; border: 1px solid #FF6699; color: #FFAABB; }
+.chip-thrust{ background: #1a0a0a; border: 1px solid #FF4444; color: #FF9999; }
+
+/* ── Slide footer ── */
+#slide-footer {
+  flex-shrink: 0;
+  border-top: 1px solid #0e2035;
+  padding: 0.9rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+#progress-dots {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid #1e3a5f;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.dot.active {
+  background: #3a88cc;
+  border-color: #3a88cc;
+}
+.dot:hover:not(.active) {
+  border-color: #3a5f8a;
+}
+
+#nav-buttons {
+  display: flex;
+  gap: 0.6rem;
+}
+#nav-buttons button {
+  flex: 1;
+  padding: 0.55rem 0;
+  background: #0a1e35;
+  border: 1px solid #1e3a5f;
+  border-radius: 6px;
+  color: #8ab8d8;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  letter-spacing: 0.04em;
+}
+#nav-buttons button:hover {
+  background: #0f2a48;
+  color: #c8dff2;
+  border-color: #2a5a8a;
+}
+#nav-buttons button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* ── CSS2D axis labels ── */
+.label3d {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(2,4,8,0.65);
+  pointer-events: none;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+
+/* ── Loading indicator ── */
+#loading-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  color: #3a6a9a;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #0e2035;
+  border-top-color: #3a88cc;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Mobile layout ── */
+@media (max-width: 900px) {
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 60vh 1fr;
+    overflow-y: auto;
+  }
+  html, body { overflow: auto; }
+  #slide-body { overflow-y: visible; }
+}

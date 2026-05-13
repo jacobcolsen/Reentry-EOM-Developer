@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MECH 637 — Reentry EOM Visualizer</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+      "three/examples/jsm/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/controls/OrbitControls.js",
+      "three/examples/jsm/loaders/GLTFLoader.js": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/loaders/GLTFLoader.js",
+      "three/examples/jsm/renderers/CSS2DRenderer.js": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/renderers/CSS2DRenderer.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <!-- CORS error overlay -->
+  <div id="cors-overlay">
+    <div class="cors-box">
+      <h2>Local Server Required</h2>
+      <p>This app cannot load 3D assets when opened as a <code>file://</code> URL.</p>
+      <p>Run this in your terminal from the project folder:</p>
+      <pre>python3 -m http.server 8000</pre>
+      <p>Then open <strong>http://localhost:8000</strong></p>
+    </div>
+  </div>
+
+  <div id="app">
+    <!-- Three.js canvas and CSS2D overlay injected here -->
+    <div id="canvas-container"></div>
+
+    <div id="slide-panel">
+      <div id="slide-header">
+        <span id="slide-counter">1 / 16</span>
+        <h2 id="slide-title">Loading…</h2>
+      </div>
+
+      <div id="slide-body"></div>
+
+      <div id="slide-footer">
+        <div id="progress-dots"></div>
+        <div id="nav-buttons">
+          <button id="btn-prev" aria-label="Previous slide">&#8592; Prev</button>
+          <button id="btn-next" aria-label="Next slide">Next &#8594;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load GSAP as regular script so window.gsap is available in the module -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
