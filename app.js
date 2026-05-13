@@ -990,51 +990,87 @@ function readFileAsDataURL(file) {
   });
 }
 
+function persistAndLaunch(earthURL, glbURL, onReady) {
+  try {
+    localStorage.setItem(STORAGE_EARTH, earthURL);
+    localStorage.setItem(STORAGE_GLB,   glbURL);
+  } catch (_) { /* quota exceeded — still works for this session */ }
+  document.getElementById('setup-overlay').classList.add('hidden');
+  document.getElementById('app').style.display = '';
+  onReady(earthURL, glbURL);
+}
+
 function initSetupOverlay(onReady) {
-  const overlay   = document.getElementById('setup-overlay');
-  const btnLaunch = document.getElementById('btn-launch');
-  const pickEarth = document.getElementById('pick-earth');
-  const pickGlb   = document.getElementById('pick-glb');
-  const checkEarth = document.getElementById('check-earth');
-  const checkGlb   = document.getElementById('check-glb');
-  const rowEarth  = document.getElementById('row-earth');
-  const rowGlb    = document.getElementById('row-glb');
+  // ── Path A: File System Access API (Chrome/Edge) — opens folder directly ──
+  if (window.showDirectoryPicker) {
+    const btnFolder = document.getElementById('btn-pick-folder');
+    const btnLaunch = document.getElementById('btn-launch');
+    const statusEl  = document.getElementById('folder-status');
 
-  let earthURL = null, glbURL = null;
+    btnFolder.addEventListener('click', async () => {
+      statusEl.className = 'folder-status';
+      statusEl.textContent = '';
+      try {
+        const dir = await window.showDirectoryPicker({ mode: 'read' });
 
-  function updateLaunch() {
-    btnLaunch.disabled = !(earthURL && glbURL);
+        statusEl.textContent = 'Reading files…';
+        const [earthFile, glbFile] = await Promise.all([
+          dir.getFileHandle('Earth_Blue_Marble.jpg').then(h => h.getFile()),
+          dir.getFileHandle('x-37b.glb').then(h => h.getFile()),
+        ]);
+        const [earthURL, glbURL] = await Promise.all([
+          readFileAsDataURL(earthFile),
+          readFileAsDataURL(glbFile),
+        ]);
+        statusEl.textContent = '✓ Both assets found — ready to launch';
+        btnFolder.style.borderColor = '#2a8a4a';
+        btnFolder.style.color = '#44ff88';
+        btnLaunch.disabled = false;
+
+        btnLaunch.addEventListener('click', () =>
+          persistAndLaunch(earthURL, glbURL, onReady), { once: true });
+
+      } catch (err) {
+        if (err.name === 'AbortError') return; // user cancelled picker
+        statusEl.className = 'folder-status error';
+        const missing = err.message.includes('not found') || err.name === 'NotFoundError';
+        statusEl.textContent = missing
+          ? '✗ Could not find Earth_Blue_Marble.jpg or x-37b.glb in that folder.'
+          : '✗ ' + err.message;
+      }
+    });
+
+  } else {
+    // ── Path B: Individual file inputs (Firefox / Safari) ──────────────────
+    document.getElementById('dir-picker-section').style.display  = 'none';
+    document.getElementById('file-picker-section').style.display = '';
+
+    const pickEarth = document.getElementById('pick-earth');
+    const pickGlb   = document.getElementById('pick-glb');
+    const btnLaunch = document.getElementById('btn-launch-fallback');
+    let earthURL = null, glbURL = null;
+
+    pickEarth.addEventListener('change', async () => {
+      const f = pickEarth.files[0]; if (!f) return;
+      earthURL = await readFileAsDataURL(f);
+      document.getElementById('check-earth').textContent = '✓';
+      document.getElementById('check-earth').classList.add('ok');
+      document.getElementById('row-earth').classList.add('ready');
+      btnLaunch.disabled = !(earthURL && glbURL);
+    });
+
+    pickGlb.addEventListener('change', async () => {
+      const f = pickGlb.files[0]; if (!f) return;
+      glbURL = await readFileAsDataURL(f);
+      document.getElementById('check-glb').textContent = '✓';
+      document.getElementById('check-glb').classList.add('ok');
+      document.getElementById('row-glb').classList.add('ready');
+      btnLaunch.disabled = !(earthURL && glbURL);
+    });
+
+    btnLaunch.addEventListener('click', () =>
+      persistAndLaunch(earthURL, glbURL, onReady));
   }
-
-  pickEarth.addEventListener('change', async () => {
-    const file = pickEarth.files[0];
-    if (!file) return;
-    earthURL = await readFileAsDataURL(file);
-    checkEarth.textContent = '✓'; checkEarth.classList.add('ok');
-    rowEarth.classList.add('ready');
-    updateLaunch();
-  });
-
-  pickGlb.addEventListener('change', async () => {
-    const file = pickGlb.files[0];
-    if (!file) return;
-    glbURL = await readFileAsDataURL(file);
-    checkGlb.textContent = '✓'; checkGlb.classList.add('ok');
-    rowGlb.classList.add('ready');
-    updateLaunch();
-  });
-
-  btnLaunch.addEventListener('click', () => {
-    // Persist to localStorage so next open skips setup
-    try {
-      localStorage.setItem(STORAGE_EARTH, earthURL);
-      localStorage.setItem(STORAGE_GLB,   glbURL);
-    } catch (_) { /* quota exceeded — still works for this session */ }
-
-    overlay.classList.add('hidden');
-    document.getElementById('app').style.display = '';
-    onReady(earthURL, glbURL);
-  });
 }
 
 // ── Bootstrap ──────────────────────────────────────────────────────────────

@@ -24,32 +24,43 @@
     <div class="setup-box">
       <div class="setup-logo">MECH 637</div>
       <h2>Reentry EOM Visualizer</h2>
-      <p class="setup-sub">Select the two asset files from this project folder.<br>
-         Your browser will remember them — this only happens once.</p>
+      <p class="setup-sub">Grant access to the project folder and the app loads itself.<br>
+         Your browser will remember it — this only happens once.</p>
 
-      <div class="pick-row" id="row-earth">
-        <div class="pick-label">
-          <span class="pick-name">Earth Texture</span>
-          <code>Earth_Blue_Marble.jpg</code>
-        </div>
-        <label class="pick-btn" for="pick-earth">Choose File</label>
-        <input type="file" id="pick-earth" accept="image/jpeg,.jpg,.jpeg">
-        <span class="pick-check" id="check-earth">✗</span>
+      <!-- Primary: folder picker (Chrome/Edge) -->
+      <div id="dir-picker-section">
+        <button id="btn-pick-folder" class="btn-folder">
+          📁 &nbsp;Select Project Folder
+        </button>
+        <p class="setup-hint">Navigate to the folder that contains <code>index.html</code></p>
+        <div id="folder-status" class="folder-status"></div>
+        <button id="btn-launch" disabled>Launch →</button>
       </div>
 
-      <div class="pick-row" id="row-glb">
-        <div class="pick-label">
-          <span class="pick-name">Spacecraft Model</span>
-          <code>x-37b.glb</code>
+      <!-- Fallback: two individual file pickers (Firefox / Safari) -->
+      <div id="file-picker-section" style="display:none">
+        <div class="pick-row" id="row-earth">
+          <div class="pick-label">
+            <span class="pick-name">Earth Texture</span>
+            <code>Earth_Blue_Marble.jpg</code>
+          </div>
+          <label class="pick-btn" for="pick-earth">Choose File</label>
+          <input type="file" id="pick-earth" accept="image/jpeg,.jpg,.jpeg">
+          <span class="pick-check" id="check-earth">✗</span>
         </div>
-        <label class="pick-btn" for="pick-glb">Choose File</label>
-        <input type="file" id="pick-glb" accept=".glb">
-        <span class="pick-check" id="check-glb">✗</span>
+        <div class="pick-row" id="row-glb">
+          <div class="pick-label">
+            <span class="pick-name">Spacecraft Model</span>
+            <code>x-37b.glb</code>
+          </div>
+          <label class="pick-btn" for="pick-glb">Choose File</label>
+          <input type="file" id="pick-glb" accept=".glb">
+          <span class="pick-check" id="check-glb">✗</span>
+        </div>
+        <button id="btn-launch-fallback" disabled>Launch →</button>
       </div>
 
-      <button id="btn-launch" disabled>Launch →</button>
-      <p class="setup-note">Assets are stored locally in your browser cache.<br>
-         Clear site data to reset.</p>
+      <p class="setup-note">Assets are stored in your browser — no re-selection needed after this.</p>
     </div>
   </div>
 

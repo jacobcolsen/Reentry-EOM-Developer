@@ -113,6 +113,38 @@ input[type="file"] { display: none; }
   line-height: 1.5;
 }
 
+.btn-folder {
+  width: 100%;
+  padding: 0.9rem;
+  background: #061828;
+  border: 1px dashed #2a5a8a;
+  border-radius: 10px;
+  color: #7faacc;
+  font-size: 1rem;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  margin-bottom: 0.5rem;
+}
+.btn-folder:hover {
+  background: #0a2240;
+  border-color: #3a88cc;
+  color: #c8dff2;
+}
+.setup-hint {
+  font-size: 0.78rem;
+  color: #2a5070;
+  margin-bottom: 1rem;
+}
+.setup-hint code { color: #3a6a9a; }
+.folder-status {
+  min-height: 1.4rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.8rem;
+  color: #44ff88;
+}
+.folder-status.error { color: #ff6666; }
+
 /* ── Main layout — split screen ── */
 #app {
   display: grid;
