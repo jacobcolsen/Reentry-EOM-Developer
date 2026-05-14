@@ -1313,6 +1313,8 @@ const SLIDES = [
       setFrameVisibility({ rst: true, vrf: true, vel: true });
 
       const s = getSpacecraftState(0.72);
+      tweenCamera([3, 3, 7], [s.pos.x, s.pos.y, s.pos.z], 1.0);
+
       const x_v = s.vel.clone().normalize();
       const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
       const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
