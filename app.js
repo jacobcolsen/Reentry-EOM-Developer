@@ -797,11 +797,25 @@ const SLIDES = [
               hEnd.clone().addScaledVector(hDir, -ra),
             ]), raMat));
 
+          // ── γ arc sweeps from hDir to vHat in the hDir-R plane ──
+          const arcR   = 0.22;
+          const arcMat = new THREE.LineBasicMaterial({ color: 0xFFEE77, transparent: true, opacity: 0 });
+          const gArc   = makeAngleArc(s.pos, hDir, R, arcR, 0, GAMMA, 0xFFEE77);
+          gArc.material = arcMat;
+          addSlideObj(gArc);
+
           const lblG = new THREE.Group();
           lblG.add(makeFloatLabel('v cosγ',
             s.pos.clone().addScaledVector(hDir, hLen * 0.5).addScaledVector(R, -0.13), 0x00DDFF));
           lblG.add(makeFloatLabel('v sinγ',
             hEnd.clone().lerp(vTip, 0.5).addScaledVector(hDir, -0.16), 0xFF5555));
+          // γ label at arc midpoint
+          const gammaA = GAMMA / 2;
+          lblG.add(makeFloatLabel('γ',
+            s.pos.clone()
+              .addScaledVector(hDir, (arcR + 0.10) * Math.cos(gammaA))
+              .addScaledVector(R,    (arcR + 0.10) * Math.sin(gammaA)),
+            0xFFEE77));
           lblG.visible = false;
           addSlideObj(lblG);
 
@@ -809,7 +823,8 @@ const SLIDES = [
           gsap.delayedCall(CAM_DELAY, () => {
             gsap.to(cg.scale,  { x: 1, y: 1, z: 1, duration: 0.75, ease: 'power2.out' });
             gsap.to(rg.scale,  { x: 1, y: 1, z: 1, duration: 0.60, delay: 0.60, ease: 'power2.out' });
-            gsap.to(raMat,     { opacity: 0.6, duration: 0.35, delay: 1.20 });
+            gsap.to(raMat,     { opacity: 0.6,  duration: 0.35, delay: 1.20 });
+            gsap.to(arcMat,    { opacity: 0.90, duration: 0.35, delay: 1.20 });
             gsap.delayedCall(1.3, () => {
               lblG.visible = true;
               lblG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
@@ -876,6 +891,13 @@ const SLIDES = [
               eastEnd.clone().addScaledVector(s.S_hat, rb),
             ]), rbMat));
 
+          // ── ψ arc sweeps from S_hat (east) to hDir in the horizontal plane ──
+          const psiArcR   = 0.22;
+          const psiArcMat = new THREE.LineBasicMaterial({ color: 0xFFEE77, transparent: true, opacity: 0 });
+          const psiArc    = makeAngleArc(s.pos, s.S_hat, s.T_hat, psiArcR, 0, psi, 0xFFEE77);
+          psiArc.material = psiArcMat;
+          addSlideObj(psiArc);
+
           const enG = new THREE.Group();
           enG.add(makeFloatLabel('v cosγ cosψ',
             s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi) * 0.5).addScaledVector(R, -0.14),
@@ -883,14 +905,22 @@ const SLIDES = [
           enG.add(makeFloatLabel('v cosγ sinψ',
             eastEnd.clone().lerp(hEnd, 0.5).addScaledVector(s.S_hat, -0.17),
             0x44FF88));
+          // ψ label at arc midpoint
+          const psiA = psi / 2;
+          enG.add(makeFloatLabel('ψ',
+            s.pos.clone()
+              .addScaledVector(s.S_hat, (psiArcR + 0.10) * Math.cos(psiA))
+              .addScaledVector(s.T_hat, (psiArcR + 0.10) * Math.sin(psiA)),
+            0xFFEE77));
           enG.visible = false;
           addSlideObj(enG);
 
           // ── Start animations once camera has arrived ──
           gsap.delayedCall(CAM_DELAY, () => {
             if (mg) gsap.to(mg.scale, { x: 1, y: 1, z: 1, duration: 0.75, ease: 'power2.out' });
-            gsap.to(ng.scale, { x: 1, y: 1, z: 1, duration: 0.60, delay: 0.60, ease: 'power2.out' });
-            gsap.to(rbMat,    { opacity: 0.55, duration: 0.35, delay: 1.20 });
+            gsap.to(ng.scale,    { x: 1, y: 1, z: 1, duration: 0.60, delay: 0.60, ease: 'power2.out' });
+            gsap.to(rbMat,       { opacity: 0.55, duration: 0.35, delay: 1.20 });
+            gsap.to(psiArcMat,   { opacity: 0.90, duration: 0.35, delay: 1.20 });
             gsap.delayedCall(1.3, () => {
               enG.visible = true;
               enG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
