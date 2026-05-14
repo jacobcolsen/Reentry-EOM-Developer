@@ -668,6 +668,51 @@ function renderSlideContent(slide) {
   }
 }
 
+// Replace slide panel content and re-render KaTeX
+function setSlidePanel(html) {
+  const panel = document.getElementById('slide-body');
+  panel.innerHTML = html;
+  if (typeof renderMathInElement !== 'undefined') {
+    renderMathInElement(panel, {
+      delimiters: [
+        { left: '\\[', right: '\\]', display: true  },
+        { left: '\\(', right: '\\)', display: false },
+      ],
+      throwOnError: false,
+    });
+  }
+}
+
+// Draw tip-to-tail ECI axis decomposition arrows for a force vector
+function buildECIChain(forceVec, origin, gen, baseDelay = 0.45) {
+  const p0 = origin.clone();
+  const p1 = p0.clone().add(new THREE.Vector3(forceVec.x, 0, 0));
+  const p2 = p1.clone().add(new THREE.Vector3(0, forceVec.y, 0));
+  const p3 = p2.clone().add(new THREE.Vector3(0, 0, forceVec.z));
+  const defs = [
+    { from: p0, to: p1, col: COLORS.eci.x, label: 'X' },
+    { from: p1, to: p2, col: COLORS.eci.y, label: 'Y' },
+    { from: p2, to: p3, col: COLORS.eci.z, label: 'Z' },
+  ];
+  defs.forEach(({ from, to, col, label }, i) => {
+    if (STATE.slideGen !== gen) return;
+    const len = from.distanceTo(to);
+    if (len < 0.015) return;
+    const dir = to.clone().sub(from).normalize();
+    const arr = makeArrow(dir, from, len, col, label, 0.22, 0.10);
+    arr.scale.set(0, 0, 0);
+    arr.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+    addSlideObj(arr);
+    gsap.to(arr.scale, {
+      x: 1, y: 1, z: 1, duration: 0.4, delay: baseDelay + i * 0.22, ease: 'back.out(1.4)',
+      onComplete() {
+        if (STATE.slideGen !== gen) return;
+        arr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+      }
+    });
+  });
+}
+
 // ── Slide definitions ──────────────────────────────────────────────────────
 // Each slide: { title, html, camera:{pos,target,dur}, enter(), exit() }
 // Slides are zero-indexed internally; displayed as 1-based.
@@ -1810,163 +1855,373 @@ const SLIDES = [
   {
     title: 'Forces in the Inertial Frame',
     html: `
-      <p>Each force is first expressed in its <em>natural</em> frame using scalar
-      coefficients. Then the rotation chain carries each vector into ECI so they can be summed.</p>
-
-      <h3>Step 1 &mdash; Forces in their home frames</h3>
-      <div class="eq-block">
-        <div class="eq-label">Gravity &mdash; diagonal in <span class="chip chip-rst" style="font-size:0.75em">RST</span></div>
-        \\[\\vec{F}_g = \\begin{bmatrix}-\\mu m/r^2\\\\0\\\\0\\end{bmatrix}_{RST}\\]
-      </div>
-      <div class="eq-block">
-        <div class="eq-label">Drag &middot; Lift &middot; Thrust &mdash; in <span class="chip chip-vrf" style="font-size:0.75em">VRF</span></div>
-        \\[\\vec{F}_D=\\begin{bmatrix}-D\\\\0\\\\0\\end{bmatrix}_{VRF},\\quad
-          \\vec{F}_L=\\begin{bmatrix}0\\\\L\\cos\\theta\\\\-L\\sin\\theta\\end{bmatrix}_{VRF},\\quad
-          \\vec{F}_T=\\begin{bmatrix}T_x\\\\T_y\\\\T_z\\end{bmatrix}_{VRF}\\]
-      </div>
-      <p style="font-size:0.81rem;color:#3a6a9a;margin-top:0.6rem;">
-        Arrows colored to match their home frame &mdash; press <strong>Next&nbsp;&rarr;</strong>
-        to apply the rotation chain.
-      </p>`,
+      <p>Each force lives in its <em>natural</em> frame — gravity in
+      <span class="chip chip-rst" style="font-size:0.75em">RST</span>, aerodynamics
+      and thrust in <span class="chip chip-vrf" style="font-size:0.75em">VRF</span>.</p>
+      <p>Step through each force below: first in its home frame, then watch it automatically
+      decompose into <span class="chip chip-eci" style="font-size:0.75em">ECI</span> X/Y/Z
+      components. Press <strong>Next&nbsp;&rarr;</strong> to begin.</p>`,
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      // Show RST + VRF only — ECI comes in substep 1
-      setFrameVisibility({ rst: true, vrf: true, vel: true });
-
-      const s        = getSpacecraftState(0.72);
-      const v_hat    = s.vel.clone().normalize();
-      const lift_hat = s.R_hat.clone().addScaledVector(v_hat, -s.R_hat.dot(v_hat)).normalize();
-
-      // Frame-colored proxy arrows (show forces "living in" their frames)
-      // Gravity: RST radial color (purple)
-      // Drag / Lift / Thrust: VRF axis colors (lime / cyan / yellow)
-      const defs = [
-        { dir: s.R_hat.clone().negate(), col: COLORS.rst.r,  label: 'Fg|RST', len: 0.52 },
-        { dir: v_hat.clone().negate(),   col: COLORS.vrf.x,  label: 'FD|VRF', len: 0.52 },
-        { dir: lift_hat.clone(),         col: COLORS.vrf.y,  label: 'FL|VRF', len: 0.52 },
-        { dir: v_hat.clone(),            col: COLORS.vrf.z,  label: 'FT|VRF', len: 0.48 },
-      ];
+      setFrameVisibility({});
       _forceFrameArrows = [];
-      defs.forEach(({ dir, col, label, len }, i) => {
-        const a = makeArrow(dir, s.pos, len, col, label, 0.16, 0.07);
-        a.scale.set(0, 0, 0);
-        a.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-        addSlideObj(a);
-        _forceFrameArrows.push(a);
-        gsap.to(a.scale, {
-          x: 1, y: 1, z: 1, duration: 0.45, delay: 0.2 + i * 0.12, ease: 'back.out(1.4)',
-          onComplete() {
-            a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-          }
-        });
-      });
     },
     substeps: [
-      // ── substep 0: Apply rotation chain → ECI ──────────────────────────
+      // ── substep 0: Gravity ────────────────────────────────────────────
       {
-        html: `
-          <hr style="border:none;border-top:1px solid #0e2035;margin:1rem 0;">
-          <h3>Step 2 &mdash; Apply the rotation chain</h3>
-          <p style="font-size:0.82rem;color:#c8a060;margin-bottom:0.6rem;">
-            The arrows look the same &mdash; because they <em>are</em> the same physical vectors.
-            The rotation matrix changes the <strong>coordinate description</strong>, not the direction.
-          </p>
-          <div class="eq-block">
-            <div class="eq-label">Drag in VRF &mdash; one non-zero component</div>
-            \\[\\vec{F}_D = \\begin{bmatrix}-D\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
-          </div>
-          <div class="eq-block">
-            <div class="eq-label">Same drag vector in ECI &mdash; three components</div>
-            \\[\\vec{F}_D = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}-D\\\\0\\\\0\\end{bmatrix}
-              = \\begin{bmatrix}F_{D,X}\\\\F_{D,Y}\\\\F_{D,Z}\\end{bmatrix}_{ECI}\\]
-          </div>
-          <p style="font-size:0.81rem;color:#3a6a9a;margin-top:0.4rem;">
-            The <span style="color:#FF3333">red</span>&thinsp;/&thinsp;<span style="color:#33FF33">green</span>&thinsp;/&thinsp;<span style="color:#3399FF">blue</span>
-            chain arrows show the three ECI components of drag added tip-to-tail &mdash; they sum to the <em>exact same</em> orange drag arrow.
-            Press <strong>Next&nbsp;&rarr;</strong> to assemble Newton&apos;s law.
-          </p>`,
+        html: '',
         enter3D() {
-          // Fade out frame-colored proxies
-          _forceFrameArrows.forEach((a, i) => {
-            gsap.to(a.scale, { x: 0, y: 0, z: 0, duration: 0.35, delay: i * 0.07, ease: 'power2.in',
-              onComplete() {
-                a.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-              }
-            });
+          clearSlideObjects();
+          const gen  = STATE.slideGen;
+          const s    = getSpacecraftState(0.72);
+          const gDir = s.R_hat.clone().negate();
+
+          // Phase 1 — RST frame + gravity in RST color
+          setGroupVisible(STATE.persistent.eciGroup,  false);
+          setGroupVisible(STATE.persistent.vrfGroup,  false);
+          setGroupVisible(STATE.persistent.rstGroup,  true);
+          animateGroupIn(STATE.persistent.rstGroup, 0.1);
+          if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
+
+          const gProxy = makeArrow(gDir, s.pos, 0.52, COLORS.rst.r, 'Fg|RST', 0.16, 0.07);
+          gProxy.scale.set(0, 0, 0);
+          gProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+          addSlideObj(gProxy);
+          gsap.to(gProxy.scale, {
+            x: 1, y: 1, z: 1, duration: 0.45, delay: 0.35, ease: 'back.out(1.4)',
+            onComplete() {
+              if (STATE.slideGen !== gen) return;
+              gProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+            }
           });
-          // ECI axes fade in
-          setGroupVisible(STATE.persistent.eciGroup, true);
-          animateGroupIn(STATE.persistent.eciGroup, 0.15);
-          // Real force arrows appear in their ECI force colors
+
+          setSlidePanel(`
+            <h3>Gravity &mdash; in <span class="chip chip-rst">RST</span></h3>
+            <p>Gravity acts purely along &minus;R&#x302; (nadir, towards Earth&apos;s centre).
+            In RST it has one non-zero component:</p>
+            <div class="eq-block">
+              <div class="eq-label">Gravity in RST frame</div>
+              \\[\\vec{F}_g = \\begin{bmatrix}-\\mu m/r^2\\\\0\\\\0\\end{bmatrix}_{RST}\\]
+            </div>
+            <p style="font-size:0.81rem;color:#3a6a9a;">Rotating into ECI&hellip;</p>`);
+
+          // Phase 2 — auto after 2 s
+          gsap.delayedCall(2.0, () => {
+            if (STATE.slideGen !== gen) return;
+
+            setSlidePanel(`
+              <h3>Gravity &mdash; in <span class="chip chip-eci">ECI</span></h3>
+              <div class="eq-block">
+                <div class="eq-label">Rotation chain</div>
+                \\[\\vec{F}_g = C_{E\\leftarrow R}\\begin{bmatrix}-\\mu m/r^2\\\\0\\\\0\\end{bmatrix}_{RST}
+                  = -\\frac{\\mu m}{r^2}\\hat{R}\\]
+              </div>
+              <p>The <span style="color:#FF3333">red</span>&thinsp;/&thinsp;<span style="color:#33FF33">green</span>&thinsp;/&thinsp;<span style="color:#3399FF">blue</span>
+              arrows are ECI X&#x302;&thinsp;/&thinsp;&#x176;&thinsp;/&thinsp;&#x17C; components added tip-to-tail
+              &mdash; they reconstruct the gravity arrow exactly.</p>
+              <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> for Drag.</p>`);
+
+            setGroupVisible(STATE.persistent.rstGroup, false);
+            setGroupVisible(STATE.persistent.eciGroup, true);
+            animateGroupIn(STATE.persistent.eciGroup, 0.0);
+
+            gsap.to(gProxy.scale, { x: 0, y: 0, z: 0, duration: 0.3, ease: 'power2.in',
+              onComplete() { gProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } }); }
+            });
+
+            const gArr = STATE.persistent.gravArrow;
+            if (gArr) {
+              gArr.scale.set(0, 0, 0);
+              gArr.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+            }
+            setForceVisibility({ grav: true });
+            if (gArr) {
+              gsap.to(gArr.scale, {
+                x: 1, y: 1, z: 1, duration: 0.5, delay: 0.2, ease: 'back.out(1.4)',
+                onComplete() {
+                  if (STATE.slideGen !== gen) return;
+                  gArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+                }
+              });
+            }
+            buildECIChain(gDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
+          });
+        },
+      },
+      // ── substep 1: Drag ───────────────────────────────────────────────
+      {
+        html: '',
+        enter3D() {
+          clearSlideObjects();
+          const gen  = STATE.slideGen;
+          const s    = getSpacecraftState(0.72);
+          const vHat = s.vel.clone().normalize();
+          const dDir = vHat.clone().negate();
+
+          setGroupVisible(STATE.persistent.eciGroup, false);
+          setForceVisibility({});
+          setGroupVisible(STATE.persistent.rstGroup, false);
+          setGroupVisible(STATE.persistent.vrfGroup, true);
+          animateGroupIn(STATE.persistent.vrfGroup, 0.1);
+          if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
+
+          const dProxy = makeArrow(dDir, s.pos, 0.52, COLORS.vrf.x, 'FD|VRF', 0.16, 0.07);
+          dProxy.scale.set(0, 0, 0);
+          dProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+          addSlideObj(dProxy);
+          gsap.to(dProxy.scale, {
+            x: 1, y: 1, z: 1, duration: 0.45, delay: 0.35, ease: 'back.out(1.4)',
+            onComplete() {
+              if (STATE.slideGen !== gen) return;
+              dProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+            }
+          });
+
+          setSlidePanel(`
+            <h3>Drag &mdash; in <span class="chip chip-vrf">VRF</span></h3>
+            <p>Drag opposes the velocity vector, pointing along &minus;x&#x302;<sub>v</sub>
+            (first VRF axis). In VRF it is diagonal:</p>
+            <div class="eq-block">
+              <div class="eq-label">Drag in VRF frame</div>
+              \\[\\vec{F}_D = \\begin{bmatrix}-D\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
+            </div>
+            <p style="font-size:0.81rem;color:#3a6a9a;">Rotating into ECI&hellip;</p>`);
+
+          gsap.delayedCall(2.0, () => {
+            if (STATE.slideGen !== gen) return;
+
+            setSlidePanel(`
+              <h3>Drag &mdash; in <span class="chip chip-eci">ECI</span></h3>
+              <div class="eq-block">
+                <div class="eq-label">Full rotation chain</div>
+                \\[\\vec{F}_D = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}-D\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
+              </div>
+              <p>VRF&nbsp;&rarr;&nbsp;RST&nbsp;&rarr;&nbsp;ECI: the single VRF component spreads across all
+              three ECI axes after two rotations.</p>
+              <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> for Lift.</p>`);
+
+            setGroupVisible(STATE.persistent.vrfGroup, false);
+            setGroupVisible(STATE.persistent.eciGroup, true);
+            animateGroupIn(STATE.persistent.eciGroup, 0.0);
+
+            gsap.to(dProxy.scale, { x: 0, y: 0, z: 0, duration: 0.3, ease: 'power2.in',
+              onComplete() { dProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } }); }
+            });
+
+            const dArr = STATE.persistent.dragArrow;
+            if (dArr) {
+              dArr.scale.set(0, 0, 0);
+              dArr.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+            }
+            setForceVisibility({ drag: true });
+            if (dArr) {
+              gsap.to(dArr.scale, {
+                x: 1, y: 1, z: 1, duration: 0.5, delay: 0.2, ease: 'back.out(1.4)',
+                onComplete() {
+                  if (STATE.slideGen !== gen) return;
+                  dArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+                }
+              });
+            }
+            buildECIChain(dDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
+          });
+        },
+      },
+      // ── substep 2: Lift ───────────────────────────────────────────────
+      {
+        html: '',
+        enter3D() {
+          clearSlideObjects();
+          const gen     = STATE.slideGen;
+          const s       = getSpacecraftState(0.72);
+          const vHat    = s.vel.clone().normalize();
+          const liftDir = s.R_hat.clone().addScaledVector(vHat, -s.R_hat.dot(vHat)).normalize();
+
+          setGroupVisible(STATE.persistent.eciGroup, false);
+          setForceVisibility({});
+          setGroupVisible(STATE.persistent.rstGroup, false);
+          setGroupVisible(STATE.persistent.vrfGroup, true);
+          animateGroupIn(STATE.persistent.vrfGroup, 0.1);
+          if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
+
+          const lProxy = makeArrow(liftDir, s.pos, 0.52, COLORS.vrf.y, 'FL|VRF', 0.16, 0.07);
+          lProxy.scale.set(0, 0, 0);
+          lProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+          addSlideObj(lProxy);
+          gsap.to(lProxy.scale, {
+            x: 1, y: 1, z: 1, duration: 0.45, delay: 0.35, ease: 'back.out(1.4)',
+            onComplete() {
+              if (STATE.slideGen !== gen) return;
+              lProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+            }
+          });
+
+          setSlidePanel(`
+            <h3>Lift &mdash; in <span class="chip chip-vrf">VRF</span></h3>
+            <p>Lift acts perpendicular to velocity. With bank angle \\(\\theta\\)
+            it spans VRF &#x177;<sub>v</sub> and &#x17C;<sub>v</sub>:</p>
+            <div class="eq-block">
+              <div class="eq-label">Lift in VRF frame</div>
+              \\[\\vec{F}_L = \\begin{bmatrix}0\\\\L\\cos\\theta\\\\-L\\sin\\theta\\end{bmatrix}_{VRF}\\]
+            </div>
+            <p style="font-size:0.81rem;color:#3a6a9a;">Rotating into ECI&hellip;</p>`);
+
+          gsap.delayedCall(2.0, () => {
+            if (STATE.slideGen !== gen) return;
+
+            setSlidePanel(`
+              <h3>Lift &mdash; in <span class="chip chip-eci">ECI</span></h3>
+              <div class="eq-block">
+                <div class="eq-label">Full rotation chain</div>
+                \\[\\vec{F}_L = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}0\\\\L\\cos\\theta\\\\-L\\sin\\theta\\end{bmatrix}_{VRF}\\]
+              </div>
+              <p>Two VRF components mix across all three ECI axes after both rotations.</p>
+              <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> for Thrust.</p>`);
+
+            setGroupVisible(STATE.persistent.vrfGroup, false);
+            setGroupVisible(STATE.persistent.eciGroup, true);
+            animateGroupIn(STATE.persistent.eciGroup, 0.0);
+
+            gsap.to(lProxy.scale, { x: 0, y: 0, z: 0, duration: 0.3, ease: 'power2.in',
+              onComplete() { lProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } }); }
+            });
+
+            const lArr = STATE.persistent.liftArrow;
+            if (lArr) {
+              lArr.scale.set(0, 0, 0);
+              lArr.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+            }
+            setForceVisibility({ lift: true });
+            if (lArr) {
+              gsap.to(lArr.scale, {
+                x: 1, y: 1, z: 1, duration: 0.5, delay: 0.2, ease: 'back.out(1.4)',
+                onComplete() {
+                  if (STATE.slideGen !== gen) return;
+                  lArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+                }
+              });
+            }
+            buildECIChain(liftDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
+          });
+        },
+      },
+      // ── substep 3: Thrust ─────────────────────────────────────────────
+      {
+        html: '',
+        enter3D() {
+          clearSlideObjects();
+          const gen  = STATE.slideGen;
+          const s    = getSpacecraftState(0.72);
+          const vHat = s.vel.clone().normalize();
+          const tDir = vHat.clone();
+
+          setGroupVisible(STATE.persistent.eciGroup, false);
+          setForceVisibility({});
+          setGroupVisible(STATE.persistent.rstGroup, false);
+          setGroupVisible(STATE.persistent.vrfGroup, true);
+          animateGroupIn(STATE.persistent.vrfGroup, 0.1);
+          if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
+
+          const tProxy = makeArrow(tDir, s.pos, 0.48, COLORS.vrf.z, 'FT|VRF', 0.16, 0.07);
+          tProxy.scale.set(0, 0, 0);
+          tProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+          addSlideObj(tProxy);
+          gsap.to(tProxy.scale, {
+            x: 1, y: 1, z: 1, duration: 0.45, delay: 0.35, ease: 'back.out(1.4)',
+            onComplete() {
+              if (STATE.slideGen !== gen) return;
+              tProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+            }
+          });
+
+          setSlidePanel(`
+            <h3>Thrust &mdash; in <span class="chip chip-vrf">VRF</span></h3>
+            <p>For zero thrust-pointing offset (\\(\\alpha_T = \\beta_T = 0\\)) thrust is
+            aligned with the velocity vector, along +x&#x302;<sub>v</sub>:</p>
+            <div class="eq-block">
+              <div class="eq-label">Thrust in VRF frame</div>
+              \\[\\vec{F}_T = \\begin{bmatrix}T\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
+            </div>
+            <p style="font-size:0.81rem;color:#3a6a9a;">Rotating into ECI&hellip;</p>`);
+
+          gsap.delayedCall(2.0, () => {
+            if (STATE.slideGen !== gen) return;
+
+            setSlidePanel(`
+              <h3>Thrust &mdash; in <span class="chip chip-eci">ECI</span></h3>
+              <div class="eq-block">
+                <div class="eq-label">Full rotation chain</div>
+                \\[\\vec{F}_T = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}T\\\\0\\\\0\\end{bmatrix}_{VRF}
+                  = T\\,\\hat{x}_v\\]
+              </div>
+              <p>Thrust is already aligned with \\(\\hat{x}_v\\), so the chain simply
+              expresses that velocity direction in ECI coordinates.</p>
+              <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> to assemble Newton&apos;s law.</p>`);
+
+            setGroupVisible(STATE.persistent.vrfGroup, false);
+            setGroupVisible(STATE.persistent.eciGroup, true);
+            animateGroupIn(STATE.persistent.eciGroup, 0.0);
+
+            gsap.to(tProxy.scale, { x: 0, y: 0, z: 0, duration: 0.3, ease: 'power2.in',
+              onComplete() { tProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } }); }
+            });
+
+            const tArr = STATE.persistent.thrustArrow;
+            if (tArr) {
+              tArr.scale.set(0, 0, 0);
+              tArr.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+            }
+            setForceVisibility({ thrust: true });
+            if (tArr) {
+              gsap.to(tArr.scale, {
+                x: 1, y: 1, z: 1, duration: 0.5, delay: 0.2, ease: 'back.out(1.4)',
+                onComplete() {
+                  if (STATE.slideGen !== gen) return;
+                  tArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+                }
+              });
+            }
+            buildECIChain(tDir.clone().multiplyScalar(0.48), s.pos, gen, 0.45);
+          });
+        },
+      },
+      // ── substep 4: Newton's law ───────────────────────────────────────
+      {
+        html: '',
+        enter3D() {
+          clearSlideObjects();
+          const gen = STATE.slideGen;
+
+          setFrameVisibility({ eci: true });
+          setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+
+          setSlidePanel(`
+            <h3>Newton&apos;s Law &mdash; assembled in <span class="chip chip-eci">ECI</span></h3>
+            <p>All four forces now share the same coordinate system and can be summed directly:</p>
+            <div class="eq-block">
+              \\[m\\ddot{\\vec{r}}_I = \\vec{F}_g + \\vec{F}_{aero} + \\vec{F}_T\\]
+            </div>
+            <p>The cream arrow <strong>F<sub>net</sub></strong> is their vector sum &mdash;
+            ready to integrate for \\(r(t),\\,v(t),\\,\\gamma(t),\\,\\psi(t)\\).</p>`);
+
           const forces = [
-            STATE.persistent.gravArrow, STATE.persistent.dragArrow,
-            STATE.persistent.liftArrow, STATE.persistent.thrustArrow,
+            STATE.persistent.gravArrow,  STATE.persistent.dragArrow,
+            STATE.persistent.liftArrow,  STATE.persistent.thrustArrow,
           ];
-          forces.forEach(a => {
+          forces.forEach((a, i) => {
             if (!a) return;
             a.scale.set(0, 0, 0);
             a.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-          });
-          setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
-          forces.forEach((a, i) => {
-            if (!a) return;
             gsap.to(a.scale, {
-              x: 1, y: 1, z: 1, duration: 0.5, delay: 0.25 + i * 0.11, ease: 'back.out(1.4)',
+              x: 1, y: 1, z: 1, duration: 0.5, delay: 0.15 + i * 0.12, ease: 'back.out(1.4)',
               onComplete() {
+                if (STATE.slideGen !== gen) return;
                 a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
               }
             });
           });
 
-          // ── ECI component chain for drag ──────────────────────────────
-          // The drag arrow points along -v̂ in world (ECI) space.
-          // Decompose it into its three ECI axis components and draw them
-          // tip-to-tail in ECI axis colors — they add up to the exact drag arrow.
-          const s     = getSpacecraftState(0.72);
-          const v_hat = s.vel.clone().normalize();
-          const dLen  = 0.52;
-          const dVec  = v_hat.clone().negate().multiplyScalar(dLen); // drag in ECI 3-space
-
-          // Chain: p0 → p1 (X component) → p2 (Y component) → p3 (Z component = drag tip)
-          const p0 = s.pos.clone();
-          const p1 = p0.clone().add(new THREE.Vector3(dVec.x, 0, 0));
-          const p2 = p1.clone().add(new THREE.Vector3(0, dVec.y, 0));
-          const p3 = p2.clone().add(new THREE.Vector3(0, 0, dVec.z));
-
-          const chainDefs = [
-            { from: p0, to: p1, col: COLORS.eci.x, label: 'Fd·X̂' },
-            { from: p1, to: p2, col: COLORS.eci.y, label: 'Fd·Ŷ' },
-            { from: p2, to: p3, col: COLORS.eci.z, label: 'Fd·Ẑ' },
-          ];
-          chainDefs.forEach(({ from, to, col, label }, i) => {
-            const len = from.distanceTo(to);
-            if (len < 0.015) return;
-            const dir = to.clone().sub(from).normalize();
-            const arr = makeArrow(dir, from, len, col, label, 0.20, 0.09);
-            arr.scale.set(0, 0, 0);
-            arr.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-            addSlideObj(arr);
-            gsap.to(arr.scale, {
-              x: 1, y: 1, z: 1, duration: 0.4, delay: 0.65 + i * 0.18, ease: 'back.out(1.4)',
-              onComplete() {
-                arr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-              }
-            });
-          });
-        },
-      },
-      // ── substep 1: Newton's law + F_net ────────────────────────────────
-      {
-        html: `
-          <hr style="border:none;border-top:1px solid #0e2035;margin:1rem 0;">
-          <h3>Step 3 &mdash; Newton&apos;s Law in ECI</h3>
-          <div class="eq-block">
-            \\[m\\ddot{\\vec{r}}_I = \\vec{F}_g + \\vec{F}_{aero} + \\vec{F}_T\\]
-          </div>
-          <p>The cream arrow <strong>F_net</strong> is their vector sum &mdash; ready to integrate
-          for \\(r(t),\\,v(t),\\,\\gamma(t),\\,\\psi(t)\\).</p>`,
-        enter3D() {
           const s        = getSpacecraftState(0.72);
           const v_hat    = s.vel.clone().normalize();
           const lift_hat = s.R_hat.clone().addScaledVector(v_hat, -s.R_hat.dot(v_hat)).normalize();
@@ -1980,8 +2235,9 @@ const SLIDES = [
           netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
           addSlideObj(netArrow);
           gsap.to(netArrow.scale, {
-            x: 1, y: 1, z: 1, duration: 0.6, delay: 0.2, ease: 'back.out(1.4)',
+            x: 1, y: 1, z: 1, duration: 0.6, delay: 0.75, ease: 'back.out(1.4)',
             onComplete() {
+              if (STATE.slideGen !== gen) return;
               netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
             }
           });
