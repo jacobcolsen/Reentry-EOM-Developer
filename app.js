@@ -1171,64 +1171,111 @@ const SLIDES = [
   {
     title: 'Heading Angle ψ',
     html: `
-      <p>The <strong>heading angle</strong> \\(\\psi\\) describes the direction of
-      horizontal flight — measured from the local parallel of latitude toward north.</p>
+      <p>The <strong>heading angle</strong>
+      <span style="color:#FFEE77">\\(\\psi\\)</span> describes the direction of
+      horizontal flight — measured from
+      <span style="color:#FF44CC">East (S)</span> toward
+      <span style="color:#44FFEE">North (T)</span>.</p>
       <div class="eq-block">
-        <div class="eq-label">Longitude and latitude rates</div>
-        \\[\\dot{\\lambda} = \\frac{v\\cos\\gamma\\cos\\psi}{r\\cos\\phi}\\]
-        \\[\\dot{\\phi} = \\frac{v\\cos\\gamma\\sin\\psi}{r}\\]
+        <div class="eq-label">Where each arrow comes from</div>
+        <p style="font-size:0.82rem;margin-bottom:0.4rem">
+          <span style="color:#00DDFF">\\(v\\cos\\gamma\\)</span>
+          = horizontal speed &nbsp;→&nbsp; split by \\(\\psi\\):
+        </p>
+        \\[\\textcolor{#FF44CC}{\\dot{\\lambda}} =
+          \\frac{\\textcolor{#00DDFF}{v\\cos\\gamma}\\,\\textcolor{#FF44CC}{\\cos\\psi}}{r\\cos\\textcolor{#44FFEE}{\\phi}}
+          \\quad \\leftarrow \\textcolor{#FF44CC}{\\text{east component}}\\]
+        \\[\\textcolor{#44FFEE}{\\dot{\\phi}} =
+          \\frac{\\textcolor{#00DDFF}{v\\cos\\gamma}\\,\\textcolor{#44FFEE}{\\sin\\psi}}{r}
+          \\quad \\leftarrow \\textcolor{#44FFEE}{\\text{north component}}\\]
       </div>
       <ul>
-        <li>\\(\\psi = 0°\\): flying along a latitude line (eastward)</li>
-        <li>\\(\\psi = 90°\\): flying toward the equator</li>
+        <li>\\(\\psi = 0°\\): all eastward → only
+          <span style="color:#FF44CC">\\(\\dot\\lambda\\)</span> grows</li>
+        <li>\\(\\psi = 90°\\): all northward → only
+          <span style="color:#44FFEE">\\(\\dot\\phi\\)</span> grows</li>
       </ul>
-      <p>Look down from above — the arc shows the heading angle in the local
-      horizontal plane.</p>`,
+      <p style="font-size:0.82rem;color:#6a90b0">
+        The arrows in the scene are the two components — their lengths are
+        proportional to <span style="color:#FF44CC">cos ψ</span> and
+        <span style="color:#44FFEE">sin ψ</span>.</p>`,
     camera: { pos: [0, 9, 6], target: [0, 0, 0], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
       setFrameVisibility({ vel: true });
 
-      const s = getSpacecraftState(0.72);
-      const R = s.R_hat;
+      const s    = getSpacecraftState(0.72);
+      const R    = s.R_hat;
       const vel0 = s.vel.clone().normalize();
-
-      // Horizontal velocity component (in local horizontal plane)
       const vel_h = vel0.clone().addScaledVector(R, -vel0.dot(R)).normalize();
-
-      // ψ: angle from S_hat (East) to vel_h about R_hat, in horizontal plane
-      const psi = Math.atan2(vel_h.dot(s.T_hat), vel_h.dot(s.S_hat));
+      const psi   = Math.atan2(vel_h.dot(s.T_hat), vel_h.dot(s.S_hat));
+      const hLen  = 0.65;  // horizontal speed visual length
 
       // ── Horizontal disc ──
       addSlideObj(makeHorizDisc(s.pos, R, 0.62));
 
-      // ── ψ arc from S_hat to vel_h in horizontal plane ──
+      // ── ψ arc from S_hat to vel_h ──
       const psiArc = makeAngleArc(s.pos, s.S_hat, s.T_hat, 0.38, 0, psi, COLORS.arc);
       addSlideObj(psiArc);
 
-      // ── Horizontal velocity projection line ──
+      // ── Horizontal velocity dashed line ──
       const projLine = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([s.pos, s.pos.clone().addScaledVector(vel_h, 0.68)]),
-        new THREE.LineDashedMaterial({ color: 0xFFDD55, dashSize: 0.045, gapSize: 0.03, opacity: 0.75, transparent: true })
+        new THREE.BufferGeometry().setFromPoints([s.pos, s.pos.clone().addScaledVector(vel_h, hLen)]),
+        new THREE.LineDashedMaterial({ color: 0x00DDFF, dashSize: 0.045, gapSize: 0.03, opacity: 0.7, transparent: true })
       );
       projLine.computeLineDistances();
       addSlideObj(projLine);
 
-      // ── East reference line (S_hat direction) ──
-      const eastLine = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([s.pos, s.pos.clone().addScaledVector(s.S_hat, 0.52)]),
-        new THREE.LineDashedMaterial({ color: COLORS.ecef.y, dashSize: 0.04, gapSize: 0.03, opacity: 0.7, transparent: true })
+      // ── East component arrow (magenta) → drives λ̇ ──
+      const eastLen = hLen * Math.abs(Math.cos(psi));
+      const eastDir = s.S_hat.clone().multiplyScalar(Math.sign(Math.cos(psi)));
+      const eastArrow = new THREE.ArrowHelper(eastDir, s.pos, eastLen, 0xFF44CC, 0.07, 0.035);
+      addSlideObj(eastArrow);
+
+      // ── North component arrow (teal) → drives φ̇ ──
+      const northEnd  = s.pos.clone().addScaledVector(s.S_hat, eastLen * Math.sign(Math.cos(psi)));
+      const northLen  = hLen * Math.abs(Math.sin(psi));
+      const northDir  = s.T_hat.clone().multiplyScalar(Math.sign(Math.sin(psi)));
+      const northArrow = new THREE.ArrowHelper(northDir, northEnd, northLen, 0x44FFEE, 0.07, 0.035);
+      addSlideObj(northArrow);
+
+      // ── Right-angle marker at corner of the triangle ──
+      const ra = 0.032;
+      const raMat = new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.5 });
+      addSlideObj(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          northEnd.clone().addScaledVector(s.S_hat.clone().multiplyScalar(-Math.sign(Math.cos(psi))), ra),
+          northEnd.clone()
+            .addScaledVector(s.S_hat.clone().multiplyScalar(-Math.sign(Math.cos(psi))), ra)
+            .addScaledVector(northDir, ra),
+          northEnd.clone().addScaledVector(northDir, ra),
+        ]), raMat));
+
+      // ── East reference dashed line ──
+      const eastRefLine = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([s.pos, s.pos.clone().addScaledVector(s.S_hat, 0.55)]),
+        new THREE.LineDashedMaterial({ color: 0xFF44CC, dashSize: 0.04, gapSize: 0.03, opacity: 0.45, transparent: true })
       );
-      eastLine.computeLineDistances();
-      addSlideObj(eastLine);
+      eastRefLine.computeLineDistances();
+      addSlideObj(eastRefLine);
 
       // ── Labels ──
-      const psiMidAngle = psi * 0.5;
-      const psiMidDir = s.S_hat.clone().multiplyScalar(Math.cos(psiMidAngle))
-        .addScaledVector(s.T_hat, Math.sin(psiMidAngle));
+      const psiMidDir = s.S_hat.clone().multiplyScalar(Math.cos(psi * 0.5))
+        .addScaledVector(s.T_hat, Math.sin(psi * 0.5));
+      const psiDeg = (psi * 180 / Math.PI).toFixed(1);
       const lG = new THREE.Group();
-      lG.add(makeFloatLabel('ψ', s.pos.clone().addScaledVector(psiMidDir, 0.48), COLORS.arc));
-      lG.add(makeFloatLabel('East (S)', s.pos.clone().addScaledVector(s.S_hat, 0.60), COLORS.ecef.y));
+      // ψ arc label with value
+      lG.add(makeFloatLabel(`ψ = ${psiDeg}°`, s.pos.clone().addScaledVector(psiMidDir, 0.52), COLORS.arc));
+      // East reference label
+      lG.add(makeFloatLabel('East (S →λ̇)', s.pos.clone().addScaledVector(s.S_hat, 0.62), 0xFF44CC));
+      // East component label (at arrow midpoint)
+      lG.add(makeFloatLabel('v cosγ cosψ',
+        s.pos.clone().addScaledVector(s.S_hat, eastLen * 0.5 * Math.sign(Math.cos(psi))).addScaledVector(R, -0.08),
+        0xFF44CC));
+      // North component label (at arrow midpoint)
+      lG.add(makeFloatLabel('v cosγ sinψ',
+        northEnd.clone().addScaledVector(northDir, northLen * 0.5).addScaledVector(R, -0.08),
+        0x44FFEE));
       addSlideObj(lG);
     },
     exit() {},
