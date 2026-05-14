@@ -27,7 +27,7 @@ const STATE = {
   currentSlide:   0,
   substep:        0,           // sub-step within the current slide (0 = initial)
   slideGen:       0,           // incremented on every slide/substep clear; guards stale delayed calls
-  orbitT:         0,
+  orbitT:         0.72,
   earthT:         0,
   gsapTween:      null,
   gammaAnim:      null,        // GSAP tween for γ oscillation on slide 5
@@ -1897,15 +1897,105 @@ function goToSlide(idx) {
   if (slide.enter) slide.enter();
 }
 
+// ── Live vector update — called every frame to keep spacecraft + vectors on orbit ─
+function updateLiveVectors() {
+  const s = getSpacecraftState(STATE.orbitT);
+  const v_hat    = s.vel.clone().normalize();
+  const lift_hat = s.R_hat.clone().addScaledVector(v_hat, -s.R_hat.dot(v_hat)).normalize();
+
+  // Spacecraft position (always); orientation only when bank animation isn't overriding it
+  if (STATE.spacecraft) {
+    STATE.spacecraft.position.copy(s.pos);
+    if (!STATE.bankAnim) {
+      const mat = new THREE.Matrix4().lookAt(s.pos, s.pos.clone().add(s.vel), lift_hat);
+      STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+      STATE.spacecraft.quaternion.multiply(
+        new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
+      );
+    }
+  }
+
+  // Velocity arrow
+  const va = STATE.persistent.velArrow;
+  if (va?.visible) { va.position.copy(s.pos); va.setDirection(v_hat); }
+
+  // RST group — group moves to spacecraft; arrows at local origin, labels at local offset
+  const rstG = STATE.persistent.rstGroup;
+  if (rstG?.visible) {
+    const L = 0.9;
+    rstG.position.copy(s.pos);
+    const ra = rstG.children.filter(c => c.isArrowHelper);
+    const rl = rstG.children.filter(c => c.isCSS2DObject);
+    if (ra[0]) ra[0].setDirection(s.R_hat);
+    if (ra[1]) ra[1].setDirection(s.S_hat);
+    if (ra[2]) ra[2].setDirection(s.T_hat);
+    if (rl[0]) rl[0].position.copy(s.R_hat.clone().multiplyScalar(L + 0.14));
+    if (rl[1]) rl[1].position.copy(s.S_hat.clone().multiplyScalar(L + 0.14));
+    if (rl[2]) rl[2].position.copy(s.T_hat.clone().multiplyScalar(L + 0.14));
+  }
+
+  // VRF group — arrows and labels are at world-space positions (group at origin)
+  const vrfG = STATE.persistent.vrfGroup;
+  if (vrfG?.visible) {
+    const L    = 0.75;
+    const z_v  = new THREE.Vector3().crossVectors(s.R_hat, v_hat).normalize();
+    const y_v  = new THREE.Vector3().crossVectors(z_v, v_hat).normalize();
+    const dirs    = [v_hat, y_v, z_v];
+    const vArrows = vrfG.children.filter(c => c.isArrowHelper);
+    const vLabels = vrfG.children.filter(c => c.isCSS2DObject);
+    const vSphere = vrfG.children.find(c => c.isMesh);
+    if (vSphere) vSphere.position.copy(s.pos);
+    vArrows.forEach((a, i) => { a.position.copy(s.pos); if (dirs[i]) a.setDirection(dirs[i]); });
+    vLabels.forEach((lbl, i) => {
+      if (dirs[i]) lbl.position.copy(s.pos.clone().addScaledVector(dirs[i], L + 0.12));
+    });
+  }
+
+  // Force arrows
+  const Omega = new THREE.Vector3(0, 1, 0).multiplyScalar(EARTH_ROT_SPD);
+
+  const ga = STATE.persistent.gravArrow;
+  if (ga?.visible) { ga.position.copy(s.pos); ga.setDirection(s.R_hat.clone().negate()); }
+
+  const da = STATE.persistent.dragArrow;
+  if (da?.visible) { da.position.copy(s.pos); da.setDirection(v_hat.clone().negate()); }
+
+  const la = STATE.persistent.liftArrow;
+  if (la?.visible && !STATE.bankAnim) { la.position.copy(s.pos); la.setDirection(lift_hat); }
+
+  const ta = STATE.persistent.thrustArrow;
+  if (ta?.visible) { ta.position.copy(s.pos); ta.setDirection(v_hat); }
+
+  const cor = STATE.persistent.coriolisArrow;
+  if (cor?.visible) {
+    cor.position.copy(s.pos);
+    const v_rel = v_hat.clone().sub(new THREE.Vector3().crossVectors(Omega, s.pos));
+    const corDir = new THREE.Vector3().crossVectors(Omega, v_rel).normalize();
+    if (corDir.lengthSq() > 0) cor.setDirection(corDir);
+  }
+
+  const cen = STATE.persistent.centripArrow;
+  if (cen?.visible) {
+    cen.position.copy(s.pos);
+    const cpVec = new THREE.Vector3()
+      .crossVectors(Omega, new THREE.Vector3().crossVectors(Omega, s.pos)).normalize();
+    if (cpVec.lengthSq() > 0) cen.setDirection(cpVec);
+  }
+}
+
 // ── Render loop ────────────────────────────────────────────────────────────
 function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
 
-  // Earth rotation — ECEF group stays locked to Earth texture
+  // Orbit + Earth rotation
+  STATE.orbitT += delta * ORBIT_SPD;
   STATE.earthT += delta * EARTH_ROT_SPD;
   if (STATE.persistent.earthMesh) STATE.persistent.earthMesh.rotation.y = STATE.earthT;
   if (STATE.persistent.ecefGroup) STATE.persistent.ecefGroup.rotation.y = STATE.earthT;
+
+  // Keep spacecraft and all live vectors on the moving orbit
+  updateLiveVectors();
 
   controls.update();
   renderer.render(scene, camera);
