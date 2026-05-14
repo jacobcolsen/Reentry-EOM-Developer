@@ -837,8 +837,10 @@ const SLIDES = [
     title: 'Longitude λ and Latitude ϕ',
     html: `
       <p>The vehicle's position on the rotating planet is described by
-      <strong>geocentric longitude</strong> \\(\\lambda\\) and
-      <strong>geocentric latitude</strong> \\(\\phi\\).
+      <strong>geocentric longitude</strong>
+      <span style="color:#FF44CC;font-weight:600">\\(\\lambda\\)</span> and
+      <strong>geocentric latitude</strong>
+      <span style="color:#44FFEE;font-weight:600">\\(\\phi\\)</span>.
       The <span style="color:#FFD700;font-weight:600">velocity vector <em>v</em></span>
       can be broken into components that directly drive these rates —
       press <strong>Next →</strong> to see each step.</p>`,
@@ -1034,13 +1036,15 @@ const SLIDES = [
         html: `
           <div class="eq-block">
             <div class="eq-label">Step 3 — Convert speed to angular rate</div>
-            \\[\\dot{\\phi} = \\frac{v_{\\text{north}}}{r} = \\frac{\\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}}{r}\\]
-            \\[\\dot{\\lambda} = \\frac{v_{\\text{east}}}{r\\cos\\phi} = \\frac{\\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}}{r\\cos\\phi}\\]
+            \\[\\textcolor{#44FFEE}{\\dot{\\phi}} = \\frac{v_{\\text{north}}}{r} = \\frac{\\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}}{r}\\]
+            \\[\\textcolor{#FF44CC}{\\dot{\\lambda}} = \\frac{v_{\\text{east}}}{r\\cos\\textcolor{#44FFEE}{\\phi}} = \\frac{\\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}}{r\\cos\\textcolor{#44FFEE}{\\phi}}\\]
           </div>
           <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.4rem;">
-            The extra \\(\\cos\\phi\\) in \\(\\dot\\lambda\\): a latitude circle at \\(\\phi\\)
-            has radius \\(r\\cos\\phi\\) — same eastward speed covers more longitude degrees
-            near the equator than near the poles.</p>`,
+            The extra \\(\\cos\\textcolor{#44FFEE}{\\phi}\\) in
+            \\(\\textcolor{#FF44CC}{\\dot\\lambda}\\):
+            a latitude circle at \\(\\textcolor{#44FFEE}{\\phi}\\) has radius
+            \\(r\\cos\\textcolor{#44FFEE}{\\phi}\\) — same eastward speed covers more
+            \\(\\textcolor{#FF44CC}{\\lambda}\\) degrees near the equator than near the poles.</p>`,
         enter3D() {},
       },
     ],
