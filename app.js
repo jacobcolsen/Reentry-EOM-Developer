@@ -271,8 +271,8 @@ function buildECEFAxes() {
 
 function buildRSTAxes() {
   const s = getSpacecraftState(0.72);
-  const L = 0.75;              // centred at spacecraft, same scale as VRF
-  const O = s.pos.clone();     // origin at spacecraft (RST is a vehicle-pointing frame)
+  const L = 2.1;               // origin at planetary center, long enough to reach past spacecraft
+  const O = new THREE.Vector3(0, 0, 0);
   const group = new THREE.Group();
 
   group.add(makeArrow(s.R_hat, O, L, COLORS.rst.r, 'x₂'));
@@ -387,6 +387,8 @@ function setFrameVisibility({ eci = false, ecef = false, rst = false, vrf = fals
   setGroupVisible(STATE.persistent.rstGroup,  rst);
   setGroupVisible(STATE.persistent.vrfGroup,  vrf);
   if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = vel;
+  // Always reset force arrows — slides that need them call setForceVisibility() after
+  setForceVisibility({});
 }
 
 function setForceVisibility({ grav=false, drag=false, lift=false, thrust=false, coriolis=false, centrip=false } = {}) {
@@ -1031,7 +1033,9 @@ const SLIDES = [
         s.pos.clone().addScaledVector(vHatDemo, vLen * 0.52).addScaledVector(R, 0.13), 0xFFD700));
       lblG.visible = false;
       addSlideObj(lblG);
+      const genV = STATE.slideGen;
       gsap.delayedCall(0.85, () => {
+        if (STATE.slideGen !== genV) return;
         lblG.visible = true;
         lblG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
       });
