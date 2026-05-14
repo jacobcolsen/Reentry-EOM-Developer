@@ -1051,12 +1051,14 @@ const SLIDES = [
       </ul>
       <p>Watch the gold velocity arrow sweep relative to the horizontal disc as
       \\(\\gamma\\) varies.</p>`,
-    camera: { pos: [4, 3, 8], target: [0, 0, 0], dur: 1.0 },
+    camera: { pos: [2.0, 1.5, 2.5], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
       setFrameVisibility({ vel: true });
 
       const s = getSpacecraftState(0.72);
+      // Match slide 5 start: close view, Earth prominent left, pivot at vehicle centroid
+      tweenCamera([2.0, 1.5, 2.5], [s.pos.x, s.pos.y, s.pos.z], 1.0);
       const R = s.R_hat;
       const vel0 = s.vel.clone().normalize();
       // Horizontal component of velocity (in local horizontal plane)
