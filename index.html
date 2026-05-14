@@ -1147,59 +1147,99 @@ const SLIDES = [
   {
     title: 'Flight-Path Angle γ',
     html: `
-      <p>The <strong>flight-path angle</strong> \\(\\gamma\\) is the angle between the
-      <em>local horizontal plane</em> and the velocity vector.</p>
+      <p>The <strong>flight-path angle</strong>
+      <span style="color:#FFEE77">\\(\\gamma\\)</span> is the angle between the
+      <em>local horizontal plane</em> and the
+      <span style="color:#FFD700">velocity vector</span>.</p>
       <div class="eq-block">
         <div class="eq-label">Radial rate</div>
-        \\[\\dot{r} = v\\sin\\gamma\\]
+        \\[\\textcolor{#FF5555}{\\dot{r}} = \\textcolor{#FFD700}{v}\\,\\sin\\,\\textcolor{#FFEE77}{\\gamma}\\]
       </div>
       <ul>
-        <li>\\(\\gamma > 0\\): climbing (velocity above local horizontal)</li>
-        <li>\\(\\gamma < 0\\): descending (entry corridor)</li>
-        <li>\\(\\gamma = 0\\): purely horizontal flight</li>
+        <li>\\(\\textcolor{#44FF88}{\\gamma > 0}\\) — <span style="color:#44FF88">climbing</span> (velocity above local horizontal)</li>
+        <li>\\(\\textcolor{#FF5555}{\\gamma < 0}\\) — <span style="color:#FF5555">descending</span> (entry corridor)</li>
+        <li>\\(\\textcolor{#FFD700}{\\gamma = 0}\\) — purely horizontal flight</li>
       </ul>
-      <p>Watch the gold velocity arrow sweep relative to the horizontal disc as
-      \\(\\gamma\\) varies.</p>`,
+      <p>Watch the <span style="color:#FFD700">gold velocity arrow</span> and the live
+      readout as <span style="color:#FFEE77">\\(\\gamma\\)</span> varies.</p>`,
     camera: { pos: [2.0, 1.5, 2.5], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
       setFrameVisibility({ vel: true });
 
       const s = getSpacecraftState(0.72);
-      // Match slide 5 start: close view, Earth prominent left, pivot at vehicle centroid
       tweenCamera([2.0, 1.5, 2.5], [s.pos.x, s.pos.y, s.pos.z], 1.0);
-      const R = s.R_hat;
-      const vel0 = s.vel.clone().normalize();
-      // Horizontal component of velocity (in local horizontal plane)
+      const R     = s.R_hat;
+      const vel0  = s.vel.clone().normalize();
       const vel_h = vel0.clone().addScaledVector(R, -vel0.dot(R)).normalize();
-      const gamma0 = Math.asin(vel0.dot(R));
 
       // ── Local horizontal disc ──
       addSlideObj(makeHorizDisc(s.pos, R, 0.62));
 
-      // ── Static γ arc at the actual flight-path angle ──
-      const gammaArc = makeAngleArc(s.pos, vel_h, R, 0.32, 0, gamma0, COLORS.arc);
+      // ── Dynamic γ arc — geometry rebuilt each frame to track the animation ──
+      const arcPts = [];
+      for (let i = 0; i <= 32; i++) arcPts.push(new THREE.Vector3());
+      const gammaArcGeo = new THREE.BufferGeometry().setFromPoints(arcPts);
+      const gammaArc    = new THREE.Line(gammaArcGeo,
+        new THREE.LineBasicMaterial({ color: COLORS.arc, transparent: true, opacity: 0.9 }));
       addSlideObj(gammaArc);
 
-      // ── Horizontal reference dashes (from spacecraft outward along vel_h) ──
-      const h0 = s.pos.clone();
-      const h1 = s.pos.clone().addScaledVector(vel_h, 0.65);
+      function rebuildArc(g) {
+        const pts = [];
+        for (let i = 0; i <= 32; i++) {
+          const a = (i / 32) * g;
+          pts.push(s.pos.clone().add(
+            vel_h.clone().multiplyScalar(Math.cos(a)).addScaledVector(R, Math.sin(a)).multiplyScalar(0.32)
+          ));
+        }
+        gammaArcGeo.setFromPoints(pts);
+      }
+
+      // ── Horizontal reference dash ──
       const hRefLine = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([h0, h1]),
+        new THREE.BufferGeometry().setFromPoints([s.pos.clone(), s.pos.clone().addScaledVector(vel_h, 0.65)]),
         new THREE.LineDashedMaterial({ color: 0x4488cc, dashSize: 0.04, gapSize: 0.03, opacity: 0.7, transparent: true })
       );
       hRefLine.computeLineDistances();
       addSlideObj(hRefLine);
 
-      // ── γ label at arc midpoint ──
-      const gamMid = vel_h.clone().multiplyScalar(Math.cos(gamma0 * 0.5) * 0.42)
-        .addScaledVector(R, Math.sin(gamma0 * 0.5) * 0.42);
-      const lG = new THREE.Group();
-      lG.add(makeFloatLabel('γ', s.pos.clone().add(gamMid), COLORS.arc));
-      addSlideObj(lG);
+      // ── Live γ HUD label (CSS2D, floats above spacecraft) ──
+      const hudEl = document.createElement('div');
+      hudEl.style.cssText = [
+        'background:rgba(2,4,8,0.88)',
+        'border-radius:9px',
+        'padding:7px 15px',
+        'font-family:Segoe UI,system-ui,sans-serif',
+        'font-size:13px',
+        'white-space:nowrap',
+        'text-align:center',
+        'line-height:1.55',
+        'pointer-events:none',
+        'min-width:155px',
+      ].join(';');
+      const hudObj = new CSS2DObject(hudEl);
+      hudObj.position.copy(s.pos.clone().addScaledVector(R, 0.55).addScaledVector(vel_h, 0.15));
+      addSlideObj(hudObj);
 
-      // ── Oscillating γ animation on velArrow ──
+      function updateHUD(g) {
+        const deg   = g * 180 / Math.PI;
+        const color = deg >  0.5 ? '#44FF88' : deg < -0.5 ? '#FF5555' : '#FFD700';
+        const arrow = deg >  0.5 ? '↑' : deg < -0.5 ? '↓' : '→';
+        const label = deg >  0.5 ? 'Climbing' : deg < -0.5 ? 'Descending' : 'Horizontal';
+        const sign  = deg > 0    ? '+' : '';
+        hudEl.style.border = `1px solid ${color}`;
+        hudEl.innerHTML = `
+          <div style="font-size:10px;letter-spacing:.09em;color:#3a6a9a;text-transform:uppercase;margin-bottom:1px">Flight-Path Angle</div>
+          <div style="font-size:21px;font-weight:700;color:${color};letter-spacing:.02em">γ = ${sign}${deg.toFixed(1)}°</div>
+          <div style="font-size:12px;color:${color};margin:1px 0 4px">${arrow} ${label}</div>
+          <div style="font-size:10px;color:#5a80a0">ṙ = <span style="color:#FFD700">v</span> · sin γ &nbsp;→&nbsp; <span style="color:#FFD700">v</span> · (${Math.sin(g).toFixed(3)})</div>
+        `;
+      }
+
+      // ── Oscillating γ animation ──
       const swing = { g: -28 * Math.PI / 180 };
+      rebuildArc(swing.g);
+      updateHUD(swing.g);
       STATE.gammaAnim = gsap.to(swing, {
         g: 28 * Math.PI / 180,
         duration: 2.2,
@@ -1212,6 +1252,8 @@ const SLIDES = [
             .addScaledVector(R, Math.sin(swing.g))
             .normalize();
           STATE.persistent.velArrow.setDirection(dir);
+          rebuildArc(swing.g);
+          updateHUD(swing.g);
         }
       });
     },
