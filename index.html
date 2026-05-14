@@ -1160,8 +1160,9 @@ const SLIDES = [
         <li>\\(\\textcolor{#FF5555}{\\gamma < 0}\\) — <span style="color:#FF5555">descending</span> (entry corridor)</li>
         <li>\\(\\textcolor{#FFD700}{\\gamma = 0}\\) — purely horizontal flight</li>
       </ul>
-      <p>Watch the <span style="color:#FFD700">gold velocity arrow</span> and the live
-      readout as <span style="color:#FFEE77">\\(\\gamma\\)</span> varies.</p>`,
+      <p>Watch the <span style="color:#FFD700">gold velocity arrow</span> sweep as
+      <span style="color:#FFEE77">\\(\\gamma\\)</span> varies.</p>
+      <div id="gamma-readout" style="margin-top:0.9rem;padding:0.7rem 1.1rem;background:#07162a;border:1px solid #1e3a5f;border-radius:8px;text-align:center;line-height:1.7;"></div>`,
     camera: { pos: [2.0, 1.5, 2.5], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -1205,19 +1206,11 @@ const SLIDES = [
       hRefLine.computeLineDistances();
       addSlideObj(hRefLine);
 
-      // ── γ label on the arc (CSS2D, updates position each frame) ──
+      // ── γ label floating near the arc midpoint in 3D space ──
       const gammaLblEl = document.createElement('div');
-      gammaLblEl.style.cssText = 'font-size:14px;font-weight:700;color:#FFEE77;font-family:Segoe UI,system-ui,sans-serif;pointer-events:none;text-shadow:0 0 6px rgba(0,0,0,0.9);';
-      gammaLblEl.textContent = 'γ';
+      gammaLblEl.style.cssText = 'font-size:13px;font-weight:700;font-family:Segoe UI,system-ui,sans-serif;pointer-events:none;text-shadow:0 0 8px rgba(0,0,0,1);white-space:nowrap;';
       const gammaLblObj = new CSS2DObject(gammaLblEl);
       addSlideObj(gammaLblObj);
-
-      // ── Compact live HUD: angle value + status only ──
-      const hudEl = document.createElement('div');
-      hudEl.style.cssText = 'background:rgba(4,10,20,0.75);border-radius:7px;padding:4px 11px;font-family:Segoe UI,system-ui,sans-serif;white-space:nowrap;text-align:center;pointer-events:none;line-height:1.5;';
-      const hudObj = new CSS2DObject(hudEl);
-      hudObj.position.copy(s.pos.clone().addScaledVector(R, 0.55).addScaledVector(vel_h, 0.18));
-      addSlideObj(hudObj);
 
       function updateHUD(g) {
         const deg   = g * 180 / Math.PI;
@@ -1225,12 +1218,25 @@ const SLIDES = [
         const arrow = deg >  0.5 ? '↑' : deg < -0.5 ? '↓' : '→';
         const label = deg >  0.5 ? 'Climbing' : deg < -0.5 ? 'Descending' : 'Horizontal';
         const sign  = deg > 0    ? '+' : '';
-        // Update arc label position to arc midpoint
+
+        // 3D arc label — angle value + color, sits just outside arc midpoint
         const mid = g / 2;
         gammaLblObj.position.copy(s.pos.clone().add(
-          vel_h.clone().multiplyScalar(Math.cos(mid)).addScaledVector(R, Math.sin(mid)).multiplyScalar(ARC_R + 0.12)
+          vel_h.clone().multiplyScalar(Math.cos(mid)).addScaledVector(R, Math.sin(mid)).multiplyScalar(ARC_R + 0.14)
         ));
-        hudEl.innerHTML = `<span style="font-size:15px;font-weight:700;color:${color}">γ = ${sign}${deg.toFixed(1)}°</span>&nbsp; <span style="font-size:12px;color:${color}">${arrow} ${label}</span>`;
+        gammaLblEl.style.color = color;
+        gammaLblEl.textContent = `γ = ${sign}${deg.toFixed(1)}°`;
+
+        // Panel readout
+        const readout = document.getElementById('gamma-readout');
+        if (readout) {
+          readout.style.borderColor = color;
+          readout.innerHTML = `
+            <div style="font-size:10px;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:2px">Live Flight-Path Angle</div>
+            <div style="font-size:26px;font-weight:700;color:${color};letter-spacing:.02em">γ = ${sign}${deg.toFixed(1)}°</div>
+            <div style="font-size:13px;color:${color}">${arrow}&nbsp;${label}</div>
+          `;
+        }
       }
 
       // ── Oscillating γ animation ──
