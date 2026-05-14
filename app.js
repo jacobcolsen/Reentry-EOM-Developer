@@ -55,6 +55,8 @@ const STATE = {
 
 // ── Three.js globals ───────────────────────────────────────────────────────
 let renderer, camera, scene, controls, css2d, clock;
+// Frame-colored "pre-rotation" arrows for slide 15 substep animation
+let _forceFrameArrows = [];
 
 // ── Init ───────────────────────────────────────────────────────────────────
 function initScene() {
@@ -1808,71 +1810,147 @@ const SLIDES = [
   {
     title: 'Forces in the Inertial Frame',
     html: `
-      <p>Apply the rotation chain to each force. Once expressed in ECI, they share the
-      same coordinate system and can be directly summed for Newton&apos;s law.</p>
+      <p>Each force is first expressed in its <em>natural</em> frame using scalar
+      coefficients. Then the rotation chain carries each vector into ECI so they can be summed.</p>
 
-      <h3>Gravity &mdash; <span class="chip chip-rst">in RST</span></h3>
+      <h3>Step 1 &mdash; Forces in their home frames</h3>
       <div class="eq-block">
-        \\[\\vec{F}_g = C_{E\\leftarrow R}
-          \\begin{bmatrix}-\\mu m/r^2\\\\0\\\\0\\end{bmatrix}_{RST}
-          = -\\frac{\\mu m}{r^2}\\hat{R}\\]
-        <p style="font-size:0.78rem;color:#3a6a9a;margin-top:0.4rem;">
-          One non-zero entry &mdash; gravity is already diagonal in RST.
-        </p>
+        <div class="eq-label">Gravity &mdash; diagonal in <span class="chip chip-rst" style="font-size:0.75em">RST</span></div>
+        \\[\\vec{F}_g = \\begin{bmatrix}-\\mu m/r^2\\\\0\\\\0\\end{bmatrix}_{RST}\\]
       </div>
-
-      <h3>Aero Forces &mdash; <span class="chip chip-vrf">in VRF</span></h3>
       <div class="eq-block">
-        \\[\\vec{F}_{aero} = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}
-          \\begin{bmatrix}-D \\\\ L\\cos\\theta \\\\ -L\\sin\\theta\\end{bmatrix}_{VRF}\\]
+        <div class="eq-label">Drag &middot; Lift &middot; Thrust &mdash; in <span class="chip chip-vrf" style="font-size:0.75em">VRF</span></div>
+        \\[\\vec{F}_D=\\begin{bmatrix}-D\\\\0\\\\0\\end{bmatrix}_{VRF},\\quad
+          \\vec{F}_L=\\begin{bmatrix}0\\\\L\\cos\\theta\\\\-L\\sin\\theta\\end{bmatrix}_{VRF},\\quad
+          \\vec{F}_T=\\begin{bmatrix}T_x\\\\T_y\\\\T_z\\end{bmatrix}_{VRF}\\]
       </div>
-
-      <h3>Thrust &mdash; <span class="chip chip-thrust">in VRF</span></h3>
-      <div class="eq-block">
-        \\[\\vec{F}_T = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}
-          \\begin{bmatrix}T\\cos\\alpha_T\\cos\\beta_T\\\\T\\cos\\alpha_T\\sin\\beta_T\\\\T\\sin\\alpha_T\\end{bmatrix}_{VRF}\\]
-      </div>
-
-      <h3>Newton&apos;s Law &mdash; all forces in ECI</h3>
-      <div class="eq-block">
-        \\[m\\ddot{\\vec{r}}_I = \\vec{F}_g + \\vec{F}_{aero} + \\vec{F}_T\\]
-      </div>
-      <p style="font-size:0.81rem;color:#4a8060;margin-top:0.5rem;">
-        The arrows in the scene are already in ECI (world space). The rotation matrices
-        give us the ECI <em>components</em> from frame-native scalars. The cream arrow
-        is their vector sum \\(\\vec{F}_{net}\\).
+      <p style="font-size:0.81rem;color:#3a6a9a;margin-top:0.6rem;">
+        Arrows colored to match their home frame &mdash; press <strong>Next&nbsp;&rarr;</strong>
+        to apply the rotation chain.
       </p>`,
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, rst: true, vrf: true, vel: true });
-      setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+      // Show RST + VRF only — ECI comes in substep 1
+      setFrameVisibility({ rst: true, vrf: true, vel: true });
 
-      // Net force arrow — weighted vector sum of all four force directions
-      const s         = getSpacecraftState(0.72);
-      const v_hat     = s.vel.clone().normalize();
-      const lift_hat  = s.R_hat.clone().addScaledVector(v_hat, -s.R_hat.dot(v_hat)).normalize();
-      const net = new THREE.Vector3()
-        .addScaledVector(s.R_hat.clone().negate(), 0.44)
-        .addScaledVector(v_hat.clone().negate(),  0.20)
-        .addScaledVector(lift_hat,                0.20)
-        .normalize();
-      const netArrow = makeArrow(net, s.pos, 0.68, 0xFFFFCC, 'F_net', 0.22, 0.10);
-      netArrow.scale.set(0, 0, 0);
-      netArrow.traverse(o => {
-        if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; }
-      });
-      addSlideObj(netArrow);
-      gsap.to(netArrow.scale, {
-        x: 1, y: 1, z: 1, duration: 0.6, delay: 0.5, ease: 'back.out(1.4)',
-        onComplete() {
-          netArrow.traverse(o => {
-            if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; }
-          });
-        }
+      const s        = getSpacecraftState(0.72);
+      const v_hat    = s.vel.clone().normalize();
+      const lift_hat = s.R_hat.clone().addScaledVector(v_hat, -s.R_hat.dot(v_hat)).normalize();
+
+      // Frame-colored proxy arrows (show forces "living in" their frames)
+      // Gravity: RST radial color (purple)
+      // Drag / Lift / Thrust: VRF axis colors (lime / cyan / yellow)
+      const defs = [
+        { dir: s.R_hat.clone().negate(), col: COLORS.rst.r,  label: 'Fg|RST', len: 0.52 },
+        { dir: v_hat.clone().negate(),   col: COLORS.vrf.x,  label: 'FD|VRF', len: 0.52 },
+        { dir: lift_hat.clone(),         col: COLORS.vrf.y,  label: 'FL|VRF', len: 0.52 },
+        { dir: v_hat.clone(),            col: COLORS.vrf.z,  label: 'FT|VRF', len: 0.48 },
+      ];
+      _forceFrameArrows = [];
+      defs.forEach(({ dir, col, label, len }, i) => {
+        const a = makeArrow(dir, s.pos, len, col, label, 0.16, 0.07);
+        a.scale.set(0, 0, 0);
+        a.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+        addSlideObj(a);
+        _forceFrameArrows.push(a);
+        gsap.to(a.scale, {
+          x: 1, y: 1, z: 1, duration: 0.45, delay: 0.2 + i * 0.12, ease: 'back.out(1.4)',
+          onComplete() {
+            a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+          }
+        });
       });
     },
-    exit() { setForceVisibility({}); },
+    substeps: [
+      // ── substep 0: Apply rotation chain → ECI ──────────────────────────
+      {
+        html: `
+          <hr style="border:none;border-top:1px solid #0e2035;margin:1rem 0;">
+          <h3>Step 2 &mdash; Apply the rotation chain</h3>
+          <div class="eq-block">
+            <div class="eq-label">Gravity (RST &rarr; ECI)</div>
+            \\[\\vec{F}_g = C_{E\\leftarrow R}\\begin{bmatrix}-\\mu m/r^2\\\\0\\\\0\\end{bmatrix}_{RST}
+              = -\\frac{\\mu m}{r^2}\\hat{R}\\]
+          </div>
+          <div class="eq-block">
+            <div class="eq-label">Aero + Thrust (VRF &rarr; RST &rarr; ECI)</div>
+            \\[\\vec{F} = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\,\\vec{F}_{VRF}\\]
+          </div>
+          <p style="font-size:0.81rem;color:#4a8060;margin-top:0.4rem;">
+            Same physical vectors &mdash; now expressed in ECI components.
+            Press <strong>Next&nbsp;&rarr;</strong> to sum them.
+          </p>`,
+        enter3D() {
+          // Fade out frame-colored proxies
+          _forceFrameArrows.forEach((a, i) => {
+            gsap.to(a.scale, { x: 0, y: 0, z: 0, duration: 0.35, delay: i * 0.07, ease: 'power2.in',
+              onComplete() {
+                a.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+              }
+            });
+          });
+          // ECI axes fade in
+          setGroupVisible(STATE.persistent.eciGroup, true);
+          animateGroupIn(STATE.persistent.eciGroup, 0.15);
+          // Real force arrows appear in their ECI force colors
+          const forces = [
+            STATE.persistent.gravArrow, STATE.persistent.dragArrow,
+            STATE.persistent.liftArrow, STATE.persistent.thrustArrow,
+          ];
+          forces.forEach(a => {
+            if (!a) return;
+            a.scale.set(0, 0, 0);
+            a.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+          });
+          setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+          forces.forEach((a, i) => {
+            if (!a) return;
+            gsap.to(a.scale, {
+              x: 1, y: 1, z: 1, duration: 0.5, delay: 0.25 + i * 0.11, ease: 'back.out(1.4)',
+              onComplete() {
+                a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+              }
+            });
+          });
+        },
+      },
+      // ── substep 1: Newton's law + F_net ────────────────────────────────
+      {
+        html: `
+          <hr style="border:none;border-top:1px solid #0e2035;margin:1rem 0;">
+          <h3>Step 3 &mdash; Newton&apos;s Law in ECI</h3>
+          <div class="eq-block">
+            \\[m\\ddot{\\vec{r}}_I = \\vec{F}_g + \\vec{F}_{aero} + \\vec{F}_T\\]
+          </div>
+          <p>The cream arrow <strong>F_net</strong> is their vector sum &mdash; ready to integrate
+          for \\(r(t),\\,v(t),\\,\\gamma(t),\\,\\psi(t)\\).</p>`,
+        enter3D() {
+          const s        = getSpacecraftState(0.72);
+          const v_hat    = s.vel.clone().normalize();
+          const lift_hat = s.R_hat.clone().addScaledVector(v_hat, -s.R_hat.dot(v_hat)).normalize();
+          const net = new THREE.Vector3()
+            .addScaledVector(s.R_hat.clone().negate(), 0.44)
+            .addScaledVector(v_hat.clone().negate(),   0.20)
+            .addScaledVector(lift_hat,                 0.20)
+            .normalize();
+          const netArrow = makeArrow(net, s.pos, 0.68, 0xFFFFCC, 'F_net', 0.22, 0.10);
+          netArrow.scale.set(0, 0, 0);
+          netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+          addSlideObj(netArrow);
+          gsap.to(netArrow.scale, {
+            x: 1, y: 1, z: 1, duration: 0.6, delay: 0.2, ease: 'back.out(1.4)',
+            onComplete() {
+              netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+            }
+          });
+        },
+      },
+    ],
+    exit() {
+      setForceVisibility({});
+      _forceFrameArrows = [];
+    },
   },
 
   // ── 16: Complete 3-DOF EOM ─────────────────────────────────────────────
