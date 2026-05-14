@@ -953,7 +953,8 @@ const SLIDES = [
 
       const s      = getSpacecraftState(0.72);
       // Re-tween camera with spacecraft as pivot so OrbitControls orbits around it
-      tweenCamera([3, 5, 7], [s.pos.x, s.pos.y, s.pos.z], 1.0);
+      // Position: +z > 0.615*+x so Earth appears on the left, close enough to see spacecraft clearly
+      tweenCamera([2.0, 1.5, 2.5], [s.pos.x, s.pos.y, s.pos.z], 1.0);
       const R      = s.R_hat;
       const phi    = Math.asin(R.y);
       const lambda = Math.atan2(R.z, R.x);
