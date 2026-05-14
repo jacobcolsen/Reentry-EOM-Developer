@@ -339,7 +339,9 @@ function buildForceArrows() {
   const v_h  = s.vel.clone().normalize();
   const lift_hat = R.clone().addScaledVector(v_h, -R.dot(v_h)).normalize();
 
-  const grav   = makeArrow(R.clone().negate(),   s.pos, 0.55, COLORS.grav,   'Fg');
+  // Length 0.44: tip at orbit_r(1.55) - 0.44 = 1.11 — above Earth surface (1.0)
+  // Large head fractions so the cone is clearly visible
+  const grav   = makeArrow(R.clone().negate(),   s.pos, 0.44, COLORS.grav,   'Fg', 0.30, 0.13);
   const drag   = makeArrow(v_h.clone().negate(), s.pos, 0.50, COLORS.drag,   'FD');
   const lift   = makeArrow(lift_hat,              s.pos, 0.50, COLORS.lift,   'FL');
   const thrust = makeArrow(v_h.clone(),           s.pos, 0.44, COLORS.thrust, 'FT');
@@ -441,7 +443,9 @@ function wireForceHovers() {
     const arrow = getArrow(chip);
     if (!arrow || hoverBase.has(arrow)) return;
     hoverBase.set(arrow, arrow.scale.x);
-    const s = arrow.scale.x * 1.42;
+    // Gravity arrow is short (tip near Earth surface) — cap its hover scale
+    const mult = chip.dataset.forceHover === 'grav' ? 1.20 : 1.42;
+    const s = arrow.scale.x * mult;
     gsap.killTweensOf(arrow.scale);
     gsap.to(arrow.scale, { x: s, y: s, z: s, duration: 0.18, ease: 'power2.out' });
     arrow.traverse(c => {
@@ -471,10 +475,10 @@ function wireForceHovers() {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-function makeArrow(dir, origin, length, hexColor, labelText) {
+function makeArrow(dir, origin, length, hexColor, labelText, hlFrac = 0.12, hwFrac = 0.055) {
   const d = dir.clone().normalize();
   const arrow = new THREE.ArrowHelper(d, origin, length, hexColor,
-    length * 0.12, length * 0.055);
+    length * hlFrac, length * hwFrac);
   if (labelText) {
     const div = document.createElement('div');
     div.className = 'label3d';
@@ -1528,17 +1532,13 @@ const SLIDES = [
       STATE.persistent.orbitLine.visible = true;
       setFrameVisibility({ rst: true });
       setForceVisibility({ grav: true });
-      if (STATE.persistent.gravArrow) STATE.persistent.gravArrow.scale.set(1.4, 1.4, 1.4);
       const s = getSpacecraftState(0.72);
       addSlideObj(new THREE.Line(
         new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), s.pos]),
         new THREE.LineBasicMaterial({ color: COLORS.grav, transparent: true, opacity: 0.30 })
       ));
     },
-    exit() {
-      if (STATE.persistent.gravArrow) STATE.persistent.gravArrow.scale.set(1, 1, 1);
-      setForceVisibility({});
-    },
+    exit() { setForceVisibility({}); },
   },
 
   // ── 11: Drag Force ─────────────────────────────────────────────────────
