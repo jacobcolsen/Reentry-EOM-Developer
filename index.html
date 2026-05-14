@@ -1613,7 +1613,22 @@ const SLIDES = [
         });
       });
     },
-    exit() { setForceVisibility({}); },
+    exit() {
+      setForceVisibility({});
+      // Reset orbit back to frozen position so other slides are unaffected
+      STATE.orbitT = 0.72;
+      if (STATE.spacecraft) {
+        const s0 = getSpacecraftState(0.72);
+        STATE.spacecraft.position.copy(s0.pos);
+        const v0 = s0.vel.clone().normalize();
+        const lh = s0.R_hat.clone().addScaledVector(v0, -s0.R_hat.dot(v0)).normalize();
+        const mat = new THREE.Matrix4().lookAt(s0.pos, s0.pos.clone().add(s0.vel), lh);
+        STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+        STATE.spacecraft.quaternion.multiply(
+          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
+        );
+      }
+    },
   },
 
   // ── 10: Gravitational Force ────────────────────────────────────────────
@@ -2089,14 +2104,16 @@ function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
 
-  // Orbit + Earth rotation
-  STATE.orbitT += delta * ORBIT_SPD;
+  // Earth rotation
   STATE.earthT += delta * EARTH_ROT_SPD;
   if (STATE.persistent.earthMesh) STATE.persistent.earthMesh.rotation.y = STATE.earthT;
   if (STATE.persistent.ecefGroup) STATE.persistent.ecefGroup.rotation.y = STATE.earthT;
 
-  // Keep spacecraft and all live vectors on the moving orbit
-  updateLiveVectors();
+  // Live orbit only on slide 10 (index 9)
+  if (STATE.currentSlide === 9) {
+    STATE.orbitT += delta * ORBIT_SPD;
+    updateLiveVectors();
+  }
 
   controls.update();
   renderer.render(scene, camera);
