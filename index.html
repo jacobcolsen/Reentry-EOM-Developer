@@ -312,9 +312,12 @@ function placeSpacecraft(ship) {
   // Fix the spacecraft at a single point on the orbit — frozen in time
   const s = getSpacecraftState(0.72); // ~41° along the orbit arc
   ship.position.copy(s.pos);
-  // Nose points along velocity, dorsal side faces radially outward
+  // Nose along velocity; dorsal "up" = lift_hat (R_hat ⊥ velocity)
+  // so θ=0 is wings-level and bank angle has physical meaning
+  const v_hat = s.vel.clone().normalize();
+  const lift_hat = s.R_hat.clone().addScaledVector(v_hat, -s.R_hat.dot(v_hat)).normalize();
   const mat = new THREE.Matrix4().lookAt(
-    s.pos, s.pos.clone().add(s.vel), s.R_hat
+    s.pos, s.pos.clone().add(s.vel), lift_hat
   );
   ship.quaternion.setFromRotationMatrix(mat);
   STATE.spacecraft = ship;
@@ -1741,11 +1744,17 @@ const SLIDES = [
         val: Math.PI / 3, duration: 2.2, ease: 'power2.inOut', repeat: -1, yoyo: true,
         onUpdate() {
           if (!STATE.persistent.liftArrow) return;
-          STATE.persistent.liftArrow.setDirection(
-            lift_hat.clone().multiplyScalar(Math.cos(theta.val))
-              .addScaledVector(lat_hat, Math.sin(theta.val))
-              .normalize()
-          );
+          // Lift rotates around velocity axis by θ
+          const bankUp = lift_hat.clone().multiplyScalar(Math.cos(theta.val))
+            .addScaledVector(lat_hat, Math.sin(theta.val));
+          STATE.persistent.liftArrow.setDirection(bankUp.clone().normalize());
+          // Roll the spacecraft in sync — bank angle is rotation of body around velocity axis
+          if (STATE.spacecraft) {
+            const mat = new THREE.Matrix4().lookAt(
+              s.pos, s.pos.clone().add(s.vel), bankUp
+            );
+            STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+          }
         }
       });
     },
@@ -1755,6 +1764,11 @@ const SLIDES = [
       const vh = s.vel.clone().normalize();
       const lh = s.R_hat.clone().addScaledVector(vh, -s.R_hat.dot(vh)).normalize();
       if (STATE.persistent.liftArrow) STATE.persistent.liftArrow.setDirection(lh);
+      // Restore spacecraft to wings-level (θ = 0)
+      if (STATE.spacecraft) {
+        const mat = new THREE.Matrix4().lookAt(s.pos, s.pos.clone().add(s.vel), lh);
+        STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+      }
       setForceVisibility({});
     },
   },
