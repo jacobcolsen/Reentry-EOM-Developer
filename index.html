@@ -864,15 +864,22 @@ const SLIDES = [
           const hEnd   = s.pos.clone().addScaledVector(hDir, hLen);
           const vTip   = s.pos.clone().addScaledVector(vHat, vLen);
 
-          // ── Cyan v cosγ arrow grows outward from spacecraft ──
+          // ── Zoom camera to close-up of vehicle first ──
+          const side = new THREE.Vector3().crossVectors(R, hDir).normalize();
+          const cp = s.pos.clone()
+            .addScaledVector(hDir, -1.8)
+            .addScaledVector(R,     0.7)
+            .addScaledVector(side,  1.3);
+          tweenCamera([cp.x, cp.y, cp.z], [s.pos.x, s.pos.y, s.pos.z], 0.85);
+          const CAM_DELAY = 1.0;
+
+          // ── Build all geometry at scale≈0 (hidden until camera arrives) ──
           const cg = new THREE.Group();
           cg.position.copy(s.pos);
           cg.add(new THREE.ArrowHelper(hDir, new THREE.Vector3(), hLen, 0x00DDFF, 0.07, 0.035));
           cg.scale.set(0.001, 0.001, 0.001);
           addSlideObj(cg);
-          gsap.to(cg.scale, { x: 1, y: 1, z: 1, duration: 0.75, ease: 'power2.out' });
 
-          // ── Red v sinγ arrow grows upward from hEnd ──
           const sinVec = new THREE.Vector3().subVectors(vTip, hEnd);
           const sinLen = sinVec.length();
           const sinDir = sinVec.clone().normalize();
@@ -881,10 +888,8 @@ const SLIDES = [
           rg.add(new THREE.ArrowHelper(sinDir, new THREE.Vector3(), sinLen, 0xFF5555, 0.07, 0.035));
           rg.scale.set(0.001, 0.001, 0.001);
           addSlideObj(rg);
-          gsap.to(rg.scale, { x: 1, y: 1, z: 1, duration: 0.6, delay: 0.6, ease: 'power2.out' });
 
-          // ── Right-angle marker fades in after both lines drawn ──
-          const ra  = 0.036;
+          const ra    = 0.036;
           const raMat = new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0 });
           addSlideObj(new THREE.Line(
             new THREE.BufferGeometry().setFromPoints([
@@ -892,9 +897,7 @@ const SLIDES = [
               hEnd.clone().addScaledVector(R, ra).addScaledVector(hDir, -ra),
               hEnd.clone().addScaledVector(hDir, -ra),
             ]), raMat));
-          gsap.to(raMat, { opacity: 0.6, duration: 0.35, delay: 1.2 });
 
-          // ── Labels ──
           const lblG = new THREE.Group();
           lblG.add(makeFloatLabel('v cosγ',
             s.pos.clone().addScaledVector(hDir, hLen * 0.5).addScaledVector(R, -0.13), 0x00DDFF));
@@ -902,9 +905,16 @@ const SLIDES = [
             hEnd.clone().lerp(vTip, 0.5).addScaledVector(hDir, -0.16), 0xFF5555));
           lblG.visible = false;
           addSlideObj(lblG);
-          gsap.delayedCall(1.25, () => {
-            lblG.visible = true;
-            lblG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
+
+          // ── Start projection animations once camera has arrived ──
+          gsap.delayedCall(CAM_DELAY, () => {
+            gsap.to(cg.scale,  { x: 1, y: 1, z: 1, duration: 0.75, ease: 'power2.out' });
+            gsap.to(rg.scale,  { x: 1, y: 1, z: 1, duration: 0.60, delay: 0.60, ease: 'power2.out' });
+            gsap.to(raMat,     { opacity: 0.6, duration: 0.35, delay: 1.20 });
+            gsap.delayedCall(1.3, () => {
+              lblG.visible = true;
+              lblG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
+            });
           });
         },
       },
@@ -929,19 +939,25 @@ const SLIDES = [
           const hEnd     = s.pos.clone().addScaledVector(hDir, hLen);
           const eastEnd  = s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi));
 
-          // ── Magenta east arrow grows from spacecraft ──
-          if (Math.abs(Math.cos(psi)) > 0.05) {
-            const mg = new THREE.Group();
-            mg.position.copy(s.pos);
-            mg.add(new THREE.ArrowHelper(
+          // ── Zoom to slightly overhead so the horizontal split is clear ──
+          const cp2 = s.pos.clone()
+            .addScaledVector(R,    2.0)
+            .addScaledVector(hDir, 0.4);
+          tweenCamera([cp2.x, cp2.y, cp2.z], [s.pos.x, s.pos.y, s.pos.z], 0.85);
+          const CAM_DELAY = 1.0;
+
+          // ── Build geometry at scale≈0 ──
+          const mg = Math.abs(Math.cos(psi)) > 0.05 ? (() => {
+            const g = new THREE.Group();
+            g.position.copy(s.pos);
+            g.add(new THREE.ArrowHelper(
               s.S_hat.clone().multiplyScalar(Math.sign(Math.cos(psi))),
               new THREE.Vector3(), hLen * Math.abs(Math.cos(psi)), 0xFF44CC, 0.06, 0.03));
-            mg.scale.set(0.001, 0.001, 0.001);
-            addSlideObj(mg);
-            gsap.to(mg.scale, { x: 1, y: 1, z: 1, duration: 0.75, ease: 'power2.out' });
-          }
+            g.scale.set(0.001, 0.001, 0.001);
+            addSlideObj(g);
+            return g;
+          })() : null;
 
-          // ── Green north arrow grows from eastEnd toward hEnd ──
           const northVec = new THREE.Vector3().subVectors(hEnd, eastEnd);
           const northLen = northVec.length();
           const northDir = northVec.clone().normalize();
@@ -950,21 +966,17 @@ const SLIDES = [
           ng.add(new THREE.ArrowHelper(northDir, new THREE.Vector3(), northLen, 0x44FF88, 0.06, 0.030));
           ng.scale.set(0.001, 0.001, 0.001);
           addSlideObj(ng);
-          gsap.to(ng.scale, { x: 1, y: 1, z: 1, duration: 0.6, delay: 0.6, ease: 'power2.out' });
 
-          // ── Right-angle marker fades in ──
-          const rb     = 0.030;
-          const perp2  = new THREE.Vector3().crossVectors(s.S_hat, R).normalize();
-          const rbMat  = new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0 });
+          const rb    = 0.030;
+          const perp2 = new THREE.Vector3().crossVectors(s.S_hat, R).normalize();
+          const rbMat = new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0 });
           addSlideObj(new THREE.Line(
             new THREE.BufferGeometry().setFromPoints([
               eastEnd.clone().addScaledVector(perp2, rb),
               eastEnd.clone().addScaledVector(perp2, rb).addScaledVector(s.S_hat, rb),
               eastEnd.clone().addScaledVector(s.S_hat, rb),
             ]), rbMat));
-          gsap.to(rbMat, { opacity: 0.55, duration: 0.35, delay: 1.2 });
 
-          // ── Labels ──
           const enG = new THREE.Group();
           enG.add(makeFloatLabel('v cosγ cosψ',
             s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi) * 0.5).addScaledVector(R, -0.14),
@@ -974,9 +986,16 @@ const SLIDES = [
             0x44FF88));
           enG.visible = false;
           addSlideObj(enG);
-          gsap.delayedCall(1.25, () => {
-            enG.visible = true;
-            enG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
+
+          // ── Start animations once camera has arrived ──
+          gsap.delayedCall(CAM_DELAY, () => {
+            if (mg) gsap.to(mg.scale, { x: 1, y: 1, z: 1, duration: 0.75, ease: 'power2.out' });
+            gsap.to(ng.scale, { x: 1, y: 1, z: 1, duration: 0.60, delay: 0.60, ease: 'power2.out' });
+            gsap.to(rbMat,    { opacity: 0.55, duration: 0.35, delay: 1.20 });
+            gsap.delayedCall(1.3, () => {
+              enG.visible = true;
+              enG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
+            });
           });
         },
       },
