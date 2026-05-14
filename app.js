@@ -1298,11 +1298,19 @@ const SLIDES = [
         \\[\\hat{y}_v = \\hat{z}_v \\times \\hat{x}_v\\]
       </div>
       <p>Forces are most naturally expressed in this frame, then transformed back to
-      RST for the equations of motion.</p>`,
+      RST for the equations of motion.</p>
+      <div style="margin-top:1.1rem;">
+        <div style="font-size:0.72rem;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:0.5rem">Toggle Frames</div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <button id="toggle-rst" style="padding:.35rem .8rem;background:#160a2a;border:1px solid #CC44FF;border-radius:6px;color:#DD88FF;font-size:.8rem;cursor:pointer;letter-spacing:.04em;transition:opacity .15s,border-color .15s;">● RST</button>
+          <button id="toggle-vrf" style="padding:.35rem .8rem;background:#0a1a0a;border:1px solid #44FF44;border-radius:6px;color:#88FF88;font-size:.8rem;cursor:pointer;letter-spacing:.04em;transition:opacity .15s,border-color .15s;">● VRF</button>
+          <button id="toggle-vel8" style="padding:.35rem .8rem;background:#1a1200;border:1px solid #FFD700;border-radius:6px;color:#FFD700;font-size:.8rem;cursor:pointer;letter-spacing:.04em;transition:opacity .15s,border-color .15s;">● Velocity</button>
+        </div>
+      </div>`,
     camera: { pos: [3, 3, 7], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ rst: true, vrf: true, vel: true }); // VRF defined relative to RST
+      setFrameVisibility({ rst: true, vrf: true, vel: true });
 
       const s = getSpacecraftState(0.72);
       const x_v = s.vel.clone().normalize();
@@ -1312,39 +1320,59 @@ const SLIDES = [
       const vrfGroup = STATE.persistent.vrfGroup;
       const arrows   = vrfGroup.children.filter(c => c.isArrowHelper);
 
-      // Define start (RST-aligned) and end (VRF) directions for each arrow
       const startDirs = [s.R_hat.clone(), s.S_hat.clone(), s.T_hat.clone()];
       const endDirs   = [x_v.clone(),    y_v.clone(),    z_v.clone()];
 
-      // Start arrows pointing along RST — visually coincides with RST frame
       if (arrows[0]) arrows[0].setDirection(startDirs[0]);
       if (arrows[1]) arrows[1].setDirection(startDirs[1]);
       if (arrows[2]) arrows[2].setDirection(startDirs[2]);
 
-      // Hide labels until animation finishes
       vrfGroup.traverse(obj => {
         if (obj.isCSS2DObject) { obj.visible = false; obj.element.style.display = 'none'; }
       });
 
-      // Animate each arrow direction: RST → VRF (lerp + normalize = slerp on unit sphere)
       const proxy = { t: 0 };
       STATE.vrfAnim = gsap.to(proxy, {
         t: 1, duration: 1.5, ease: 'power2.inOut', delay: 0.5,
         onUpdate() {
           arrows.forEach((arrow, i) => {
             if (!arrow) return;
-            const dir = new THREE.Vector3()
-              .lerpVectors(startDirs[i], endDirs[i], proxy.t)
-              .normalize();
-            arrow.setDirection(dir);
+            arrow.setDirection(new THREE.Vector3().lerpVectors(startDirs[i], endDirs[i], proxy.t).normalize());
           });
         },
         onComplete() {
-          vrfGroup.traverse(obj => {
-            if (obj.isCSS2DObject) { obj.visible = true; obj.element.style.display = ''; }
-          });
+          if (vrfGroup.visible) {
+            vrfGroup.traverse(obj => {
+              if (obj.isCSS2DObject) { obj.visible = true; obj.element.style.display = ''; }
+            });
+          }
         }
       });
+
+      // ── Frame toggle buttons ──
+      function wireToggle(id, grp) {
+        const btn = document.getElementById(id);
+        if (!btn || !grp) return;
+        btn.addEventListener('click', () => {
+          const show = !grp.visible;
+          grp.visible = show;
+          grp.traverse(c => {
+            if (c.isCSS2DObject) { c.visible = show; c.element.style.display = show ? '' : 'none'; }
+          });
+          btn.style.opacity = show ? '1' : '0.35';
+        });
+      }
+      wireToggle('toggle-rst',  STATE.persistent.rstGroup);
+      wireToggle('toggle-vrf',  STATE.persistent.vrfGroup);
+
+      const btnVel = document.getElementById('toggle-vel8');
+      if (btnVel) {
+        btnVel.addEventListener('click', () => {
+          const show = !STATE.persistent.velArrow.visible;
+          STATE.persistent.velArrow.visible = show;
+          btnVel.style.opacity = show ? '1' : '0.35';
+        });
+      }
     },
     exit() {
       if (STATE.vrfAnim) { STATE.vrfAnim.kill(); STATE.vrfAnim = null; }
