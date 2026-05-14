@@ -1739,7 +1739,143 @@ const SLIDES = [
     exit() { setForceVisibility({}); },
   },
 
-  // ── 14: Complete 3-DOF EOM ─────────────────────────────────────────────
+  // ── 14: Frame Rotation Matrices ────────────────────────────────────────
+  {
+    title: 'Frame Rotation Matrices',
+    html: `
+      <p>Every frame-to-frame rotation is encoded in a 3&times;3 orthogonal matrix.
+      Three matrices chain together to carry any vector from VRF up to ECI &mdash; the
+      coordinate system where Newton&apos;s law applies.</p>
+
+      <h3>Earth Spin &mdash; ECI &harr; ECEF</h3>
+      <div class="eq-block">
+        <div class="eq-label">rotation by &theta;<sub>E</sub> = &Omega;t about polar axis</div>
+        \\[C_{ECI\\leftarrow ECEF} = R_Z(\\theta_E) =
+          \\begin{bmatrix}
+            \\cos\\theta_E & -\\sin\\theta_E & 0 \\\\
+            \\sin\\theta_E &  \\cos\\theta_E & 0 \\\\
+            0 & 0 & 1
+          \\end{bmatrix}\\]
+      </div>
+
+      <h3>Vehicle Position &mdash; ECI &harr; RST</h3>
+      <div class="eq-block">
+        <div class="eq-label">columns = RST unit vectors expressed in ECI</div>
+        \\[C_{E\\leftarrow R} = \\bigl[\\hat{R}\\;\\big|\\;\\hat{S}\\;\\big|\\;\\hat{T}\\bigr],
+        \\qquad C_{E\\leftarrow R}^{-1} = C_{E\\leftarrow R}^{T}\\]
+      </div>
+
+      <h3>Flight Attitude &mdash; RST &harr; VRF</h3>
+      <div class="eq-block">
+        <div class="eq-label">heading &psi; about T&#x0302;, then flight-path &gamma; about y&#x0302;<sub>v</sub></div>
+        \\[C_{V\\leftarrow R} = R_Z(\\psi)\\,R_Y(-\\gamma)\\]
+        \\[R_Z(\\psi)=\\begin{bmatrix}\\cos\\psi&-\\sin\\psi&0\\\\\\sin\\psi&\\cos\\psi&0\\\\0&0&1\\end{bmatrix},\\quad
+        R_Y(-\\gamma)=\\begin{bmatrix}\\cos\\gamma&0&\\sin\\gamma\\\\0&1&0\\\\-\\sin\\gamma&0&\\cos\\gamma\\end{bmatrix}\\]
+        \\[C_{R\\leftarrow V} = C_{V\\leftarrow R}^{T} = R_Y(\\gamma)\\,R_Z(-\\psi)\\]
+      </div>
+
+      <h3>Complete Chain &mdash; VRF &rarr; ECI</h3>
+      <div class="eq-block">
+        \\[\\vec{v}_{ECI} =
+          \\underbrace{C_{E\\leftarrow R}}_{\\text{position}}\\;
+          \\underbrace{C_{R\\leftarrow V}}_{\\text{attitude}}\\;
+          \\vec{v}_{VRF}\\]
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-top:0.7rem;font-size:0.82rem;">
+        <span class="chip chip-vrf">VRF</span>
+        <span style="color:#3a6a9a">&nbsp;&rarr;&nbsp;\\(C_{R\\leftarrow V}\\)&nbsp;&rarr;&nbsp;</span>
+        <span class="chip chip-rst">RST</span>
+        <span style="color:#3a6a9a">&nbsp;&rarr;&nbsp;\\(C_{E\\leftarrow R}\\)&nbsp;&rarr;&nbsp;</span>
+        <span class="chip chip-eci">ECI</span>
+      </div>`,
+    camera: { pos: [7, 5, 10], target: [0, 0, 0], dur: 1.2 },
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      // Build up the chain: ECI first, then RST, then VRF
+      setFrameVisibility({ eci: true, rst: true, vel: true });
+      animateGroupIn(STATE.persistent.rstGroup, 0.2);
+      const gen = STATE.slideGen;
+      gsap.delayedCall(0.55, () => {
+        if (STATE.slideGen !== gen) return;
+        setGroupVisible(STATE.persistent.vrfGroup, true);
+        animateGroupIn(STATE.persistent.vrfGroup, 0);
+      });
+    },
+    exit() {},
+  },
+
+  // ── 15: Forces in the Inertial Frame ───────────────────────────────────
+  {
+    title: 'Forces in the Inertial Frame',
+    html: `
+      <p>Apply the rotation chain to each force. Once expressed in ECI, they share the
+      same coordinate system and can be directly summed for Newton&apos;s law.</p>
+
+      <h3>Gravity &mdash; <span class="chip chip-rst">in RST</span></h3>
+      <div class="eq-block">
+        \\[\\vec{F}_g = C_{E\\leftarrow R}
+          \\begin{bmatrix}-\\mu m/r^2\\\\0\\\\0\\end{bmatrix}_{RST}
+          = -\\frac{\\mu m}{r^2}\\hat{R}\\]
+        <p style="font-size:0.78rem;color:#3a6a9a;margin-top:0.4rem;">
+          One non-zero entry &mdash; gravity is already diagonal in RST.
+        </p>
+      </div>
+
+      <h3>Aero Forces &mdash; <span class="chip chip-vrf">in VRF</span></h3>
+      <div class="eq-block">
+        \\[\\vec{F}_{aero} = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}
+          \\begin{bmatrix}-D \\\\ L\\cos\\theta \\\\ -L\\sin\\theta\\end{bmatrix}_{VRF}\\]
+      </div>
+
+      <h3>Thrust &mdash; <span class="chip chip-thrust">in VRF</span></h3>
+      <div class="eq-block">
+        \\[\\vec{F}_T = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}
+          \\begin{bmatrix}T\\cos\\alpha_T\\cos\\beta_T\\\\T\\cos\\alpha_T\\sin\\beta_T\\\\T\\sin\\alpha_T\\end{bmatrix}_{VRF}\\]
+      </div>
+
+      <h3>Newton&apos;s Law &mdash; all forces in ECI</h3>
+      <div class="eq-block">
+        \\[m\\ddot{\\vec{r}}_I = \\vec{F}_g + \\vec{F}_{aero} + \\vec{F}_T\\]
+      </div>
+      <p style="font-size:0.81rem;color:#4a8060;margin-top:0.5rem;">
+        The arrows in the scene are already in ECI (world space). The rotation matrices
+        give us the ECI <em>components</em> from frame-native scalars. The cream arrow
+        is their vector sum \\(\\vec{F}_{net}\\).
+      </p>`,
+    camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 1.0 },
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, rst: true, vrf: true, vel: true });
+      setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+
+      // Net force arrow — weighted vector sum of all four force directions
+      const s         = getSpacecraftState(0.72);
+      const v_hat     = s.vel.clone().normalize();
+      const lift_hat  = s.R_hat.clone().addScaledVector(v_hat, -s.R_hat.dot(v_hat)).normalize();
+      const net = new THREE.Vector3()
+        .addScaledVector(s.R_hat.clone().negate(), 0.44)
+        .addScaledVector(v_hat.clone().negate(),  0.20)
+        .addScaledVector(lift_hat,                0.20)
+        .normalize();
+      const netArrow = makeArrow(net, s.pos, 0.68, 0xFFFFCC, 'F_net', 0.22, 0.10);
+      netArrow.scale.set(0, 0, 0);
+      netArrow.traverse(o => {
+        if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; }
+      });
+      addSlideObj(netArrow);
+      gsap.to(netArrow.scale, {
+        x: 1, y: 1, z: 1, duration: 0.6, delay: 0.5, ease: 'back.out(1.4)',
+        onComplete() {
+          netArrow.traverse(o => {
+            if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; }
+          });
+        }
+      });
+    },
+    exit() { setForceVisibility({}); },
+  },
+
+  // ── 16: Complete 3-DOF EOM ─────────────────────────────────────────────
   {
     title: 'Complete 3-DOF Equations of Motion',
     html: `
@@ -1787,7 +1923,7 @@ const SLIDES = [
     },
   },
 
-  // ── 15: Summary ────────────────────────────────────────────────────────
+  // ── 17: Summary ────────────────────────────────────────────────────────
   {
     title: 'Summary & Assumptions',
     html: `
