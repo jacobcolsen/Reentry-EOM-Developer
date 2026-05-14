@@ -372,15 +372,12 @@ function buildECEFAxes() {
 
 function buildRSTAxes() {
   const s = getSpacecraftState(0.72);
-  const L = 2.1;               // long enough to reach past the spacecraft (at ~1.55)
-  const O = new THREE.Vector3(0, 0, 0);  // origin at planetary center
+  const L = 0.75;              // centred at spacecraft, same scale as VRF
+  const O = s.pos.clone();     // origin at spacecraft (RST is a vehicle-pointing frame)
   const group = new THREE.Group();
 
-  // x₂: along spacecraft position vector (radially outward from planetary center)
   group.add(makeArrow(s.R_hat, O, L, COLORS.rst.r, 'x₂'));
-  // y₂: parallel to equatorial plane (East)
   group.add(makeArrow(s.S_hat, O, L, COLORS.rst.s, 'y₂'));
-  // z₂: orthogonal, completes right-hand system
   group.add(makeArrow(s.T_hat, O, L, COLORS.rst.t, 'z₂'));
 
   group.add(makeAxisLabel('Radial (x₂)', O.clone().addScaledVector(s.R_hat, L + 0.14), COLORS.rst.r));
@@ -394,7 +391,7 @@ function buildRSTAxes() {
 
 function buildVRFAxes() {
   const s   = getSpacecraftState(0.72);
-  const L   = 0.62;
+  const L   = 0.75;
   const pos = s.pos;
 
   // x_v: velocity direction
@@ -430,7 +427,7 @@ function buildVRFAxes() {
 function buildVelocityArrow() {
   const s = getSpacecraftState(0.72);
   const arrow = new THREE.ArrowHelper(
-    s.vel.clone().normalize(), s.pos, 0.82, COLORS.vel, 0.14, 0.07
+    s.vel.clone().normalize(), s.pos, 0.82, COLORS.vel, 0.09, 0.045
   );
   arrow.visible = false;
   scene.add(arrow);
@@ -531,7 +528,7 @@ function animateGroupIn(group, baseDelay = 0) {
 function makeArrow(dir, origin, length, hexColor, labelText) {
   const d = dir.clone().normalize();
   const arrow = new THREE.ArrowHelper(d, origin, length, hexColor,
-    length * 0.18, length * 0.09);
+    length * 0.12, length * 0.055);
   if (labelText) {
     const div = document.createElement('div');
     div.className = 'label3d';
