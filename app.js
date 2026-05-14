@@ -219,6 +219,8 @@ function placeSpacecraft(ship) {
     s.pos, s.pos.clone().add(s.vel), lift_hat
   );
   ship.quaternion.setFromRotationMatrix(mat);
+  // GLB nose is along local +X; lookAt makes -Z=velocity, so rotate +X→-Z via +90° about Y
+  ship.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2));
   STATE.spacecraft = ship;
   scene.add(ship);
 }
@@ -1653,6 +1655,7 @@ const SLIDES = [
               s.pos, s.pos.clone().add(s.vel), bankUp
             );
             STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+            STATE.spacecraft.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2));
           }
         }
       });
@@ -1667,6 +1670,7 @@ const SLIDES = [
       if (STATE.spacecraft) {
         const mat = new THREE.Matrix4().lookAt(s.pos, s.pos.clone().add(s.vel), lh);
         STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+        STATE.spacecraft.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2));
       }
       setForceVisibility({});
     },
