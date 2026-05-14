@@ -1075,20 +1075,22 @@ const SLIDES = [
       // ── Local horizontal disc ──
       addSlideObj(makeHorizDisc(s.pos, R, 0.62));
 
-      // ── Dynamic γ arc — geometry rebuilt each frame to track the animation ──
+      // ── Dynamic γ arc — radius 0.65 so it spans close to the arrow tip ──
       const arcPts = [];
-      for (let i = 0; i <= 32; i++) arcPts.push(new THREE.Vector3());
+      for (let i = 0; i <= 40; i++) arcPts.push(new THREE.Vector3());
       const gammaArcGeo = new THREE.BufferGeometry().setFromPoints(arcPts);
       const gammaArc    = new THREE.Line(gammaArcGeo,
         new THREE.LineBasicMaterial({ color: COLORS.arc, transparent: true, opacity: 0.9 }));
       addSlideObj(gammaArc);
 
+      const ARC_R = 0.65;
+
       function rebuildArc(g) {
         const pts = [];
-        for (let i = 0; i <= 32; i++) {
-          const a = (i / 32) * g;
+        for (let i = 0; i <= 40; i++) {
+          const a = (i / 40) * g;
           pts.push(s.pos.clone().add(
-            vel_h.clone().multiplyScalar(Math.cos(a)).addScaledVector(R, Math.sin(a)).multiplyScalar(0.32)
+            vel_h.clone().multiplyScalar(Math.cos(a)).addScaledVector(R, Math.sin(a)).multiplyScalar(ARC_R)
           ));
         }
         gammaArcGeo.setFromPoints(pts);
@@ -1096,28 +1098,24 @@ const SLIDES = [
 
       // ── Horizontal reference dash ──
       const hRefLine = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([s.pos.clone(), s.pos.clone().addScaledVector(vel_h, 0.65)]),
+        new THREE.BufferGeometry().setFromPoints([s.pos.clone(), s.pos.clone().addScaledVector(vel_h, 0.75)]),
         new THREE.LineDashedMaterial({ color: 0x4488cc, dashSize: 0.04, gapSize: 0.03, opacity: 0.7, transparent: true })
       );
       hRefLine.computeLineDistances();
       addSlideObj(hRefLine);
 
-      // ── Live γ HUD label (CSS2D, floats above spacecraft) ──
+      // ── γ label on the arc (CSS2D, updates position each frame) ──
+      const gammaLblEl = document.createElement('div');
+      gammaLblEl.style.cssText = 'font-size:14px;font-weight:700;color:#FFEE77;font-family:Segoe UI,system-ui,sans-serif;pointer-events:none;text-shadow:0 0 6px rgba(0,0,0,0.9);';
+      gammaLblEl.textContent = 'γ';
+      const gammaLblObj = new CSS2DObject(gammaLblEl);
+      addSlideObj(gammaLblObj);
+
+      // ── Compact live HUD: angle value + status only ──
       const hudEl = document.createElement('div');
-      hudEl.style.cssText = [
-        'background:rgba(2,4,8,0.88)',
-        'border-radius:9px',
-        'padding:7px 15px',
-        'font-family:Segoe UI,system-ui,sans-serif',
-        'font-size:13px',
-        'white-space:nowrap',
-        'text-align:center',
-        'line-height:1.55',
-        'pointer-events:none',
-        'min-width:155px',
-      ].join(';');
+      hudEl.style.cssText = 'background:rgba(4,10,20,0.75);border-radius:7px;padding:4px 11px;font-family:Segoe UI,system-ui,sans-serif;white-space:nowrap;text-align:center;pointer-events:none;line-height:1.5;';
       const hudObj = new CSS2DObject(hudEl);
-      hudObj.position.copy(s.pos.clone().addScaledVector(R, 0.55).addScaledVector(vel_h, 0.15));
+      hudObj.position.copy(s.pos.clone().addScaledVector(R, 0.55).addScaledVector(vel_h, 0.18));
       addSlideObj(hudObj);
 
       function updateHUD(g) {
@@ -1126,13 +1124,12 @@ const SLIDES = [
         const arrow = deg >  0.5 ? '↑' : deg < -0.5 ? '↓' : '→';
         const label = deg >  0.5 ? 'Climbing' : deg < -0.5 ? 'Descending' : 'Horizontal';
         const sign  = deg > 0    ? '+' : '';
-        hudEl.style.border = `1px solid ${color}`;
-        hudEl.innerHTML = `
-          <div style="font-size:10px;letter-spacing:.09em;color:#3a6a9a;text-transform:uppercase;margin-bottom:1px">Flight-Path Angle</div>
-          <div style="font-size:21px;font-weight:700;color:${color};letter-spacing:.02em">γ = ${sign}${deg.toFixed(1)}°</div>
-          <div style="font-size:12px;color:${color};margin:1px 0 4px">${arrow} ${label}</div>
-          <div style="font-size:10px;color:#5a80a0">ṙ = <span style="color:#FFD700">v</span> · sin γ &nbsp;→&nbsp; <span style="color:#FFD700">v</span> · (${Math.sin(g).toFixed(3)})</div>
-        `;
+        // Update arc label position to arc midpoint
+        const mid = g / 2;
+        gammaLblObj.position.copy(s.pos.clone().add(
+          vel_h.clone().multiplyScalar(Math.cos(mid)).addScaledVector(R, Math.sin(mid)).multiplyScalar(ARC_R + 0.12)
+        ));
+        hudEl.innerHTML = `<span style="font-size:15px;font-weight:700;color:${color}">γ = ${sign}${deg.toFixed(1)}°</span>&nbsp; <span style="font-size:12px;color:${color}">${arrow} ${label}</span>`;
       }
 
       // ── Oscillating γ animation ──
