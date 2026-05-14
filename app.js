@@ -415,6 +415,61 @@ function animateGroupIn(group, baseDelay = 0) {
   });
 }
 
+// ── Force hover — highlight arrow in 3D when hovering panel chip ───────────
+function wireForceHovers() {
+  const FORCE_MAP = {
+    thrust: 'thrustArrow',
+    drag:   'dragArrow',
+    lift:   'liftArrow',
+    grav:   'gravArrow',
+    cor:    'coriolisArrow',
+    cen:    'centripArrow',
+  };
+  // Stores the scale each arrow had before hover started so we can restore it
+  const hoverBase = new Map();
+
+  function getArrow(chip) {
+    const arrow = STATE.persistent[FORCE_MAP[chip.dataset.forceHover]];
+    return arrow && arrow.visible ? arrow : null;
+  }
+
+  const panel = document.getElementById('slide-body');
+
+  panel.addEventListener('mouseover', (e) => {
+    const chip = e.target.closest('[data-force-hover]');
+    if (!chip) return;
+    const arrow = getArrow(chip);
+    if (!arrow || hoverBase.has(arrow)) return;
+    hoverBase.set(arrow, arrow.scale.x);
+    const s = arrow.scale.x * 1.42;
+    gsap.killTweensOf(arrow.scale);
+    gsap.to(arrow.scale, { x: s, y: s, z: s, duration: 0.18, ease: 'power2.out' });
+    arrow.traverse(c => {
+      if (c.isCSS2DObject) {
+        c.element.style.textShadow = '0 0 6px currentColor, 0 0 18px currentColor, 0 0 36px currentColor';
+        c.element.style.fontWeight = '900';
+      }
+    });
+  });
+
+  panel.addEventListener('mouseout', (e) => {
+    const chip = e.target.closest('[data-force-hover]');
+    if (!chip || chip.contains(e.relatedTarget)) return;
+    const arrow = STATE.persistent[FORCE_MAP[chip.dataset.forceHover]];
+    if (!arrow || !hoverBase.has(arrow)) return;
+    const base = hoverBase.get(arrow);
+    hoverBase.delete(arrow);
+    gsap.killTweensOf(arrow.scale);
+    gsap.to(arrow.scale, { x: base, y: base, z: base, duration: 0.28, ease: 'power2.out' });
+    arrow.traverse(c => {
+      if (c.isCSS2DObject) {
+        c.element.style.textShadow = '';
+        c.element.style.fontWeight = '';
+      }
+    });
+  });
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 function makeArrow(dir, origin, length, hexColor, labelText) {
   const d = dir.clone().normalize();
@@ -1385,10 +1440,10 @@ const SLIDES = [
       </div>
       <h3>Forces acting on the vehicle</h3>
       <ul>
-        <li><span class="chip chip-thrust">Thrust</span> — propulsive force</li>
-        <li><span class="chip chip-drag">Drag</span> — aerodynamic retarding force</li>
-        <li><span class="chip chip-lift">Lift</span> — aerodynamic perpendicular force</li>
-        <li><span class="chip chip-grav">Gravity</span> — central body attraction</li>
+        <li><span class="chip chip-thrust" data-force-hover="thrust">Thrust</span> — propulsive force</li>
+        <li><span class="chip chip-drag" data-force-hover="drag">Drag</span> — aerodynamic retarding force</li>
+        <li><span class="chip chip-lift" data-force-hover="lift">Lift</span> — aerodynamic perpendicular force</li>
+        <li><span class="chip chip-grav" data-force-hover="grav">Gravity</span> — central body attraction</li>
       </ul>
       <p>The superscript \\(I\\) on \\(\\ddot{\\vec{r}}\\) emphasizes the derivative is taken
       with respect to the <em>inertial</em> frame.</p>`,
@@ -1426,8 +1481,8 @@ const SLIDES = [
           + \\underbrace{\\vec{\\Omega}\\times(\\vec{\\Omega}\\times\\vec{r})}_{\\text{centripetal}}\\]
       </div>
       <ul>
-        <li><strong>Coriolis</strong> — depends on velocity relative to planet</li>
-        <li><strong>Centripetal</strong> — depends on distance from spin axis</li>
+        <li><span class="chip" style="background:#001a1a;border:1px solid #44FFFF;color:#44FFFF" data-force-hover="cor">Coriolis</span> — depends on velocity relative to planet</li>
+        <li><span class="chip" style="background:#120a1a;border:1px solid #AA44FF;color:#AA44FF" data-force-hover="cen">Centripetal</span> — depends on distance from spin axis</li>
       </ul>
       <p>Both terms update in real-time as the spacecraft moves — watch the arrows change
       direction along the orbit.</p>`,
@@ -1466,7 +1521,7 @@ const SLIDES = [
       <div class="eq-block">
         \\[\\vec{g} = -\\frac{\\mu}{r^2}\\hat{R} = \\begin{bmatrix}-g \\\\ 0 \\\\ 0\\end{bmatrix}_{\\text{RST}}\\]
       </div>
-      <p>The <span class="chip chip-grav">blue arrow</span> grows longer as the spacecraft
+      <p>The <span class="chip chip-grav" data-force-hover="grav">gravity arrow</span> grows longer as the spacecraft
       descends closer to Earth.</p>`,
     camera: { pos: [4, 2, 9], target: [0, 0, 0], dur: 1.2 },
     enter() {
@@ -1490,7 +1545,7 @@ const SLIDES = [
   {
     title: 'Drag Force',
     html: `
-      <p>Drag acts directly <em>opposite</em> to the velocity vector — always in the
+      <p><span class="chip chip-drag" data-force-hover="drag">Drag</span> acts directly <em>opposite</em> to the velocity vector — always in the
       \\(-\\hat{x}_v\\) direction of the VRF.</p>
       <div class="eq-block">
         <div class="eq-label">Aerodynamic drag</div>
@@ -1536,7 +1591,7 @@ const SLIDES = [
         <div class="eq-label">Lift vector</div>
         \\[\\vec{F}_L = L(\\cos\\theta\\,\\hat{L} + \\sin\\theta\\,\\hat{N})\\]
       </div>
-      <p>Watch the <span class="chip chip-lift">pink arrow</span> rotate around the velocity
+      <p>Watch the <span class="chip chip-lift" data-force-hover="lift">lift arrow</span> rotate around the velocity
       axis as bank angle \\(\\theta\\) changes — this is how a lifting entry vehicle controls
       its trajectory.</p>`,
     camera: { pos: [3, 4, 6], target: [0, 0, 0], dur: 1.0 },
@@ -1619,7 +1674,14 @@ const SLIDES = [
       </div>
       <p>Transforming to RST via \\(\\mathbf{T}_{\\text{VRF}\\to\\text{RST}}\\) gives the
       thrust components used in the force equations.</p>
-      <p>All four forces are now simultaneously visible on the vehicle.</p>`,
+      <p>All four forces are now simultaneously visible on the vehicle.</p>
+      <p style="margin-top:0.9rem;font-size:0.82rem;color:#3a6a9a;">Hover to highlight in scene:</p>
+      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.3rem;">
+        <span class="chip chip-grav"   data-force-hover="grav">Gravity</span>
+        <span class="chip chip-drag"   data-force-hover="drag">Drag</span>
+        <span class="chip chip-lift"   data-force-hover="lift">Lift</span>
+        <span class="chip chip-thrust" data-force-hover="thrust">Thrust</span>
+      </div>`,
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -1663,7 +1725,13 @@ const SLIDES = [
         \\[\\dot{\\gamma} = \\frac{1}{v}\\left[\\frac{L\\cos\\theta}{m} - \\left(g - \\frac{v^2}{r}\\right)\\cos\\gamma + 2\\Omega v\\cos\\phi\\cos\\psi + \\Omega^2 r\\cos\\phi(\\cos\\gamma\\cos\\phi + \\sin\\gamma\\sin\\phi\\cos\\psi)\\right]\\]
         \\[\\dot{\\psi} = \\frac{1}{v\\cos\\gamma}\\left[\\frac{L\\sin\\theta}{m\\cos\\gamma} + \\frac{v^2\\cos^2\\gamma\\sin\\psi\\tan\\phi}{r} - 2\\Omega v(\\tan\\gamma\\cos\\phi\\cos\\psi - \\sin\\phi) + \\frac{\\Omega^2 r\\sin\\phi\\cos\\phi\\sin\\psi}{\\cos\\gamma}\\right]\\]
       </div>
-      <p>State vector: \\(\\mathbf{x} = (r,\\,v,\\,\\gamma,\\,\\psi,\\,\\lambda,\\,\\phi)^T\\)</p>`,
+      <p>State vector: \\(\\mathbf{x} = (r,\\,v,\\,\\gamma,\\,\\psi,\\,\\lambda,\\,\\phi)^T\\)</p>
+      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.7rem;">
+        <span class="chip chip-grav"   data-force-hover="grav">Gravity</span>
+        <span class="chip chip-drag"   data-force-hover="drag">Drag</span>
+        <span class="chip chip-lift"   data-force-hover="lift">Lift</span>
+        <span class="chip chip-thrust" data-force-hover="thrust">Thrust</span>
+      </div>`,
     camera: { pos: [6, 5, 10], target: [0, 0, 0], dur: 1.5 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -1970,6 +2038,7 @@ async function boot() {
   if (li) li.remove();
 
   buildProgressDots();
+  wireForceHovers();
   goToSlide(0);
   animate();
 

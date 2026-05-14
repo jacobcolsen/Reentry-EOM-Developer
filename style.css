@@ -261,6 +261,16 @@ input[type="file"] { display: none; }
 .chip-lift  { background: #1a0a10; border: 1px solid #FF6699; color: #FFAABB; }
 .chip-thrust{ background: #1a0a0a; border: 1px solid #FF4444; color: #FF9999; }
 
+/* Force chips that trigger 3D highlight on hover */
+[data-force-hover] {
+  cursor: pointer;
+  transition: filter 0.15s, box-shadow 0.15s;
+}
+[data-force-hover]:hover {
+  filter: brightness(1.5);
+  box-shadow: 0 0 8px currentColor;
+}
+
 /* ── Slide footer ── */
 #slide-footer {
   flex-shrink: 0;
