@@ -1190,7 +1190,7 @@ const SLIDES = [
         The arrows in the scene are the two components — their lengths are
         proportional to <span style="color:#FF44CC">cos ψ</span> and
         <span style="color:#44FFEE">sin ψ</span>.</p>`,
-    camera: { pos: [0, 9, 6], target: [0, 0, 0], dur: 1.2 },
+    camera: { pos: [2.5, 1.5, 1.5], target: [0, 0, 0], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
       setFrameVisibility({ vel: true });
