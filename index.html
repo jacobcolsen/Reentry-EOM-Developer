@@ -503,25 +503,15 @@ function setForceVisibility({ grav=false, drag=false, lift=false, thrust=false, 
 
 // Grow arrows in with a stagger spring; labels appear only after all arrows land
 function animateGroupIn(group, baseDelay = 0) {
-  // Hide labels until animation completes (set both flags)
-  group.traverse(obj => {
-    if (obj.isCSS2DObject) { obj.visible = false; obj.element.style.display = 'none'; }
-  });
-
+  // Labels are already visible via setGroupVisible — only animate arrow scales
   const arrows = group.children.filter(c => c.isArrowHelper);
   arrows.forEach((arrow, i) => {
-    arrow.scale.set(0, 0, 0);
+    arrow.scale.set(0.001, 0.001, 0.001);
     gsap.to(arrow.scale, {
       x: 1, y: 1, z: 1,
-      duration: 0.5,
+      duration: 0.55,
       delay: baseDelay + i * 0.12,
       ease: 'back.out(1.4)',
-      onComplete: i === arrows.length - 1 ? () => {
-        // Reveal labels once the last arrow finishes growing
-        group.traverse(obj => {
-          if (obj.isCSS2DObject) { obj.visible = true; obj.element.style.display = ''; }
-        });
-      } : undefined,
     });
   });
 }
@@ -1431,10 +1421,7 @@ const SLIDES = [
       if (arrows[1]) arrows[1].setDirection(startDirs[1]);
       if (arrows[2]) arrows[2].setDirection(startDirs[2]);
 
-      vrfGroup.traverse(obj => {
-        if (obj.isCSS2DObject) { obj.visible = false; obj.element.style.display = 'none'; }
-      });
-
+      // Labels stay visible throughout the rotation animation
       const proxy = { t: 0 };
       STATE.vrfAnim = gsap.to(proxy, {
         t: 1, duration: 1.5, ease: 'power2.inOut', delay: 0.5,
@@ -1444,13 +1431,6 @@ const SLIDES = [
             arrow.setDirection(new THREE.Vector3().lerpVectors(startDirs[i], endDirs[i], proxy.t).normalize());
           });
         },
-        onComplete() {
-          if (vrfGroup.visible) {
-            vrfGroup.traverse(obj => {
-              if (obj.isCSS2DObject) { obj.visible = true; obj.element.style.display = ''; }
-            });
-          }
-        }
       });
 
       // ── Frame toggle buttons ──
