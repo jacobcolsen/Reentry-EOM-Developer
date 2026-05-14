@@ -1969,18 +1969,23 @@ const SLIDES = [
         html: `
           <hr style="border:none;border-top:1px solid #0e2035;margin:1rem 0;">
           <h3>Step 2 &mdash; Apply the rotation chain</h3>
+          <p style="font-size:0.82rem;color:#c8a060;margin-bottom:0.6rem;">
+            The arrows look the same &mdash; because they <em>are</em> the same physical vectors.
+            The rotation matrix changes the <strong>coordinate description</strong>, not the direction.
+          </p>
           <div class="eq-block">
-            <div class="eq-label">Gravity (RST &rarr; ECI)</div>
-            \\[\\vec{F}_g = C_{E\\leftarrow R}\\begin{bmatrix}-\\mu m/r^2\\\\0\\\\0\\end{bmatrix}_{RST}
-              = -\\frac{\\mu m}{r^2}\\hat{R}\\]
+            <div class="eq-label">Drag in VRF &mdash; one non-zero component</div>
+            \\[\\vec{F}_D = \\begin{bmatrix}-D\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
           </div>
           <div class="eq-block">
-            <div class="eq-label">Aero + Thrust (VRF &rarr; RST &rarr; ECI)</div>
-            \\[\\vec{F} = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\,\\vec{F}_{VRF}\\]
+            <div class="eq-label">Same drag vector in ECI &mdash; three components</div>
+            \\[\\vec{F}_D = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}-D\\\\0\\\\0\\end{bmatrix}
+              = \\begin{bmatrix}F_{D,X}\\\\F_{D,Y}\\\\F_{D,Z}\\end{bmatrix}_{ECI}\\]
           </div>
-          <p style="font-size:0.81rem;color:#4a8060;margin-top:0.4rem;">
-            Same physical vectors &mdash; now expressed in ECI components.
-            Press <strong>Next&nbsp;&rarr;</strong> to sum them.
+          <p style="font-size:0.81rem;color:#3a6a9a;margin-top:0.4rem;">
+            The <span style="color:#FF3333">red</span>&thinsp;/&thinsp;<span style="color:#33FF33">green</span>&thinsp;/&thinsp;<span style="color:#3399FF">blue</span>
+            chain arrows show the three ECI components of drag added tip-to-tail &mdash; they sum to the <em>exact same</em> orange drag arrow.
+            Press <strong>Next&nbsp;&rarr;</strong> to assemble Newton&apos;s law.
           </p>`,
         enter3D() {
           // Fade out frame-colored proxies
@@ -2011,6 +2016,42 @@ const SLIDES = [
               x: 1, y: 1, z: 1, duration: 0.5, delay: 0.25 + i * 0.11, ease: 'back.out(1.4)',
               onComplete() {
                 a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+              }
+            });
+          });
+
+          // ── ECI component chain for drag ──────────────────────────────
+          // The drag arrow points along -v̂ in world (ECI) space.
+          // Decompose it into its three ECI axis components and draw them
+          // tip-to-tail in ECI axis colors — they add up to the exact drag arrow.
+          const s     = getSpacecraftState(0.72);
+          const v_hat = s.vel.clone().normalize();
+          const dLen  = 0.52;
+          const dVec  = v_hat.clone().negate().multiplyScalar(dLen); // drag in ECI 3-space
+
+          // Chain: p0 → p1 (X component) → p2 (Y component) → p3 (Z component = drag tip)
+          const p0 = s.pos.clone();
+          const p1 = p0.clone().add(new THREE.Vector3(dVec.x, 0, 0));
+          const p2 = p1.clone().add(new THREE.Vector3(0, dVec.y, 0));
+          const p3 = p2.clone().add(new THREE.Vector3(0, 0, dVec.z));
+
+          const chainDefs = [
+            { from: p0, to: p1, col: COLORS.eci.x, label: 'Fd·X̂' },
+            { from: p1, to: p2, col: COLORS.eci.y, label: 'Fd·Ŷ' },
+            { from: p2, to: p3, col: COLORS.eci.z, label: 'Fd·Ẑ' },
+          ];
+          chainDefs.forEach(({ from, to, col, label }, i) => {
+            const len = from.distanceTo(to);
+            if (len < 0.015) return;
+            const dir = to.clone().sub(from).normalize();
+            const arr = makeArrow(dir, from, len, col, label, 0.20, 0.09);
+            arr.scale.set(0, 0, 0);
+            arr.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+            addSlideObj(arr);
+            gsap.to(arr.scale, {
+              x: 1, y: 1, z: 1, duration: 0.4, delay: 0.65 + i * 0.18, ease: 'back.out(1.4)',
+              onComplete() {
+                arr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
               }
             });
           });
