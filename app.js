@@ -25,6 +25,7 @@ const ORBIT_SPD      = 0.18;              // rad/s (visual)
 // ── State ──────────────────────────────────────────────────────────────────
 const STATE = {
   currentSlide:   0,
+  substep:        0,           // sub-step within the current slide (0 = initial)
   orbitT:         0,
   earthT:         0,
   gsapTween:      null,
@@ -737,41 +738,174 @@ const SLIDES = [
       <p>The vehicle's position on the rotating planet is described by
       <strong>geocentric longitude</strong> \\(\\lambda\\) and
       <strong>geocentric latitude</strong> \\(\\phi\\).
-      The kinematic equations follow from a three-step decomposition of the
-      <span style="color:#FFD700;font-weight:600">velocity vector <em>v</em></span>
-      — illustrated in the 3D scene.</p>
-      <div class="eq-block">
-        <div class="eq-label">Step 1 — Split v by flight-path angle γ (radial vs. horizontal)</div>
-        \\[\\underbrace{\\textcolor{#FF5555}{v\\sin\\gamma}}_{\\dot{r}\\ =\\ \\text{radial rate}}
-          \\qquad
-          \\underbrace{\\textcolor{#00DDFF}{v\\cos\\gamma}}_{v_h\\ =\\ \\text{horizontal speed}}\\]
-      </div>
-      <div class="eq-block">
-        <div class="eq-label">Step 2 — Split v_h by heading angle ψ (east vs. north)</div>
-        \\[v_{\\text{east}} = \\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}
-          \\qquad
-          v_{\\text{north}} = \\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}\\]
-      </div>
-      <div class="eq-block">
-        <div class="eq-label">Step 3 — Convert speed to angular rate</div>
-        \\[\\dot{\\phi} = \\frac{v_{\\text{north}}}{r} = \\frac{\\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}}{r}\\]
-        \\[\\dot{\\lambda} = \\frac{v_{\\text{east}}}{r\\cos\\phi} = \\frac{\\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}}{r\\cos\\phi}\\]
-      </div>
-      <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.4rem;">
-        The extra \\(\\cos\\phi\\) in \\(\\dot\\lambda\\): a latitude circle at \\(\\phi\\)
-        has radius \\(r\\cos\\phi\\) — it shrinks toward the poles, so the same eastward
-        speed covers more degrees of longitude at high latitudes.</p>`,
+      The <span style="color:#FFD700;font-weight:600">velocity vector <em>v</em></span>
+      can be broken into components that directly drive these rates —
+      press <strong>Next →</strong> to see each step.</p>`,
     camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 1.0 },
+    substeps: [
+      // ── substep 0: Step 1 — γ decomposition (animated) ──
+      {
+        html: `
+          <div class="eq-block">
+            <div class="eq-label">Step 1 — Split v by flight-path angle γ</div>
+            \\[\\underbrace{\\textcolor{#FF5555}{v\\sin\\gamma}}_{\\dot{r}\\ =\\ \\text{radial rate}}
+              \\qquad
+              \\underbrace{\\textcolor{#00DDFF}{v\\cos\\gamma}}_{v_h\\ =\\ \\text{horizontal speed}}\\]
+          </div>`,
+        enter3D() {
+          const GAMMA  = 25 * Math.PI / 180;
+          const s      = getSpacecraftState(0.72);
+          const R      = s.R_hat;
+          const hDir   = s.vel.clone().normalize();
+          const vLen   = 0.82;
+          const hLen   = vLen * Math.cos(GAMMA);
+          const vHat   = hDir.clone().multiplyScalar(Math.cos(GAMMA)).addScaledVector(R, Math.sin(GAMMA)).normalize();
+          const hEnd   = s.pos.clone().addScaledVector(hDir, hLen);
+          const vTip   = s.pos.clone().addScaledVector(vHat, vLen);
+
+          // ── Cyan v cosγ arrow grows outward from spacecraft ──
+          const cg = new THREE.Group();
+          cg.position.copy(s.pos);
+          cg.add(new THREE.ArrowHelper(hDir, new THREE.Vector3(), hLen, 0x00DDFF, 0.07, 0.035));
+          cg.scale.set(0.001, 0.001, 0.001);
+          addSlideObj(cg);
+          gsap.to(cg.scale, { x: 1, y: 1, z: 1, duration: 0.75, ease: 'power2.out' });
+
+          // ── Red v sinγ line grows upward from hEnd ──
+          const sinVec = new THREE.Vector3().subVectors(vTip, hEnd);
+          const rg = new THREE.Group();
+          rg.position.copy(hEnd);
+          rg.add(new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), sinVec.clone()]),
+            new THREE.LineBasicMaterial({ color: 0xFF5555, transparent: true, opacity: 0.92 })
+          ));
+          rg.scale.set(0.001, 0.001, 0.001);
+          addSlideObj(rg);
+          gsap.to(rg.scale, { x: 1, y: 1, z: 1, duration: 0.6, delay: 0.6, ease: 'power2.out' });
+
+          // ── Right-angle marker fades in after both lines drawn ──
+          const ra  = 0.036;
+          const raMat = new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0 });
+          addSlideObj(new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([
+              hEnd.clone().addScaledVector(R, ra),
+              hEnd.clone().addScaledVector(R, ra).addScaledVector(hDir, -ra),
+              hEnd.clone().addScaledVector(hDir, -ra),
+            ]), raMat));
+          gsap.to(raMat, { opacity: 0.6, duration: 0.35, delay: 1.2 });
+
+          // ── Labels ──
+          const lblG = new THREE.Group();
+          lblG.add(makeFloatLabel('v cosγ',
+            s.pos.clone().addScaledVector(hDir, hLen * 0.5).addScaledVector(R, -0.13), 0x00DDFF));
+          lblG.add(makeFloatLabel('v sinγ',
+            hEnd.clone().lerp(vTip, 0.5).addScaledVector(hDir, -0.16), 0xFF5555));
+          lblG.visible = false;
+          addSlideObj(lblG);
+          gsap.delayedCall(1.25, () => {
+            lblG.visible = true;
+            lblG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
+          });
+        },
+      },
+      // ── substep 1: Step 2 — ψ split (animated) ──
+      {
+        html: `
+          <div class="eq-block">
+            <div class="eq-label">Step 2 — Split v cosγ by heading angle ψ</div>
+            \\[v_{\\text{east}} = \\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}
+              \\qquad
+              v_{\\text{north}} = \\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}\\]
+          </div>`,
+        enter3D() {
+          const GAMMA    = 25 * Math.PI / 180;
+          const cosG     = Math.cos(GAMMA);
+          const s        = getSpacecraftState(0.72);
+          const R        = s.R_hat;
+          const hDir     = s.vel.clone().normalize();
+          const vLen     = 0.82;
+          const hLen     = vLen * cosG;
+          const psi      = Math.atan2(hDir.dot(s.T_hat), hDir.dot(s.S_hat));
+          const hEnd     = s.pos.clone().addScaledVector(hDir, hLen);
+          const eastEnd  = s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi));
+
+          // ── Magenta east arrow grows from spacecraft ──
+          if (Math.abs(Math.cos(psi)) > 0.05) {
+            const mg = new THREE.Group();
+            mg.position.copy(s.pos);
+            mg.add(new THREE.ArrowHelper(
+              s.S_hat.clone().multiplyScalar(Math.sign(Math.cos(psi))),
+              new THREE.Vector3(), hLen * Math.abs(Math.cos(psi)), 0xFF44CC, 0.06, 0.03));
+            mg.scale.set(0.001, 0.001, 0.001);
+            addSlideObj(mg);
+            gsap.to(mg.scale, { x: 1, y: 1, z: 1, duration: 0.75, ease: 'power2.out' });
+          }
+
+          // ── Green north line grows from eastEnd toward hEnd ──
+          const northVec = new THREE.Vector3().subVectors(hEnd, eastEnd);
+          const ng = new THREE.Group();
+          ng.position.copy(eastEnd);
+          ng.add(new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), northVec.clone()]),
+            new THREE.LineBasicMaterial({ color: 0x44FF88, transparent: true, opacity: 0.92 })
+          ));
+          ng.scale.set(0.001, 0.001, 0.001);
+          addSlideObj(ng);
+          gsap.to(ng.scale, { x: 1, y: 1, z: 1, duration: 0.6, delay: 0.6, ease: 'power2.out' });
+
+          // ── Right-angle marker fades in ──
+          const rb     = 0.030;
+          const perp2  = new THREE.Vector3().crossVectors(s.S_hat, R).normalize();
+          const rbMat  = new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0 });
+          addSlideObj(new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([
+              eastEnd.clone().addScaledVector(perp2, rb),
+              eastEnd.clone().addScaledVector(perp2, rb).addScaledVector(s.S_hat, rb),
+              eastEnd.clone().addScaledVector(s.S_hat, rb),
+            ]), rbMat));
+          gsap.to(rbMat, { opacity: 0.55, duration: 0.35, delay: 1.2 });
+
+          // ── Labels ──
+          const enG = new THREE.Group();
+          enG.add(makeFloatLabel('v cosγ cosψ',
+            s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi) * 0.5).addScaledVector(R, -0.14),
+            0xFF44CC));
+          enG.add(makeFloatLabel('v cosγ sinψ',
+            eastEnd.clone().lerp(hEnd, 0.5).addScaledVector(s.S_hat, -0.17),
+            0x44FF88));
+          enG.visible = false;
+          addSlideObj(enG);
+          gsap.delayedCall(1.25, () => {
+            enG.visible = true;
+            enG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
+          });
+        },
+      },
+      // ── substep 2: Step 3 — angular rates (equations only) ──
+      {
+        html: `
+          <div class="eq-block">
+            <div class="eq-label">Step 3 — Convert speed to angular rate</div>
+            \\[\\dot{\\phi} = \\frac{v_{\\text{north}}}{r} = \\frac{\\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}}{r}\\]
+            \\[\\dot{\\lambda} = \\frac{v_{\\text{east}}}{r\\cos\\phi} = \\frac{\\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}}{r\\cos\\phi}\\]
+          </div>
+          <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.4rem;">
+            The extra \\(\\cos\\phi\\) in \\(\\dot\\lambda\\): a latitude circle at \\(\\phi\\)
+            has radius \\(r\\cos\\phi\\) — same eastward speed covers more longitude degrees
+            near the equator than near the poles.</p>`,
+        enter3D() {},
+      },
+    ],
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({});  // all persistent arrows hidden; we draw everything as slide objects
+      setFrameVisibility({});
 
       const s      = getSpacecraftState(0.72);
       const R      = s.R_hat;
       const phi    = Math.asin(R.y);
       const lambda = Math.atan2(R.z, R.x);
 
-      // ── Latitude ring (magenta) ──
+      // Latitude ring (magenta)
       const latPts = [];
       for (let i = 0; i <= 96; i++) {
         const a = (i / 96) * Math.PI * 2;
@@ -785,8 +919,7 @@ const SLIDES = [
         new THREE.BufferGeometry().setFromPoints(latPts),
         new THREE.LineBasicMaterial({ color: 0xFF44CC, transparent: true, opacity: 0.85 })
       ));
-
-      // ── Meridian arc (cyan) ──
+      // Meridian arc (teal)
       const merPts = [];
       for (let i = 0; i <= 48; i++) {
         const p = (i / 48) * phi;
@@ -800,8 +933,7 @@ const SLIDES = [
         new THREE.BufferGeometry().setFromPoints(merPts),
         new THREE.LineBasicMaterial({ color: 0x44FFEE, transparent: true, opacity: 0.85 })
       ));
-
-      // ── Radial altitude line ──
+      // Radial altitude line
       const subPt  = R.clone().multiplyScalar(EARTH_RADIUS + 0.008);
       const altLine = new THREE.Line(
         new THREE.BufferGeometry().setFromPoints([subPt, s.pos]),
@@ -809,116 +941,41 @@ const SLIDES = [
       );
       altLine.computeLineDistances();
       addSlideObj(altLine);
-
-      // ── φ / λ labels ──
-      const phiLabelPos = new THREE.Vector3(
-        Math.cos(phi * 0.55) * Math.cos(lambda) * (EARTH_RADIUS + 0.15),
-        Math.sin(phi * 0.55)                    * (EARTH_RADIUS + 0.15),
-        Math.cos(phi * 0.55) * Math.sin(lambda) * (EARTH_RADIUS + 0.15)
-      );
-      const latMidPt = new THREE.Vector3(
-        Math.cos(phi) * Math.cos(lambda + Math.PI * 0.3) * (EARTH_RADIUS + 0.2),
-        Math.sin(phi)                                    * (EARTH_RADIUS + 0.2),
-        Math.cos(phi) * Math.sin(lambda + Math.PI * 0.3) * (EARTH_RADIUS + 0.2)
-      );
+      // φ / λ labels
       const lG = new THREE.Group();
-      lG.add(makeFloatLabel('φ (lat)', phiLabelPos, 0x44FFEE));
-      lG.add(makeFloatLabel('λ (lon)', latMidPt, 0xFF44CC));
+      lG.add(makeFloatLabel('φ (lat)',
+        new THREE.Vector3(
+          Math.cos(phi * 0.55) * Math.cos(lambda) * (EARTH_RADIUS + 0.15),
+          Math.sin(phi * 0.55)                    * (EARTH_RADIUS + 0.15),
+          Math.cos(phi * 0.55) * Math.sin(lambda) * (EARTH_RADIUS + 0.15)), 0x44FFEE));
+      lG.add(makeFloatLabel('λ (lon)',
+        new THREE.Vector3(
+          Math.cos(phi) * Math.cos(lambda + Math.PI * 0.3) * (EARTH_RADIUS + 0.2),
+          Math.sin(phi)                                    * (EARTH_RADIUS + 0.2),
+          Math.cos(phi) * Math.sin(lambda + Math.PI * 0.3) * (EARTH_RADIUS + 0.2)), 0xFF44CC));
       addSlideObj(lG);
 
-      // ── Velocity decomposition — demo γ=25°, using actual heading ψ ─────
-      // The circular orbit has γ=0 exactly; we use γ_demo=25° so the right-triangle
-      // is non-degenerate and clearly shows where cos γ and sin γ come from.
-      const GAMMA_DEMO = 25 * Math.PI / 180;
-      const sinG_demo  = Math.sin(GAMMA_DEMO);
-      const cosG_demo  = Math.cos(GAMMA_DEMO);
-
-      // h_dir = actual horizontal velocity direction (circular orbit ⇒ vel ⊥ R exactly)
-      const h_dir = s.vel.clone().normalize();
-
-      // demo full velocity: tilted radially upward by γ_demo from h_dir
-      const v_hat_demo = h_dir.clone().multiplyScalar(cosG_demo)
-                             .addScaledVector(R, sinG_demo).normalize();
-
-      // actual heading angle ψ from the current RST frame
-      const psi = Math.atan2(h_dir.dot(s.T_hat), h_dir.dot(s.S_hat));
-
-      const vLen   = 0.82;
-      const hLen   = vLen * cosG_demo;
-      const vTip   = s.pos.clone().addScaledVector(v_hat_demo, vLen);
-      const hEnd   = s.pos.clone().addScaledVector(h_dir, hLen);
-      const eastEnd = s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi));
-
-      // Full velocity vector — gold
-      addSlideObj(new THREE.ArrowHelper(v_hat_demo, s.pos, vLen, 0xFFD700, 0.09, 0.045));
-
-      // v cosγ horizontal component — cyan arrow
-      addSlideObj(new THREE.ArrowHelper(h_dir, s.pos, hLen, 0x00DDFF, 0.07, 0.035));
-
-      // v sinγ radial component — red dashed line from hEnd to vTip
-      const sinSeg = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([hEnd, vTip]),
-        new THREE.LineDashedMaterial({ color: 0xFF5555, dashSize: 0.025, gapSize: 0.015, transparent: true, opacity: 0.9 })
-      );
-      sinSeg.computeLineDistances();
-      addSlideObj(sinSeg);
-
-      // Right-angle marker at hEnd corner
-      const ra = 0.036;
-      addSlideObj(new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([
-          hEnd.clone().addScaledVector(R, ra),
-          hEnd.clone().addScaledVector(R, ra).addScaledVector(h_dir, -ra),
-          hEnd.clone().addScaledVector(h_dir, -ra),
-        ]),
-        new THREE.LineBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.55 })
-      ));
-
-      // v cosγ cosψ east component — magenta arrow along S_hat
-      if (Math.abs(Math.cos(psi)) > 0.05) {
-        addSlideObj(new THREE.ArrowHelper(
-          s.S_hat.clone().multiplyScalar(Math.sign(Math.cos(psi))),
-          s.pos, hLen * Math.abs(Math.cos(psi)), 0xFF44CC, 0.06, 0.03));
-      }
-
-      // v cosγ sinψ north component — green dashed from eastEnd to hEnd
-      const nSeg = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([eastEnd, hEnd]),
-        new THREE.LineDashedMaterial({ color: 0x44FF88, dashSize: 0.025, gapSize: 0.015, transparent: true, opacity: 0.75 })
-      );
-      nSeg.computeLineDistances();
-      addSlideObj(nSeg);
-
-      // Right-angle marker at eastEnd corner (ψ split)
-      const rb = 0.030;
-      const perp2 = new THREE.Vector3().crossVectors(s.S_hat, R).normalize();
-      addSlideObj(new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([
-          eastEnd.clone().addScaledVector(perp2, rb),
-          eastEnd.clone().addScaledVector(perp2, rb).addScaledVector(s.S_hat, rb),
-          eastEnd.clone().addScaledVector(s.S_hat, rb),
-        ]),
-        new THREE.LineBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.5 })
-      ));
-
-      // Labels
+      // Gold velocity arrow — animates in with a slight overshoot
+      const GAMMA    = 25 * Math.PI / 180;
+      const hDir     = s.vel.clone().normalize();
+      const vHatDemo = hDir.clone().multiplyScalar(Math.cos(GAMMA)).addScaledVector(R, Math.sin(GAMMA)).normalize();
+      const vLen     = 0.82;
+      const vg = new THREE.Group();
+      vg.position.copy(s.pos);
+      vg.add(new THREE.ArrowHelper(vHatDemo, new THREE.Vector3(), vLen, 0xFFD700, 0.09, 0.045));
+      vg.scale.set(0.001, 0.001, 0.001);
+      addSlideObj(vg);
+      gsap.to(vg.scale, { x: 1, y: 1, z: 1, duration: 0.8, delay: 0.25, ease: 'back.out(1.3)' });
+      // Label appears after arrow
       const lblG = new THREE.Group();
       lblG.add(makeFloatLabel('v  (γ=25° demo)',
-        s.pos.clone().addScaledVector(v_hat_demo, vLen * 0.52).addScaledVector(R, 0.13),
-        0xFFD700));
-      lblG.add(makeFloatLabel('v cosγ',
-        s.pos.clone().addScaledVector(h_dir, hLen * 0.5).addScaledVector(R, -0.12),
-        0x00DDFF));
-      lblG.add(makeFloatLabel('v sinγ',
-        hEnd.clone().lerp(vTip, 0.5).addScaledVector(h_dir, -0.15),
-        0xFF5555));
-      lblG.add(makeFloatLabel('v cosγ cosψ',
-        s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi) * 0.5).addScaledVector(R, -0.13),
-        0xFF44CC));
-      lblG.add(makeFloatLabel('v cosγ sinψ',
-        eastEnd.clone().lerp(hEnd, 0.5).addScaledVector(s.S_hat, -0.16),
-        0x44FF88));
+        s.pos.clone().addScaledVector(vHatDemo, vLen * 0.52).addScaledVector(R, 0.13), 0xFFD700));
+      lblG.visible = false;
       addSlideObj(lblG);
+      gsap.delayedCall(0.85, () => {
+        lblG.visible = true;
+        lblG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
+      });
     },
     exit() {},
   },
@@ -1526,7 +1583,40 @@ function updateNav(idx) {
   document.querySelectorAll('.dot').forEach((d, i) =>
     d.classList.toggle('active', i === idx));
   document.getElementById('btn-prev').disabled = idx === 0;
-  document.getElementById('btn-next').disabled = idx === SLIDES.length - 1;
+  const slide = SLIDES[idx];
+  const hasMoreSubsteps = slide.substeps && STATE.substep < slide.substeps.length;
+  document.getElementById('btn-next').disabled = idx === SLIDES.length - 1 && !hasMoreSubsteps;
+}
+
+// Advances substep if available; otherwise moves to next slide.
+function advanceNext() {
+  const slide = SLIDES[STATE.currentSlide];
+  if (slide.substeps && STATE.substep < slide.substeps.length) {
+    const step = slide.substeps[STATE.substep];
+    STATE.substep++;
+    // Append the step's HTML and re-render KaTeX on just that fragment
+    const panel = document.getElementById('slide-body');
+    const div   = document.createElement('div');
+    div.innerHTML = step.html;
+    panel.appendChild(div);
+    if (typeof renderMathInElement !== 'undefined') {
+      renderMathInElement(div, {
+        delimiters: [
+          { left: '\\[', right: '\\]', display: true  },
+          { left: '\\(', right: '\\)', display: false },
+        ],
+        throwOnError: false,
+      });
+    }
+    div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (step.enter3D) step.enter3D();
+    // Update Next disabled state
+    const noMore   = STATE.substep >= slide.substeps.length;
+    const lastSlide = STATE.currentSlide === SLIDES.length - 1;
+    document.getElementById('btn-next').disabled = lastSlide && noMore;
+  } else {
+    goToSlide(STATE.currentSlide + 1);
+  }
 }
 
 function goToSlide(idx) {
@@ -1536,6 +1626,7 @@ function goToSlide(idx) {
   clearSlideObjects();
 
   STATE.currentSlide = idx;
+  STATE.substep      = 0;
   const slide = SLIDES[idx];
 
   updateNav(idx);
@@ -1717,10 +1808,10 @@ async function boot() {
 
   // Keyboard navigation
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight' || e.key === ' ')  goToSlide(STATE.currentSlide + 1);
+    if (e.key === 'ArrowRight' || e.key === ' ')  advanceNext();
     if (e.key === 'ArrowLeft')                     goToSlide(STATE.currentSlide - 1);
   });
-  document.getElementById('btn-next').addEventListener('click', () => goToSlide(STATE.currentSlide + 1));
+  document.getElementById('btn-next').addEventListener('click', advanceNext);
   document.getElementById('btn-prev').addEventListener('click', () => goToSlide(STATE.currentSlide - 1));
 }
 
