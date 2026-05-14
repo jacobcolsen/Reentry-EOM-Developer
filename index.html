@@ -872,14 +872,13 @@ const SLIDES = [
           addSlideObj(cg);
           gsap.to(cg.scale, { x: 1, y: 1, z: 1, duration: 0.75, ease: 'power2.out' });
 
-          // ── Red v sinγ line grows upward from hEnd ──
+          // ── Red v sinγ arrow grows upward from hEnd ──
           const sinVec = new THREE.Vector3().subVectors(vTip, hEnd);
+          const sinLen = sinVec.length();
+          const sinDir = sinVec.clone().normalize();
           const rg = new THREE.Group();
           rg.position.copy(hEnd);
-          rg.add(new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), sinVec.clone()]),
-            new THREE.LineBasicMaterial({ color: 0xFF5555, transparent: true, opacity: 0.92 })
-          ));
+          rg.add(new THREE.ArrowHelper(sinDir, new THREE.Vector3(), sinLen, 0xFF5555, 0.07, 0.035));
           rg.scale.set(0.001, 0.001, 0.001);
           addSlideObj(rg);
           gsap.to(rg.scale, { x: 1, y: 1, z: 1, duration: 0.6, delay: 0.6, ease: 'power2.out' });
@@ -942,14 +941,13 @@ const SLIDES = [
             gsap.to(mg.scale, { x: 1, y: 1, z: 1, duration: 0.75, ease: 'power2.out' });
           }
 
-          // ── Green north line grows from eastEnd toward hEnd ──
+          // ── Green north arrow grows from eastEnd toward hEnd ──
           const northVec = new THREE.Vector3().subVectors(hEnd, eastEnd);
+          const northLen = northVec.length();
+          const northDir = northVec.clone().normalize();
           const ng = new THREE.Group();
           ng.position.copy(eastEnd);
-          ng.add(new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), northVec.clone()]),
-            new THREE.LineBasicMaterial({ color: 0x44FF88, transparent: true, opacity: 0.92 })
-          ));
+          ng.add(new THREE.ArrowHelper(northDir, new THREE.Vector3(), northLen, 0x44FF88, 0.06, 0.030));
           ng.scale.set(0.001, 0.001, 0.001);
           addSlideObj(ng);
           gsap.to(ng.scale, { x: 1, y: 1, z: 1, duration: 0.6, delay: 0.6, ease: 'power2.out' });
@@ -1002,6 +1000,8 @@ const SLIDES = [
       setFrameVisibility({});
 
       const s      = getSpacecraftState(0.72);
+      // Re-tween camera with spacecraft as pivot so OrbitControls orbits around it
+      tweenCamera([3, 5, 7], [s.pos.x, s.pos.y, s.pos.z], 1.0);
       const R      = s.R_hat;
       const phi    = Math.asin(R.y);
       const lambda = Math.atan2(R.z, R.x);
