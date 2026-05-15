@@ -2121,7 +2121,8 @@ const SLIDES = [
               \\[m\\ddot{\\vec{r}}_I = \\vec{F}_g + \\vec{F}_{aero} + \\vec{F}_T\\]
             </div>
             <p>The cream arrow <strong>F<sub>net</sub></strong> is their vector sum &mdash;
-            ready to integrate for \\(r(t),\\,v(t),\\,\\gamma(t),\\,\\psi(t)\\).</p>`);
+            ready to integrate for \\(r(t),\\,v(t),\\,\\gamma(t),\\,\\psi(t)\\).</p>
+            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> to decompose F<sub>net</sub> into ECI components.</p>`);
 
           const s        = getSpacecraftState(0.72);
           const v_hat    = s.vel.clone().normalize();
@@ -2142,6 +2143,46 @@ const SLIDES = [
               netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
             }
           });
+        },
+      },
+      // ── substep 9: F_net — ECI breakdown ─────────────────────────────
+      {
+        html: '',
+        enter3D() {
+          clearSlideObjects();
+          const gen      = STATE.slideGen;
+          const s        = getSpacecraftState(0.72);
+          const v_hat    = s.vel.clone().normalize();
+          const lift_hat = s.R_hat.clone().addScaledVector(v_hat, -s.R_hat.dot(v_hat)).normalize();
+
+          const netDir = new THREE.Vector3()
+            .addScaledVector(s.R_hat.clone().negate(), 0.44)
+            .addScaledVector(v_hat.clone().negate(),   0.20)
+            .addScaledVector(lift_hat,                 0.20)
+            .normalize();
+          const netLen = 0.68;
+
+          // Isolated: ECI frame + F_net only
+          setFrameVisibility({ eci: true });
+          setForceVisibility({});
+
+          const netArrow = makeArrow(netDir, s.pos, netLen, 0xFFFFCC, 'F_net', 0.22, 0.10);
+          netArrow.scale.set(1, 1, 1);
+          netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+          addSlideObj(netArrow);
+
+          setSlidePanel(`
+            <h3>F<sub>net</sub> &mdash; ECI components</h3>
+            <p>The net force vector is the sum of all four forces in ECI. Its three
+            ECI components determine the acceleration components along X&#x302;, &#x176;, &#x17C;:</p>
+            <div class="eq-block">
+              \\[\\vec{F}_{net} = F_{net,X}\\hat{X} + F_{net,Y}\\hat{Y} + F_{net,Z}\\hat{Z}\\]
+            </div>
+            <p>The <span style="color:#FF3333">red</span>&thinsp;/&thinsp;<span style="color:#33FF33">green</span>&thinsp;/&thinsp;<span style="color:#3399FF">blue</span>
+            chain arrows are the ECI X&#x302;&thinsp;/&thinsp;&#x176;&thinsp;/&thinsp;&#x17C; components added
+            tip-to-tail &mdash; they reconstruct F<sub>net</sub> exactly.</p>`);
+
+          buildECIChain(netDir.clone().multiplyScalar(netLen), s.pos, gen, 0.35);
         },
       },
     ],
