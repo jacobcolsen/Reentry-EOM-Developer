@@ -785,19 +785,16 @@ function setSlidePanel(html) {
 }
 
 // Draw tip-to-tail ECI axis decomposition arrows for a force vector
-function buildECIChain(forceVec, origin, gen, baseDelay = 0.45, forceColor = null) {
+function buildECIChain(forceVec, origin, gen, baseDelay = 0.45) {
+  // Scene mapping: Three.js +X = ECI X̂, Three.js +Z = ECI Ŷ, Three.js +Y = ECI Ẑ
   const p0 = origin.clone();
-  const p1 = p0.clone().add(new THREE.Vector3(forceVec.x, 0, 0));
-  const p2 = p1.clone().add(new THREE.Vector3(0, forceVec.y, 0));
-  const p3 = p2.clone().add(new THREE.Vector3(0, 0, forceVec.z));
-  // Use force color (slightly brightened per step) or fall back to ECI axis colors
-  const cols = forceColor !== null
-    ? [forceColor, forceColor, forceColor]
-    : [COLORS.eci.x, COLORS.eci.y, COLORS.eci.z];
+  const p1 = p0.clone().add(new THREE.Vector3(forceVec.x, 0, 0));        // ECI X step
+  const p2 = p1.clone().add(new THREE.Vector3(0, 0, forceVec.z));        // ECI Ŷ step (Three.js Z)
+  const p3 = p2.clone().add(new THREE.Vector3(0, forceVec.y, 0));        // ECI Ẑ step (Three.js Y)
   const defs = [
-    { from: p0, to: p1, col: cols[0], label: 'X' },
-    { from: p1, to: p2, col: cols[1], label: 'Y' },
-    { from: p2, to: p3, col: cols[2], label: 'Z' },
+    { from: p0, to: p1, col: COLORS.eci.x, label: 'X̂' },
+    { from: p1, to: p2, col: COLORS.eci.y, label: 'Ŷ' },
+    { from: p2, to: p3, col: COLORS.eci.z, label: 'Ẑ' },
   ];
   defs.forEach(({ from, to, col, label }, i) => {
     if (STATE.slideGen !== gen) return;
