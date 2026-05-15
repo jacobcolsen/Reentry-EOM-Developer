@@ -668,29 +668,25 @@ function renderSlideContent(slide) {
   }
 }
 
-// Soft additive-blend glow sprite — placed at a world position to create bloom halo
-function makeGlowSprite(hexColor, size = 0.6) {
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 128;
-  const ctx = canvas.getContext('2d');
-  const hex = '#' + hexColor.toString(16).padStart(6, '0');
-  const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  grad.addColorStop(0,    hex + 'dd');
-  grad.addColorStop(0.30, hex + '88');
-  grad.addColorStop(0.65, hex + '22');
-  grad.addColorStop(1,    hex + '00');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 128, 128);
-  const tex = new THREE.CanvasTexture(canvas);
-  const mat = new THREE.SpriteMaterial({
-    map: tex,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    transparent: true,
+// Subtle glow: semi-transparent oversized clone of an existing arrow.
+// Creates a soft halo without sprites or post-processing.
+function addArrowGlow(arrow, scale = 1.35, opacity = 0.22) {
+  if (!arrow) return;
+  const glow = arrow.clone(true);
+  glow.scale.set(scale, scale, scale);
+  glow.traverse(o => {
+    if (o.material) {
+      o.material = o.material.clone();
+      o.material.transparent = true;
+      o.material.opacity = opacity;
+      o.material.depthWrite = false;
+    }
+    if (o.isCSS2DObject) {
+      o.visible = false;
+      if (o.element) o.element.style.display = 'none';
+    }
   });
-  const sprite = new THREE.Sprite(mat);
-  sprite.scale.set(size, size, size);
-  return sprite;
+  addSlideObj(glow);
 }
 
 // Build a color-coded ECI column-vector block for a direction vector.
@@ -1927,9 +1923,7 @@ const SLIDES = [
             gArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           }
           setForceVisibility({ grav: true });
-          const gGlow = makeGlowSprite(COLORS.grav, 0.65);
-          gGlow.position.copy(s.pos);
-          addSlideObj(gGlow);
+          addArrowGlow(STATE.persistent.gravArrow);
 
           setSlidePanel(`
             <h3>Gravity &mdash; in <span class="chip chip-rst">RST</span></h3>
@@ -1992,9 +1986,7 @@ const SLIDES = [
             dArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           }
           setForceVisibility({ drag: true });
-          const dGlow = makeGlowSprite(COLORS.drag, 0.65);
-          dGlow.position.copy(s.pos);
-          addSlideObj(dGlow);
+          addArrowGlow(STATE.persistent.dragArrow);
 
           setSlidePanel(`
             <h3>Drag &mdash; in <span class="chip chip-vrf">VRF</span></h3>
@@ -2055,9 +2047,7 @@ const SLIDES = [
             lArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           }
           setForceVisibility({ lift: true });
-          const lGlow = makeGlowSprite(COLORS.lift, 0.65);
-          lGlow.position.copy(s.pos);
-          addSlideObj(lGlow);
+          addArrowGlow(STATE.persistent.liftArrow);
 
           setSlidePanel(`
             <h3>Lift &mdash; in <span class="chip chip-vrf">VRF</span></h3>
@@ -2119,9 +2109,7 @@ const SLIDES = [
             tArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           }
           setForceVisibility({ thrust: true });
-          const tGlow = makeGlowSprite(COLORS.thrust, 0.65);
-          tGlow.position.copy(s.pos);
-          addSlideObj(tGlow);
+          addArrowGlow(STATE.persistent.thrustArrow);
 
           setSlidePanel(`
             <h3>Thrust &mdash; in <span class="chip chip-vrf">VRF</span></h3>
@@ -2183,12 +2171,8 @@ const SLIDES = [
             a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           });
           setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
-          const s8 = getSpacecraftState(0.72);
-          [COLORS.grav, COLORS.drag, COLORS.lift, COLORS.thrust].forEach((col, i) => {
-            const g = makeGlowSprite(col, 0.55);
-            g.position.copy(s8.pos);
-            addSlideObj(g);
-          });
+          [STATE.persistent.gravArrow, STATE.persistent.dragArrow,
+           STATE.persistent.liftArrow, STATE.persistent.thrustArrow].forEach(a => addArrowGlow(a));
 
           setSlidePanel(`
             <h3>Newton&apos;s Law &mdash; assembled in <span class="chip chip-eci">ECI</span></h3>
@@ -2246,9 +2230,7 @@ const SLIDES = [
           netArrow.scale.set(1, 1, 1);
           netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           addSlideObj(netArrow);
-          const netGlow = makeGlowSprite(0xFFFFCC, 0.7);
-          netGlow.position.copy(s.pos);
-          addSlideObj(netGlow);
+          addArrowGlow(netArrow);
 
           setSlidePanel(`
             <h3>F<sub>net</sub> &mdash; ECI components</h3>
