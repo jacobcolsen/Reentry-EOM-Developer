@@ -1957,7 +1957,7 @@ const SLIDES = [
               }
             });
           }
-          buildECIChain(gDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45, COLORS.grav);
+          buildECIChain(gDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
         },
       },
       // ── substep 2: Drag — natural frame ───────────────────────────────
@@ -2044,7 +2044,7 @@ const SLIDES = [
               }
             });
           }
-          buildECIChain(dDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45, COLORS.drag);
+          buildECIChain(dDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
         },
       },
       // ── substep 4: Lift — natural frame ───────────────────────────────
@@ -2132,7 +2132,7 @@ const SLIDES = [
               }
             });
           }
-          buildECIChain(liftDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45, COLORS.lift);
+          buildECIChain(liftDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
         },
       },
       // ── substep 6: Thrust — natural frame ─────────────────────────────
@@ -2220,7 +2220,7 @@ const SLIDES = [
               }
             });
           }
-          buildECIChain(tDir.clone().multiplyScalar(0.48), s.pos, gen, 0.45, COLORS.thrust);
+          buildECIChain(tDir.clone().multiplyScalar(0.48), s.pos, gen, 0.45);
         },
       },
       // ── substep 8: Newton's law ───────────────────────────────────────
