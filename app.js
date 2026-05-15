@@ -1885,7 +1885,7 @@ const SLIDES = [
           animateGroupIn(STATE.persistent.rstGroup, 0.1);
           if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
 
-          const gProxy = makeArrow(gDir, s.pos, 0.52, COLORS.rst.r, 'Fg|RST', 0.16, 0.07);
+          const gProxy = makeArrow(gDir, s.pos, 0.52, COLORS.grav, 'Fg', 0.16, 0.07);
           gProxy.scale.set(0, 0, 0);
           gProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
           addSlideObj(gProxy);
@@ -1974,7 +1974,7 @@ const SLIDES = [
           animateGroupIn(STATE.persistent.vrfGroup, 0.1);
           if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
 
-          const dProxy = makeArrow(dDir, s.pos, 0.52, COLORS.vrf.x, 'FD|VRF', 0.16, 0.07);
+          const dProxy = makeArrow(dDir, s.pos, 0.52, COLORS.drag, 'FD', 0.16, 0.07);
           dProxy.scale.set(0, 0, 0);
           dProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
           addSlideObj(dProxy);
@@ -2062,7 +2062,7 @@ const SLIDES = [
           animateGroupIn(STATE.persistent.vrfGroup, 0.1);
           if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
 
-          const lProxy = makeArrow(liftDir, s.pos, 0.52, COLORS.vrf.y, 'FL|VRF', 0.16, 0.07);
+          const lProxy = makeArrow(liftDir, s.pos, 0.52, COLORS.lift, 'FL', 0.16, 0.07);
           lProxy.scale.set(0, 0, 0);
           lProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
           addSlideObj(lProxy);
@@ -2149,7 +2149,7 @@ const SLIDES = [
           animateGroupIn(STATE.persistent.vrfGroup, 0.1);
           if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
 
-          const tProxy = makeArrow(tDir, s.pos, 0.48, COLORS.vrf.z, 'FT|VRF', 0.16, 0.07);
+          const tProxy = makeArrow(tDir, s.pos, 0.48, COLORS.thrust, 'FT', 0.16, 0.07);
           tProxy.scale.set(0, 0, 0);
           tProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
           addSlideObj(tProxy);
