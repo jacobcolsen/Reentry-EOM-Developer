@@ -1862,7 +1862,7 @@ const SLIDES = [
       <p>Step through each force below: first in its home frame, then watch it automatically
       decompose into <span class="chip chip-eci" style="font-size:0.75em">ECI</span> X/Y/Z
       components. Press <strong>Next&nbsp;&rarr;</strong> to begin.</p>`,
-    camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 1.0 },
+    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
       setFrameVisibility({});
