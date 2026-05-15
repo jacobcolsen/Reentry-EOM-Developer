@@ -684,15 +684,19 @@ function setSlidePanel(html) {
 }
 
 // Draw tip-to-tail ECI axis decomposition arrows for a force vector
-function buildECIChain(forceVec, origin, gen, baseDelay = 0.45) {
+function buildECIChain(forceVec, origin, gen, baseDelay = 0.45, forceColor = null) {
   const p0 = origin.clone();
   const p1 = p0.clone().add(new THREE.Vector3(forceVec.x, 0, 0));
   const p2 = p1.clone().add(new THREE.Vector3(0, forceVec.y, 0));
   const p3 = p2.clone().add(new THREE.Vector3(0, 0, forceVec.z));
+  // Use force color (slightly brightened per step) or fall back to ECI axis colors
+  const cols = forceColor !== null
+    ? [forceColor, forceColor, forceColor]
+    : [COLORS.eci.x, COLORS.eci.y, COLORS.eci.z];
   const defs = [
-    { from: p0, to: p1, col: COLORS.eci.x, label: 'X' },
-    { from: p1, to: p2, col: COLORS.eci.y, label: 'Y' },
-    { from: p2, to: p3, col: COLORS.eci.z, label: 'Z' },
+    { from: p0, to: p1, col: cols[0], label: 'X' },
+    { from: p1, to: p2, col: cols[1], label: 'Y' },
+    { from: p2, to: p3, col: cols[2], label: 'Z' },
   ];
   defs.forEach(({ from, to, col, label }, i) => {
     if (STATE.slideGen !== gen) return;
@@ -1953,7 +1957,7 @@ const SLIDES = [
               }
             });
           }
-          buildECIChain(gDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
+          buildECIChain(gDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45, COLORS.grav);
         },
       },
       // ── substep 2: Drag — natural frame ───────────────────────────────
@@ -2040,7 +2044,7 @@ const SLIDES = [
               }
             });
           }
-          buildECIChain(dDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
+          buildECIChain(dDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45, COLORS.drag);
         },
       },
       // ── substep 4: Lift — natural frame ───────────────────────────────
@@ -2128,7 +2132,7 @@ const SLIDES = [
               }
             });
           }
-          buildECIChain(liftDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
+          buildECIChain(liftDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45, COLORS.lift);
         },
       },
       // ── substep 6: Thrust — natural frame ─────────────────────────────
@@ -2216,7 +2220,7 @@ const SLIDES = [
               }
             });
           }
-          buildECIChain(tDir.clone().multiplyScalar(0.48), s.pos, gen, 0.45);
+          buildECIChain(tDir.clone().multiplyScalar(0.48), s.pos, gen, 0.45, COLORS.thrust);
         },
       },
       // ── substep 8: Newton's law ───────────────────────────────────────
