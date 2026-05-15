@@ -769,31 +769,24 @@ function renderSlideContent(slide) {
   }
 }
 
-// Additive-blend oversized clone gives a genuine glow on dark backgrounds.
-// Also applies the same text-shadow used by the hover highlight.
-function addArrowGlow(arrow, scale = 1.45, opacity = 0.50) {
+// Lerp an arrow's material colors toward white to make it look lit/glowing.
+function setArrowBright(arrow, lerpAmt = 0.45) {
   if (!arrow) return;
-  const glow = arrow.clone(true);
-  glow.scale.set(scale, scale, scale);
-  glow.traverse(o => {
-    if (o.material) {
-      o.material = o.material.clone();
-      o.material.transparent = true;
-      o.material.opacity = opacity;
-      o.material.depthWrite = false;
-      o.material.blending = THREE.AdditiveBlending;
-    }
-    if (o.isCSS2DObject) {
-      o.visible = false;
-      if (o.element) o.element.style.display = 'none';
-    }
-  });
-  addSlideObj(glow);
-  // Text glow on the original arrow label (same as force-hover effect)
   arrow.traverse(o => {
-    if (o.isCSS2DObject && o.element)
-      o.element.style.textShadow = '0 0 6px currentColor, 0 0 18px currentColor';
+    if (o.material && o.material.color) {
+      const c = o.material.color;
+      c.setRGB(c.r + lerpAmt * (1 - c.r), c.g + lerpAmt * (1 - c.g), c.b + lerpAmt * (1 - c.b));
+    }
   });
+}
+
+// Reset all four persistent force arrows to their canonical colors.
+function restoreForceArrowColors() {
+  const p = STATE.persistent;
+  if (p.gravArrow)   p.gravArrow.setColor(COLORS.grav);
+  if (p.dragArrow)   p.dragArrow.setColor(COLORS.drag);
+  if (p.liftArrow)   p.liftArrow.setColor(COLORS.lift);
+  if (p.thrustArrow) p.thrustArrow.setColor(COLORS.thrust);
 }
 
 // Build a color-coded ECI column-vector block for a direction vector.
@@ -2030,7 +2023,8 @@ const SLIDES = [
             gArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           }
           setForceVisibility({ grav: true });
-          addArrowGlow(STATE.persistent.gravArrow);
+          restoreForceArrowColors();
+          setArrowBright(STATE.persistent.gravArrow);
 
           setSlidePanel(`
             <h3>Gravity &mdash; in <span class="chip chip-rst">RST</span></h3>
@@ -2093,7 +2087,8 @@ const SLIDES = [
             dArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           }
           setForceVisibility({ drag: true });
-          addArrowGlow(STATE.persistent.dragArrow);
+          restoreForceArrowColors();
+          setArrowBright(STATE.persistent.dragArrow);
 
           setSlidePanel(`
             <h3>Drag &mdash; in <span class="chip chip-vrf">VRF</span></h3>
@@ -2154,7 +2149,8 @@ const SLIDES = [
             lArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           }
           setForceVisibility({ lift: true });
-          addArrowGlow(STATE.persistent.liftArrow);
+          restoreForceArrowColors();
+          setArrowBright(STATE.persistent.liftArrow);
 
           setSlidePanel(`
             <h3>Lift &mdash; in <span class="chip chip-vrf">VRF</span></h3>
@@ -2216,7 +2212,8 @@ const SLIDES = [
             tArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           }
           setForceVisibility({ thrust: true });
-          addArrowGlow(STATE.persistent.thrustArrow);
+          restoreForceArrowColors();
+          setArrowBright(STATE.persistent.thrustArrow);
 
           setSlidePanel(`
             <h3>Thrust &mdash; in <span class="chip chip-vrf">VRF</span></h3>
@@ -2278,8 +2275,9 @@ const SLIDES = [
             a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           });
           setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+          restoreForceArrowColors();
           [STATE.persistent.gravArrow, STATE.persistent.dragArrow,
-           STATE.persistent.liftArrow, STATE.persistent.thrustArrow].forEach(a => addArrowGlow(a));
+           STATE.persistent.liftArrow, STATE.persistent.thrustArrow].forEach(a => setArrowBright(a));
 
           setSlidePanel(`
             <h3>Newton&apos;s Law &mdash; assembled in <span class="chip chip-eci">ECI</span></h3>
@@ -2332,12 +2330,12 @@ const SLIDES = [
           // Isolated: ECI frame + F_net only
           setFrameVisibility({ eci: true });
           setForceVisibility({});
+          restoreForceArrowColors();
 
           const netArrow = makeArrow(netDir, s.pos, netLen, 0xFFFFCC, 'F_net', 0.22, 0.10);
           netArrow.scale.set(1, 1, 1);
           netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           addSlideObj(netArrow);
-          addArrowGlow(netArrow);
 
           setSlidePanel(`
             <h3>F<sub>net</sub> &mdash; ECI components</h3>
@@ -2360,12 +2358,7 @@ const SLIDES = [
     exit() {
       setForceVisibility({});
       _forceFrameArrows = [];
-      // Clear any text-shadow added by addArrowGlow
-      [STATE.persistent.gravArrow, STATE.persistent.dragArrow,
-       STATE.persistent.liftArrow, STATE.persistent.thrustArrow].forEach(a => {
-        if (!a) return;
-        a.traverse(o => { if (o.isCSS2DObject && o.element) o.element.style.textShadow = ''; });
-      });
+      restoreForceArrowColors();
     },
   },
 
