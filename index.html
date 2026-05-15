@@ -1975,29 +1975,20 @@ const SLIDES = [
         html: '',
         enter3D() {
           clearSlideObjects();
-          const gen  = STATE.slideGen;
-          const s    = getSpacecraftState(0.72);
-          const gDir = s.R_hat.clone().negate();
-          _forceFrameArrows = [];
+          const s = getSpacecraftState(0.72);
 
-          setGroupVisible(STATE.persistent.eciGroup,  false);
-          setGroupVisible(STATE.persistent.vrfGroup,  false);
-          setGroupVisible(STATE.persistent.rstGroup,  true);
+          setGroupVisible(STATE.persistent.eciGroup, false);
+          setGroupVisible(STATE.persistent.vrfGroup, false);
+          setGroupVisible(STATE.persistent.rstGroup, true);
           animateGroupIn(STATE.persistent.rstGroup, 0.1);
           if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
 
-          const gProxy = makeArrow(gDir, s.pos, 0.52, COLORS.grav, 'Fg', 0.16, 0.07);
-          gProxy.scale.set(0, 0, 0);
-          gProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-          addSlideObj(gProxy);
-          _forceFrameArrows[0] = gProxy;
-          gsap.to(gProxy.scale, {
-            x: 1, y: 1, z: 1, duration: 0.45, delay: 0.35, ease: 'back.out(1.4)',
-            onComplete() {
-              if (STATE.slideGen !== gen) return;
-              gProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-            }
-          });
+          const gArr = STATE.persistent.gravArrow;
+          if (gArr) {
+            gArr.scale.set(1, 1, 1);
+            gArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+          }
+          setForceVisibility({ grav: true });
 
           setSlidePanel(`
             <h3>Gravity &mdash; in <span class="chip chip-rst">RST</span></h3>
@@ -2014,10 +2005,14 @@ const SLIDES = [
       {
         html: '',
         enter3D() {
-          const gen  = STATE.slideGen;
-          const s    = getSpacecraftState(0.72);
+          const gen = STATE.slideGen;
+          const s   = getSpacecraftState(0.72);
           const gDir = s.R_hat.clone().negate();
-          const proxy = _forceFrameArrows[0];
+
+          setGroupVisible(STATE.persistent.rstGroup, false);
+          setGroupVisible(STATE.persistent.eciGroup, true);
+          animateGroupIn(STATE.persistent.eciGroup, 0.0);
+          // Force arrow stays visible at scale 1 — no re-animation
 
           setSlidePanel(`
             <h3>Gravity &mdash; in <span class="chip chip-eci">ECI</span></h3>
@@ -2027,34 +2022,9 @@ const SLIDES = [
                 = -\\frac{\\mu m}{r^2}\\hat{R}\\]
             </div>
             <p>The <span style="color:#FF3333">red</span>&thinsp;/&thinsp;<span style="color:#33FF33">green</span>&thinsp;/&thinsp;<span style="color:#3399FF">blue</span>
-            arrows are ECI X&#x302;&thinsp;/&thinsp;&#x176;&thinsp;/&thinsp;&#x17C; components added tip-to-tail
-            &mdash; they reconstruct the gravity arrow exactly.</p>
+            chain arrows are ECI X&#x302;&thinsp;/&thinsp;&#x176;&thinsp;/&thinsp;&#x17C; components added tip-to-tail.</p>
             <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> for Drag.</p>`);
 
-          setGroupVisible(STATE.persistent.rstGroup, false);
-          setGroupVisible(STATE.persistent.eciGroup, true);
-          animateGroupIn(STATE.persistent.eciGroup, 0.0);
-
-          if (proxy) {
-            gsap.to(proxy.scale, { x: 0, y: 0, z: 0, duration: 0.3, ease: 'power2.in',
-              onComplete() { proxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } }); }
-            });
-          }
-          const gArr = STATE.persistent.gravArrow;
-          if (gArr) {
-            gArr.scale.set(0, 0, 0);
-            gArr.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-          }
-          setForceVisibility({ grav: true });
-          if (gArr) {
-            gsap.to(gArr.scale, {
-              x: 1, y: 1, z: 1, duration: 0.5, delay: 0.2, ease: 'back.out(1.4)',
-              onComplete() {
-                if (STATE.slideGen !== gen) return;
-                gArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-              }
-            });
-          }
           buildECIChain(gDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
         },
       },
@@ -2063,30 +2033,20 @@ const SLIDES = [
         html: '',
         enter3D() {
           clearSlideObjects();
-          const gen  = STATE.slideGen;
           const s    = getSpacecraftState(0.72);
-          const dDir = s.vel.clone().normalize().negate();
-          _forceFrameArrows = [];
 
           setGroupVisible(STATE.persistent.eciGroup, false);
-          setForceVisibility({});
           setGroupVisible(STATE.persistent.rstGroup, false);
           setGroupVisible(STATE.persistent.vrfGroup, true);
           animateGroupIn(STATE.persistent.vrfGroup, 0.1);
           if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
 
-          const dProxy = makeArrow(dDir, s.pos, 0.52, COLORS.drag, 'FD', 0.16, 0.07);
-          dProxy.scale.set(0, 0, 0);
-          dProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-          addSlideObj(dProxy);
-          _forceFrameArrows[0] = dProxy;
-          gsap.to(dProxy.scale, {
-            x: 1, y: 1, z: 1, duration: 0.45, delay: 0.35, ease: 'back.out(1.4)',
-            onComplete() {
-              if (STATE.slideGen !== gen) return;
-              dProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-            }
-          });
+          const dArr = STATE.persistent.dragArrow;
+          if (dArr) {
+            dArr.scale.set(1, 1, 1);
+            dArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+          }
+          setForceVisibility({ drag: true });
 
           setSlidePanel(`
             <h3>Drag &mdash; in <span class="chip chip-vrf">VRF</span></h3>
@@ -2103,10 +2063,13 @@ const SLIDES = [
       {
         html: '',
         enter3D() {
-          const gen   = STATE.slideGen;
-          const s     = getSpacecraftState(0.72);
-          const dDir  = s.vel.clone().normalize().negate();
-          const proxy = _forceFrameArrows[0];
+          const gen  = STATE.slideGen;
+          const s    = getSpacecraftState(0.72);
+          const dDir = s.vel.clone().normalize().negate();
+
+          setGroupVisible(STATE.persistent.vrfGroup, false);
+          setGroupVisible(STATE.persistent.eciGroup, true);
+          animateGroupIn(STATE.persistent.eciGroup, 0.0);
 
           setSlidePanel(`
             <h3>Drag &mdash; in <span class="chip chip-eci">ECI</span></h3>
@@ -2114,34 +2077,9 @@ const SLIDES = [
               <div class="eq-label">Full rotation chain</div>
               \\[\\vec{F}_D = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}-D\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
             </div>
-            <p>VRF&nbsp;&rarr;&nbsp;RST&nbsp;&rarr;&nbsp;ECI: the single VRF component spreads across all
-            three ECI axes after two rotations.</p>
+            <p>VRF&nbsp;&rarr;&nbsp;RST&nbsp;&rarr;&nbsp;ECI: one component spreads across all three ECI axes.</p>
             <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> for Lift.</p>`);
 
-          setGroupVisible(STATE.persistent.vrfGroup, false);
-          setGroupVisible(STATE.persistent.eciGroup, true);
-          animateGroupIn(STATE.persistent.eciGroup, 0.0);
-
-          if (proxy) {
-            gsap.to(proxy.scale, { x: 0, y: 0, z: 0, duration: 0.3, ease: 'power2.in',
-              onComplete() { proxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } }); }
-            });
-          }
-          const dArr = STATE.persistent.dragArrow;
-          if (dArr) {
-            dArr.scale.set(0, 0, 0);
-            dArr.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-          }
-          setForceVisibility({ drag: true });
-          if (dArr) {
-            gsap.to(dArr.scale, {
-              x: 1, y: 1, z: 1, duration: 0.5, delay: 0.2, ease: 'back.out(1.4)',
-              onComplete() {
-                if (STATE.slideGen !== gen) return;
-                dArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-              }
-            });
-          }
           buildECIChain(dDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
         },
       },
@@ -2150,31 +2088,20 @@ const SLIDES = [
         html: '',
         enter3D() {
           clearSlideObjects();
-          const gen     = STATE.slideGen;
-          const s       = getSpacecraftState(0.72);
-          const vHat    = s.vel.clone().normalize();
-          const liftDir = s.R_hat.clone().addScaledVector(vHat, -s.R_hat.dot(vHat)).normalize();
-          _forceFrameArrows = [];
+          const s    = getSpacecraftState(0.72);
 
           setGroupVisible(STATE.persistent.eciGroup, false);
-          setForceVisibility({});
           setGroupVisible(STATE.persistent.rstGroup, false);
           setGroupVisible(STATE.persistent.vrfGroup, true);
           animateGroupIn(STATE.persistent.vrfGroup, 0.1);
           if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
 
-          const lProxy = makeArrow(liftDir, s.pos, 0.52, COLORS.lift, 'FL', 0.16, 0.07);
-          lProxy.scale.set(0, 0, 0);
-          lProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-          addSlideObj(lProxy);
-          _forceFrameArrows[0] = lProxy;
-          gsap.to(lProxy.scale, {
-            x: 1, y: 1, z: 1, duration: 0.45, delay: 0.35, ease: 'back.out(1.4)',
-            onComplete() {
-              if (STATE.slideGen !== gen) return;
-              lProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-            }
-          });
+          const lArr = STATE.persistent.liftArrow;
+          if (lArr) {
+            lArr.scale.set(1, 1, 1);
+            lArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+          }
+          setForceVisibility({ lift: true });
 
           setSlidePanel(`
             <h3>Lift &mdash; in <span class="chip chip-vrf">VRF</span></h3>
@@ -2195,7 +2122,10 @@ const SLIDES = [
           const s       = getSpacecraftState(0.72);
           const vHat    = s.vel.clone().normalize();
           const liftDir = s.R_hat.clone().addScaledVector(vHat, -s.R_hat.dot(vHat)).normalize();
-          const proxy   = _forceFrameArrows[0];
+
+          setGroupVisible(STATE.persistent.vrfGroup, false);
+          setGroupVisible(STATE.persistent.eciGroup, true);
+          animateGroupIn(STATE.persistent.eciGroup, 0.0);
 
           setSlidePanel(`
             <h3>Lift &mdash; in <span class="chip chip-eci">ECI</span></h3>
@@ -2206,30 +2136,6 @@ const SLIDES = [
             <p>Two VRF components mix across all three ECI axes after both rotations.</p>
             <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> for Thrust.</p>`);
 
-          setGroupVisible(STATE.persistent.vrfGroup, false);
-          setGroupVisible(STATE.persistent.eciGroup, true);
-          animateGroupIn(STATE.persistent.eciGroup, 0.0);
-
-          if (proxy) {
-            gsap.to(proxy.scale, { x: 0, y: 0, z: 0, duration: 0.3, ease: 'power2.in',
-              onComplete() { proxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } }); }
-            });
-          }
-          const lArr = STATE.persistent.liftArrow;
-          if (lArr) {
-            lArr.scale.set(0, 0, 0);
-            lArr.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-          }
-          setForceVisibility({ lift: true });
-          if (lArr) {
-            gsap.to(lArr.scale, {
-              x: 1, y: 1, z: 1, duration: 0.5, delay: 0.2, ease: 'back.out(1.4)',
-              onComplete() {
-                if (STATE.slideGen !== gen) return;
-                lArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-              }
-            });
-          }
           buildECIChain(liftDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
         },
       },
@@ -2238,30 +2144,20 @@ const SLIDES = [
         html: '',
         enter3D() {
           clearSlideObjects();
-          const gen  = STATE.slideGen;
-          const s    = getSpacecraftState(0.72);
-          const tDir = s.vel.clone().normalize();
-          _forceFrameArrows = [];
+          const s = getSpacecraftState(0.72);
 
           setGroupVisible(STATE.persistent.eciGroup, false);
-          setForceVisibility({});
           setGroupVisible(STATE.persistent.rstGroup, false);
           setGroupVisible(STATE.persistent.vrfGroup, true);
           animateGroupIn(STATE.persistent.vrfGroup, 0.1);
           if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
 
-          const tProxy = makeArrow(tDir, s.pos, 0.48, COLORS.thrust, 'FT', 0.16, 0.07);
-          tProxy.scale.set(0, 0, 0);
-          tProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-          addSlideObj(tProxy);
-          _forceFrameArrows[0] = tProxy;
-          gsap.to(tProxy.scale, {
-            x: 1, y: 1, z: 1, duration: 0.45, delay: 0.35, ease: 'back.out(1.4)',
-            onComplete() {
-              if (STATE.slideGen !== gen) return;
-              tProxy.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-            }
-          });
+          const tArr = STATE.persistent.thrustArrow;
+          if (tArr) {
+            tArr.scale.set(1, 1, 1);
+            tArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+          }
+          setForceVisibility({ thrust: true });
 
           setSlidePanel(`
             <h3>Thrust &mdash; in <span class="chip chip-vrf">VRF</span></h3>
@@ -2278,10 +2174,13 @@ const SLIDES = [
       {
         html: '',
         enter3D() {
-          const gen   = STATE.slideGen;
-          const s     = getSpacecraftState(0.72);
-          const tDir  = s.vel.clone().normalize();
-          const proxy = _forceFrameArrows[0];
+          const gen  = STATE.slideGen;
+          const s    = getSpacecraftState(0.72);
+          const tDir = s.vel.clone().normalize();
+
+          setGroupVisible(STATE.persistent.vrfGroup, false);
+          setGroupVisible(STATE.persistent.eciGroup, true);
+          animateGroupIn(STATE.persistent.eciGroup, 0.0);
 
           setSlidePanel(`
             <h3>Thrust &mdash; in <span class="chip chip-eci">ECI</span></h3>
@@ -2290,34 +2189,9 @@ const SLIDES = [
               \\[\\vec{F}_T = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}T\\\\0\\\\0\\end{bmatrix}_{VRF}
                 = T\\,\\hat{x}_v\\]
             </div>
-            <p>Thrust is already aligned with \\(\\hat{x}_v\\), so the chain simply
-            expresses that velocity direction in ECI coordinates.</p>
+            <p>Thrust aligns with \\(\\hat{x}_v\\); the chain expresses that direction in ECI coordinates.</p>
             <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> to assemble Newton&apos;s law.</p>`);
 
-          setGroupVisible(STATE.persistent.vrfGroup, false);
-          setGroupVisible(STATE.persistent.eciGroup, true);
-          animateGroupIn(STATE.persistent.eciGroup, 0.0);
-
-          if (proxy) {
-            gsap.to(proxy.scale, { x: 0, y: 0, z: 0, duration: 0.3, ease: 'power2.in',
-              onComplete() { proxy.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } }); }
-            });
-          }
-          const tArr = STATE.persistent.thrustArrow;
-          if (tArr) {
-            tArr.scale.set(0, 0, 0);
-            tArr.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-          }
-          setForceVisibility({ thrust: true });
-          if (tArr) {
-            gsap.to(tArr.scale, {
-              x: 1, y: 1, z: 1, duration: 0.5, delay: 0.2, ease: 'back.out(1.4)',
-              onComplete() {
-                if (STATE.slideGen !== gen) return;
-                tArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-              }
-            });
-          }
           buildECIChain(tDir.clone().multiplyScalar(0.48), s.pos, gen, 0.45);
         },
       },
@@ -2329,33 +2203,26 @@ const SLIDES = [
           const gen = STATE.slideGen;
 
           setFrameVisibility({ eci: true });
+
+          const forces = [
+            STATE.persistent.gravArrow, STATE.persistent.dragArrow,
+            STATE.persistent.liftArrow, STATE.persistent.thrustArrow,
+          ];
+          forces.forEach(a => {
+            if (!a) return;
+            a.scale.set(1, 1, 1);
+            a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+          });
           setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
 
           setSlidePanel(`
             <h3>Newton&apos;s Law &mdash; assembled in <span class="chip chip-eci">ECI</span></h3>
-            <p>All four forces now share the same coordinate system and can be summed directly:</p>
+            <p>All four forces share the same coordinate system and can be summed directly:</p>
             <div class="eq-block">
               \\[m\\ddot{\\vec{r}}_I = \\vec{F}_g + \\vec{F}_{aero} + \\vec{F}_T\\]
             </div>
             <p>The cream arrow <strong>F<sub>net</sub></strong> is their vector sum &mdash;
             ready to integrate for \\(r(t),\\,v(t),\\,\\gamma(t),\\,\\psi(t)\\).</p>`);
-
-          const forces = [
-            STATE.persistent.gravArrow,  STATE.persistent.dragArrow,
-            STATE.persistent.liftArrow,  STATE.persistent.thrustArrow,
-          ];
-          forces.forEach((a, i) => {
-            if (!a) return;
-            a.scale.set(0, 0, 0);
-            a.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-            gsap.to(a.scale, {
-              x: 1, y: 1, z: 1, duration: 0.5, delay: 0.15 + i * 0.12, ease: 'back.out(1.4)',
-              onComplete() {
-                if (STATE.slideGen !== gen) return;
-                a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-              }
-            });
-          });
 
           const s        = getSpacecraftState(0.72);
           const v_hat    = s.vel.clone().normalize();
@@ -2370,7 +2237,7 @@ const SLIDES = [
           netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
           addSlideObj(netArrow);
           gsap.to(netArrow.scale, {
-            x: 1, y: 1, z: 1, duration: 0.6, delay: 0.75, ease: 'back.out(1.4)',
+            x: 1, y: 1, z: 1, duration: 0.6, delay: 0.4, ease: 'back.out(1.4)',
             onComplete() {
               if (STATE.slideGen !== gen) return;
               netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
