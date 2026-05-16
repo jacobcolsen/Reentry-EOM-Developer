@@ -1979,10 +1979,10 @@ const SLIDES = [
             <h3>Gravity &mdash; in <span class="chip chip-eci">ECI</span></h3>
             <div class="eq-block">
               <div class="eq-label">Rotation chain</div>
-              \\[\\vec{F}_g = C_{E\\leftarrow R}\\begin{bmatrix}-\\mu m/r^2\\\\0\\\\0\\end{bmatrix}_{RST}
-                = -\\frac{\\mu m}{r^2}\\hat{R}\\]
+              \\[\\vec{F}_g = C_{E\\leftarrow R}\\begin{bmatrix}\\textcolor{#6699FF}{-\\mu m/r^2}\\\\0\\\\0\\end{bmatrix}_{RST}
+                = \\textcolor{#6699FF}{-\\frac{\\mu m}{r^2}}\\hat{R}\\]
             </div>
-            ${eciEqBlock(`\\vec{F}_g = -\\frac{\\mu m}{r^2}\\begin{bmatrix}\\color{#FF3333}{\\hat{R}\\cdot\\hat{X}}\\\\\\color{#33FF33}{\\hat{R}\\cdot\\hat{Y}}\\\\\\color{#3399FF}{\\hat{R}\\cdot\\hat{Z}}\\end{bmatrix}_{ECI}`)}
+            ${eciEqBlock(`\\vec{F}_g = \\underbrace{[\\hat{R}\\,|\\,\\hat{S}\\,|\\,\\hat{T}]}_{C_{E\\leftarrow R}}\\!\\begin{bmatrix}\\textcolor{#6699FF}{-\\mu m/r^2}\\\\0\\\\0\\end{bmatrix}_{RST} = \\textcolor{#6699FF}{-\\frac{\\mu m}{r^2}}\\hat{R}`)}
             <p style="font-size:0.8rem;color:#6a8aaa;">
               <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
               <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
@@ -2042,9 +2042,9 @@ const SLIDES = [
             <h3>Drag &mdash; in <span class="chip chip-eci">ECI</span></h3>
             <div class="eq-block">
               <div class="eq-label">Full rotation chain</div>
-              \\[\\vec{F}_D = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}-D\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
+              \\[\\vec{F}_D = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}\\textcolor{#FF9944}{-D}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
             </div>
-            ${eciEqBlock(`\\vec{F}_D = -D\\begin{bmatrix}\\color{#FF3333}{\\hat{v}\\cdot\\hat{X}}\\\\\\color{#33FF33}{\\hat{v}\\cdot\\hat{Y}}\\\\\\color{#3399FF}{\\hat{v}\\cdot\\hat{Z}}\\end{bmatrix}_{ECI}`)}
+            ${eciEqBlock(`\\vec{F}_D = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#FF9944}{-D}\\sin\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}\\\\\\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}\\end{bmatrix}_{RST}`)}
             <p style="font-size:0.8rem;color:#6a8aaa;">
               <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
               <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
@@ -2105,9 +2105,9 @@ const SLIDES = [
             <h3>Lift &mdash; in <span class="chip chip-eci">ECI</span></h3>
             <div class="eq-block">
               <div class="eq-label">Full rotation chain</div>
-              \\[\\vec{F}_L = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}0\\\\L\\cos\\theta\\\\-L\\sin\\theta\\end{bmatrix}_{VRF}\\]
+              \\[\\vec{F}_L = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}0\\\\\\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\\\\\textcolor{#FF6699}{-L}\\sin\\textcolor{#44FFFF}{\\theta}\\end{bmatrix}_{VRF}\\]
             </div>
-            ${eciEqBlock(`\\vec{F}_L = L\\begin{bmatrix}\\color{#FF3333}{\\hat{l}\\cdot\\hat{X}}\\\\\\color{#33FF33}{\\hat{l}\\cdot\\hat{Y}}\\\\\\color{#3399FF}{\\hat{l}\\cdot\\hat{Z}}\\end{bmatrix}_{ECI}`)}
+            ${eciEqBlock(`\\vec{F}_L = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#FF6699}{-L}\\cos\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF6699}{L}(\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}+\\sin\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FF44CC}{\\psi})\\\\\\textcolor{#FF6699}{L}(\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}-\\sin\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FF44CC}{\\psi})\\end{bmatrix}_{RST}`)}
             <p style="font-size:0.8rem;color:#6a8aaa;">
               <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
               <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
@@ -2167,10 +2167,10 @@ const SLIDES = [
             <h3>Thrust &mdash; in <span class="chip chip-eci">ECI</span></h3>
             <div class="eq-block">
               <div class="eq-label">Full rotation chain</div>
-              \\[\\vec{F}_T = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}T\\\\0\\\\0\\end{bmatrix}_{VRF}
-                = T\\,\\hat{x}_v\\]
+              \\[\\vec{F}_T = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}\\textcolor{#FF4444}{T}\\\\0\\\\0\\end{bmatrix}_{VRF}
+                = \\textcolor{#FF4444}{T}\\,\\hat{x}_v\\]
             </div>
-            ${eciEqBlock(`\\vec{F}_T = T\\begin{bmatrix}\\color{#FF3333}{\\hat{v}\\cdot\\hat{X}}\\\\\\color{#33FF33}{\\hat{v}\\cdot\\hat{Y}}\\\\\\color{#3399FF}{\\hat{v}\\cdot\\hat{Z}}\\end{bmatrix}_{ECI}`)}
+            ${eciEqBlock(`\\vec{F}_T = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#FF4444}{T}\\sin\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF4444}{T}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}\\\\\\textcolor{#FF4444}{T}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}\\end{bmatrix}_{RST}`)}
             <p style="font-size:0.8rem;color:#6a8aaa;">
               <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
               <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
@@ -2270,7 +2270,7 @@ const SLIDES = [
             <div class="eq-block">
               \\[\\vec{F}_{net} = F_{X}\\hat{X} + F_{Y}\\hat{Y} + F_{Z}\\hat{Z}\\]
             </div>
-            ${eciEqBlock(`\\vec{F}_{net} = \\begin{bmatrix}\\color{#FF3333}{F_{net,X}}\\\\\\color{#33FF33}{F_{net,Y}}\\\\\\color{#3399FF}{F_{net,Z}}\\end{bmatrix}_{ECI} = \\sum_i\\,\\vec{F}_i\\cdot\\begin{bmatrix}\\hat{X}\\\\\\hat{Y}\\\\\\hat{Z}\\end{bmatrix}`)}
+            ${eciEqBlock(`\\vec{F}_{net} = C_{E\\leftarrow R}\\!\\begin{bmatrix}-\\tfrac{\\mu m}{r^2}+(T\\!-\\!D)\\sin\\gamma - L\\cos\\theta\\cos\\gamma\\\\(T\\!-\\!D)\\cos\\gamma\\cos\\psi + L\\cos\\theta\\sin\\gamma\\cos\\psi + L\\sin\\theta\\sin\\psi\\\\(T\\!-\\!D)\\cos\\gamma\\sin\\psi + L\\cos\\theta\\sin\\gamma\\sin\\psi - L\\sin\\theta\\cos\\psi\\end{bmatrix}_{RST}`)}
             <p style="font-size:0.8rem;color:#6a8aaa;">
               <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
               <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
