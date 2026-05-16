@@ -1746,7 +1746,7 @@ const SLIDES = [
       <p>Gravity acts radially inward along \\(-\\hat{R}\\) and follows the inverse-square law.</p>
       <div class="eq-block">
         <div class="eq-label">Gravitational force</div>
-        \\[\\vec{F}_g = -\\frac{\\mu m}{r^2}\\hat{R}\\]
+        \\[\\vec{F}_g = \\textcolor{#6699FF}{-\\frac{\\mu m}{r^2}}\\hat{R}\\]
         \\[\\mu = GM_\\oplus = 3.986 \\times 10^{14}\\ \\text{m}^3/\\text{s}^2\\]
       </div>
       <p>In the vehicle-pointing frame, the gravitational acceleration vector has only
@@ -1789,7 +1789,7 @@ const SLIDES = [
       <div class="eq-block">
         <div class="eq-label">In vehicle-pointing frame</div>
         \\[\\vec{F}_D = \\begin{bmatrix}
-          D\\sin\\gamma \\\\ -D\\cos\\gamma\\cos\\psi \\\\ -D\\cos\\gamma\\sin\\psi
+          \\textcolor{#FF9944}{D}\\sin\\textcolor{#FFEE77}{\\gamma} \\\\ \\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} \\\\ \\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}
         \\end{bmatrix}_{\\text{RST}}\\]
       </div>`,
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
@@ -1818,7 +1818,7 @@ const SLIDES = [
       </div>
       <div class="eq-block">
         <div class="eq-label">Lift vector</div>
-        \\[\\vec{F}_L = L(\\cos\\theta\\,\\hat{L} + \\sin\\theta\\,\\hat{N})\\]
+        \\[\\vec{F}_L = \\textcolor{#FF6699}{L}(\\cos\\textcolor{#44FFFF}{\\theta}\\,\\hat{L} + \\sin\\textcolor{#44FFFF}{\\theta}\\,\\hat{N})\\]
       </div>
       <p>Watch the <span class="chip chip-lift" data-force-hover="lift">lift arrow</span> rotate around the velocity
       axis as bank angle \\(\\theta\\) changes — this is how a lifting entry vehicle controls
@@ -1977,10 +1977,10 @@ const SLIDES = [
       <h3>Flight Attitude &mdash; RST &harr; VRF</h3>
       <div class="eq-block">
         <div class="eq-label">heading &psi; about T&#x0302;, then flight-path &gamma; about y&#x0302;<sub>v</sub></div>
-        \\[C_{V\\leftarrow R} = R_Z(\\psi)\\,R_Y(-\\gamma)\\]
-        \\[R_Z(\\psi)=\\begin{bmatrix}\\cos\\psi&-\\sin\\psi&0\\\\\\sin\\psi&\\cos\\psi&0\\\\0&0&1\\end{bmatrix},\\quad
-        R_Y(-\\gamma)=\\begin{bmatrix}\\cos\\gamma&0&\\sin\\gamma\\\\0&1&0\\\\-\\sin\\gamma&0&\\cos\\gamma\\end{bmatrix}\\]
-        \\[C_{R\\leftarrow V} = C_{V\\leftarrow R}^{T} = R_Y(\\gamma)\\,R_Z(-\\psi)\\]
+        \\[C_{V\\leftarrow R} = R_Z(\\textcolor{#FF44CC}{\\psi})\\,R_Y(-\\textcolor{#FFEE77}{\\gamma})\\]
+        \\[R_Z(\\textcolor{#FF44CC}{\\psi})=\\begin{bmatrix}\\cos\\textcolor{#FF44CC}{\\psi}&-\\sin\\textcolor{#FF44CC}{\\psi}&0\\\\\\sin\\textcolor{#FF44CC}{\\psi}&\\cos\\textcolor{#FF44CC}{\\psi}&0\\\\0&0&1\\end{bmatrix},\\quad
+        R_Y(-\\textcolor{#FFEE77}{\\gamma})=\\begin{bmatrix}\\cos\\textcolor{#FFEE77}{\\gamma}&0&\\sin\\textcolor{#FFEE77}{\\gamma}\\\\0&1&0\\\\-\\sin\\textcolor{#FFEE77}{\\gamma}&0&\\cos\\textcolor{#FFEE77}{\\gamma}\\end{bmatrix}\\]
+        \\[C_{R\\leftarrow V} = C_{V\\leftarrow R}^{T} = R_Y(\\textcolor{#FFEE77}{\\gamma})\\,R_Z(-\\textcolor{#FF44CC}{\\psi})\\]
       </div>
 
       <h3>Complete Chain &mdash; VRF &rarr; ECI</h3>
@@ -2058,7 +2058,7 @@ const SLIDES = [
             In RST it has one non-zero component:</p>
             <div class="eq-block">
               <div class="eq-label">Gravity in RST frame</div>
-              \\[\\vec{F}_g = \\begin{bmatrix}-\\mu m/r^2\\\\0\\\\0\\end{bmatrix}_{RST}\\]
+              \\[\\vec{F}_g = \\begin{bmatrix}\\textcolor{#6699FF}{-\\mu m/r^2}\\\\0\\\\0\\end{bmatrix}_{RST}\\]
             </div>
             <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> to decompose into ECI.</p>`);
         },
@@ -2083,7 +2083,7 @@ const SLIDES = [
               \\[\\vec{F}_g = C_{E\\leftarrow R}\\begin{bmatrix}\\textcolor{#6699FF}{-\\mu m/r^2}\\\\0\\\\0\\end{bmatrix}_{RST}
                 = \\textcolor{#6699FF}{-\\frac{\\mu m}{r^2}}\\hat{R}\\]
             </div>
-            ${eciEqBlock(`\\vec{F}_g = \\textcolor{#6699FF}{-\\frac{\\mu m}{r^2}}\\hat{R} = \\textcolor{#6699FF}{-\\frac{\\mu m}{r^3}}\\begin{bmatrix}X\\\\Y\\\\Z\\end{bmatrix}_{ECI}`)}
+            ${eciEqBlock(`\\vec{F}_g = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#6699FF}{-\\mu m/r^2}\\\\0\\\\0\\end{bmatrix}_{RST} = \\textcolor{#6699FF}{-\\frac{\\mu m}{r^3}}\\begin{bmatrix}X\\\\Y\\\\Z\\end{bmatrix}_{ECI}`)}
             <p style="font-size:0.8rem;color:#6a8aaa;">
               <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
               <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
@@ -2122,7 +2122,7 @@ const SLIDES = [
             (first VRF axis). In VRF it is diagonal:</p>
             <div class="eq-block">
               <div class="eq-label">Drag in VRF frame</div>
-              \\[\\vec{F}_D = \\begin{bmatrix}-D\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
+              \\[\\vec{F}_D = \\begin{bmatrix}\\textcolor{#FF9944}{-D}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
             </div>
             <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> to decompose into ECI.</p>`);
         },
@@ -2184,7 +2184,7 @@ const SLIDES = [
             it spans VRF &#x177;<sub>v</sub> and &#x17C;<sub>v</sub>:</p>
             <div class="eq-block">
               <div class="eq-label">Lift in VRF frame</div>
-              \\[\\vec{F}_L = \\begin{bmatrix}0\\\\L\\cos\\theta\\\\-L\\sin\\theta\\end{bmatrix}_{VRF}\\]
+              \\[\\vec{F}_L = \\begin{bmatrix}0\\\\\\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\\\\\textcolor{#FF6699}{-L}\\sin\\textcolor{#44FFFF}{\\theta}\\end{bmatrix}_{VRF}\\]
             </div>
             <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> to decompose into ECI.</p>`);
         },
@@ -2247,7 +2247,7 @@ const SLIDES = [
             aligned with the velocity vector, along +x&#x302;<sub>v</sub>:</p>
             <div class="eq-block">
               <div class="eq-label">Thrust in VRF frame</div>
-              \\[\\vec{F}_T = \\begin{bmatrix}T\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
+              \\[\\vec{F}_T = \\begin{bmatrix}\\textcolor{#FF4444}{T}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
             </div>
             <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> to decompose into ECI.</p>`);
         },
@@ -2371,7 +2371,7 @@ const SLIDES = [
             <div class="eq-block">
               \\[\\vec{F}_{net} = F_{X}\\hat{X} + F_{Y}\\hat{Y} + F_{Z}\\hat{Z}\\]
             </div>
-            ${eciEqBlock(`\\vec{F}_{net} = C_{E\\leftarrow R}\\!\\begin{bmatrix}-\\tfrac{\\mu m}{r^2}+(T\\!-\\!D)\\sin\\gamma - L\\cos\\theta\\cos\\gamma\\\\(T\\!-\\!D)\\cos\\gamma\\cos\\psi + L\\cos\\theta\\sin\\gamma\\cos\\psi + L\\sin\\theta\\sin\\psi\\\\(T\\!-\\!D)\\cos\\gamma\\sin\\psi + L\\cos\\theta\\sin\\gamma\\sin\\psi - L\\sin\\theta\\cos\\psi\\end{bmatrix}_{RST}`)}
+            ${eciEqBlock(`\\vec{F}_{net} = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#6699FF}{-\\tfrac{\\mu m}{r^2}}+(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\sin\\textcolor{#FFEE77}{\\gamma} - \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FFEE77}{\\gamma}\\\\(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} + \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} + \\textcolor{#FF6699}{L}\\sin\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FF44CC}{\\psi}\\\\(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} + \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} - \\textcolor{#FF6699}{L}\\sin\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FF44CC}{\\psi}\\end{bmatrix}_{RST}`)}
             <p style="font-size:0.8rem;color:#6a8aaa;">
               <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
               <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
