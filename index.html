@@ -769,42 +769,54 @@ function renderSlideContent(slide) {
   }
 }
 
-// Bloom glow: three additive layers stacked on the original arrow.
-// Layer 1 (scale 1.0) sits exactly on top — makes arrow self-luminous.
-// Layers 2–3 spread slightly wider to simulate Gaussian blur falloff.
-// Base arrow colors are never mutated.
-function addArrowBloom(arrow, hexColor) {
-  if (!arrow) return;
-  const bright = new THREE.Color(hexColor).multiplyScalar(1.25);
-  [
-    { scale: 1.00, opacity: 0.70 },
-    { scale: 1.14, opacity: 0.30 },
-    { scale: 1.30, opacity: 0.12 },
-  ].forEach(({ scale, opacity }) => {
-    const dupe = arrow.clone(true);
-    dupe.scale.set(scale, scale, scale);
-    dupe.traverse(o => {
-      if (o.material) {
-        o.material = o.material.clone();
-        o.material.color.copy(bright);
-        o.material.transparent = true;
-        o.material.opacity = opacity;
-        o.material.depthWrite = false;
-        o.material.blending = THREE.AdditiveBlending;
-      }
-      if (o.isCSS2DObject) { o.visible = false; if (o.element) o.element.style.display = 'none'; }
-    });
-    addSlideObj(dupe);
+// Fresnel rim shader on the cone material — same color, same geometry, no duplicates.
+// The rim brightens toward the silhouette edge and fades to the base color at center,
+// giving a soft emissive highlight without any extra objects.
+const _FRESNEL_VERT = `
+  varying vec3 vNormal;
+  varying vec3 vViewPos;
+  void main() {
+    vNormal  = normalize(normalMatrix * normal);
+    vec4 mv  = modelViewMatrix * vec4(position, 1.0);
+    vViewPos = -mv.xyz;
+    gl_Position = projectionMatrix * mv;
+  }`;
+const _FRESNEL_FRAG = `
+  uniform vec3  baseColor;
+  uniform float glowStrength;
+  varying vec3  vNormal;
+  varying vec3  vViewPos;
+  void main() {
+    float rim  = 1.0 - clamp(dot(normalize(vNormal), normalize(vViewPos)), 0.0, 1.0);
+    float glow = pow(rim, 2.0) * glowStrength;
+    gl_FragColor = vec4(min(baseColor * (1.0 + glow), vec3(1.0)), 1.0);
+  }`;
+
+function highlightArrow(arrow, hexColor) {
+  if (!arrow || !arrow.cone) return;
+  if (arrow.cone.material) arrow.cone.material.dispose();
+  arrow.cone.material = new THREE.ShaderMaterial({
+    uniforms: {
+      baseColor:    { value: new THREE.Color(hexColor) },
+      glowStrength: { value: 0.25 },
+    },
+    vertexShader:   _FRESNEL_VERT,
+    fragmentShader: _FRESNEL_FRAG,
+    toneMapped: false,
   });
 }
 
-// Reset all four persistent force arrows to their canonical colors.
-function restoreForceArrowColors() {
-  const p = STATE.persistent;
-  if (p.gravArrow)   p.gravArrow.setColor(COLORS.grav);
-  if (p.dragArrow)   p.dragArrow.setColor(COLORS.drag);
-  if (p.liftArrow)   p.liftArrow.setColor(COLORS.lift);
-  if (p.thrustArrow) p.thrustArrow.setColor(COLORS.thrust);
+function restoreArrowMaterial(arrow, hexColor) {
+  if (!arrow || !arrow.cone) return;
+  if (arrow.cone.material) arrow.cone.material.dispose();
+  arrow.cone.material = new THREE.MeshBasicMaterial({ color: hexColor, toneMapped: false });
+}
+
+function restoreAllArrowMaterials() {
+  restoreArrowMaterial(STATE.persistent.gravArrow,   COLORS.grav);
+  restoreArrowMaterial(STATE.persistent.dragArrow,   COLORS.drag);
+  restoreArrowMaterial(STATE.persistent.liftArrow,   COLORS.lift);
+  restoreArrowMaterial(STATE.persistent.thrustArrow, COLORS.thrust);
 }
 
 // Build a color-coded ECI column-vector block for a direction vector.
@@ -2041,7 +2053,8 @@ const SLIDES = [
             gArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           }
           setForceVisibility({ grav: true });
-          addArrowBloom(STATE.persistent.gravArrow, COLORS.grav);
+          restoreAllArrowMaterials();
+          highlightArrow(STATE.persistent.gravArrow, COLORS.grav);
 
           setSlidePanel(`
             <h3>Gravity &mdash; in <span class="chip chip-rst">RST</span></h3>
@@ -2104,7 +2117,8 @@ const SLIDES = [
             dArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           }
           setForceVisibility({ drag: true });
-          addArrowBloom(STATE.persistent.dragArrow, COLORS.drag);
+          restoreAllArrowMaterials();
+          highlightArrow(STATE.persistent.dragArrow, COLORS.drag);
 
           setSlidePanel(`
             <h3>Drag &mdash; in <span class="chip chip-vrf">VRF</span></h3>
@@ -2165,7 +2179,8 @@ const SLIDES = [
             lArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           }
           setForceVisibility({ lift: true });
-          addArrowBloom(STATE.persistent.liftArrow, COLORS.lift);
+          restoreAllArrowMaterials();
+          highlightArrow(STATE.persistent.liftArrow, COLORS.lift);
 
           setSlidePanel(`
             <h3>Lift &mdash; in <span class="chip chip-vrf">VRF</span></h3>
@@ -2227,7 +2242,8 @@ const SLIDES = [
             tArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           }
           setForceVisibility({ thrust: true });
-          addArrowBloom(STATE.persistent.thrustArrow, COLORS.thrust);
+          restoreAllArrowMaterials();
+          highlightArrow(STATE.persistent.thrustArrow, COLORS.thrust);
 
           setSlidePanel(`
             <h3>Thrust &mdash; in <span class="chip chip-vrf">VRF</span></h3>
@@ -2289,10 +2305,11 @@ const SLIDES = [
             a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           });
           setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
-          addArrowBloom(STATE.persistent.gravArrow,   COLORS.grav);
-          addArrowBloom(STATE.persistent.dragArrow,   COLORS.drag);
-          addArrowBloom(STATE.persistent.liftArrow,   COLORS.lift);
-          addArrowBloom(STATE.persistent.thrustArrow, COLORS.thrust);
+          restoreAllArrowMaterials();
+          highlightArrow(STATE.persistent.gravArrow,   COLORS.grav);
+          highlightArrow(STATE.persistent.dragArrow,   COLORS.drag);
+          highlightArrow(STATE.persistent.liftArrow,   COLORS.lift);
+          highlightArrow(STATE.persistent.thrustArrow, COLORS.thrust);
 
           setSlidePanel(`
             <h3>Newton&apos;s Law &mdash; assembled in <span class="chip chip-eci">ECI</span></h3>
@@ -2372,7 +2389,7 @@ const SLIDES = [
     exit() {
       setForceVisibility({});
       _forceFrameArrows = [];
-      restoreForceArrowColors();
+      restoreAllArrowMaterials();
     },
   },
 
