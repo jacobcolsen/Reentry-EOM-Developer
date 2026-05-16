@@ -720,15 +720,11 @@ function restoreAllArrowMaterials() {
 
 // Build a color-coded ECI column-vector block for a direction vector.
 // Scene mapping: Three.js x=ECI X̂, Three.js z=ECI Ŷ, Three.js y=ECI Ẑ
-function eciVecHTML(dir, scaleLabel = '') {
-  const fx = dir.x.toFixed(3);
-  const fy = dir.z.toFixed(3);   // ECI Ŷ = Three.js Z
-  const fz = dir.y.toFixed(3);   // ECI Ẑ = Three.js Y
-  const scale = scaleLabel ? `\\cdot\\text{${scaleLabel}}` : '';
+function eciEqBlock(latex) {
   return `
     <div class="eq-block">
       <div class="eq-label">ECI component breakdown</div>
-      \\[\\begin{bmatrix}\\color{#FF3333}{${fx}}\\\\\\color{#33FF33}{${fy}}\\\\\\color{#3399FF}{${fz}}\\end{bmatrix}_{ECI}${scale}\\]
+      \\[${latex}\\]
     </div>`;
 }
 
@@ -1986,7 +1982,7 @@ const SLIDES = [
               \\[\\vec{F}_g = C_{E\\leftarrow R}\\begin{bmatrix}-\\mu m/r^2\\\\0\\\\0\\end{bmatrix}_{RST}
                 = -\\frac{\\mu m}{r^2}\\hat{R}\\]
             </div>
-            ${eciVecHTML(gDir, 'μm/r²')}
+            ${eciEqBlock(`\\vec{F}_g = -\\frac{\\mu m}{r^2}\\begin{bmatrix}\\color{#FF3333}{\\hat{R}\\cdot\\hat{X}}\\\\\\color{#33FF33}{\\hat{R}\\cdot\\hat{Y}}\\\\\\color{#3399FF}{\\hat{R}\\cdot\\hat{Z}}\\end{bmatrix}_{ECI}`)}
             <p style="font-size:0.8rem;color:#6a8aaa;">
               <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
               <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
@@ -2048,7 +2044,7 @@ const SLIDES = [
               <div class="eq-label">Full rotation chain</div>
               \\[\\vec{F}_D = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}-D\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
             </div>
-            ${eciVecHTML(dDir, 'D')}
+            ${eciEqBlock(`\\vec{F}_D = -D\\begin{bmatrix}\\color{#FF3333}{\\hat{v}\\cdot\\hat{X}}\\\\\\color{#33FF33}{\\hat{v}\\cdot\\hat{Y}}\\\\\\color{#3399FF}{\\hat{v}\\cdot\\hat{Z}}\\end{bmatrix}_{ECI}`)}
             <p style="font-size:0.8rem;color:#6a8aaa;">
               <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
               <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
@@ -2111,7 +2107,7 @@ const SLIDES = [
               <div class="eq-label">Full rotation chain</div>
               \\[\\vec{F}_L = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}0\\\\L\\cos\\theta\\\\-L\\sin\\theta\\end{bmatrix}_{VRF}\\]
             </div>
-            ${eciVecHTML(liftDir, 'L cosθ')}
+            ${eciEqBlock(`\\vec{F}_L = L\\begin{bmatrix}\\color{#FF3333}{\\hat{l}\\cdot\\hat{X}}\\\\\\color{#33FF33}{\\hat{l}\\cdot\\hat{Y}}\\\\\\color{#3399FF}{\\hat{l}\\cdot\\hat{Z}}\\end{bmatrix}_{ECI}`)}
             <p style="font-size:0.8rem;color:#6a8aaa;">
               <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
               <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
@@ -2174,7 +2170,7 @@ const SLIDES = [
               \\[\\vec{F}_T = C_{E\\leftarrow R}\\,C_{R\\leftarrow V}\\begin{bmatrix}T\\\\0\\\\0\\end{bmatrix}_{VRF}
                 = T\\,\\hat{x}_v\\]
             </div>
-            ${eciVecHTML(tDir, 'T')}
+            ${eciEqBlock(`\\vec{F}_T = T\\begin{bmatrix}\\color{#FF3333}{\\hat{v}\\cdot\\hat{X}}\\\\\\color{#33FF33}{\\hat{v}\\cdot\\hat{Y}}\\\\\\color{#3399FF}{\\hat{v}\\cdot\\hat{Z}}\\end{bmatrix}_{ECI}`)}
             <p style="font-size:0.8rem;color:#6a8aaa;">
               <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
               <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
@@ -2274,7 +2270,7 @@ const SLIDES = [
             <div class="eq-block">
               \\[\\vec{F}_{net} = F_{X}\\hat{X} + F_{Y}\\hat{Y} + F_{Z}\\hat{Z}\\]
             </div>
-            ${eciVecHTML(netDir, '|F_net|')}
+            ${eciEqBlock(`\\vec{F}_{net} = \\begin{bmatrix}\\color{#FF3333}{F_{net,X}}\\\\\\color{#33FF33}{F_{net,Y}}\\\\\\color{#3399FF}{F_{net,Z}}\\end{bmatrix}_{ECI} = \\sum_i\\,\\vec{F}_i\\cdot\\begin{bmatrix}\\hat{X}\\\\\\hat{Y}\\\\\\hat{Z}\\end{bmatrix}`)}
             <p style="font-size:0.8rem;color:#6a8aaa;">
               <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
               <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
