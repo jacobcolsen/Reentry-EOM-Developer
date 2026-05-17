@@ -973,19 +973,38 @@ const SLIDES = [
   {
     title: 'Vehicle-Pointing Frame (OX₂Y₂Z₂)',
     html: `
-      <p>The <span class="chip chip-rst">Vehicle-Pointing Frame</span> (notation:
-      <strong>OX₂Y₂Z₂</strong>) has its <strong>origin at the planetary center</strong>,
-      with axes defined by the vehicle's instantaneous position.</p>
+      <p>The <span class="chip chip-rst">Vehicle-Pointing Frame</span>
+      (<strong>OX₂Y₂Z₂</strong>, Lesson&nbsp;2) has its <strong>origin at the planetary
+      center</strong>, with axes locked to the vehicle&rsquo;s instantaneous position.</p>
       <div class="eq-block">
-        <div class="eq-label">Axis definitions</div>
-        \\[\\hat{e}_{x_2} = \\frac{\\vec{r}}{|\\vec{r}|}\\quad\\text{(points along position vector)}\\]
-        \\[\\hat{e}_{y_2} = \\hat{Z} \\times \\hat{e}_{x_2}\\quad\\text{(parallel to equatorial plane)}\\]
-        \\[\\hat{e}_{z_2} = \\hat{e}_{x_2} \\times \\hat{e}_{y_2}\\quad\\text{(completes right-hand system)}\\]
+        <div class="eq-label">Axis definitions (Lesson 2)</div>
+        \\[\\hat{e}_{x_2} = \\frac{\\vec{r}}{|\\vec{r}|}\\quad\\text{(radial — along position vector)}\\]
+        \\[\\hat{e}_{y_2} = \\hat{e}_z \\times \\hat{e}_{x_2}\\quad\\text{(east — parallel to equatorial plane)}\\]
+        \\[\\hat{e}_{z_2} = \\hat{e}_{x_2} \\times \\hat{e}_{y_2}\\quad\\text{(cross-track — completes RH system)}\\]
       </div>
       <div class="eq-block">
         <div class="eq-label">ECEF → Vehicle-Pointing rotation</div>
-        \\[\\mathbf{T}_{\\text{ECEF} \\to \\text{VP}} = R_Y(-\\phi)\\,R_Z(\\lambda)\\]
-      </div>`,
+        \\[\\left[\\hat{e}_2\\right] = R_{y_2}(-\\phi)\\,R_{z_1}(\\theta)\\left[\\hat{e}_1\\right]\\]
+      </div>
+      <h3>RST shorthand used in this presentation</h3>
+      <p>Later slides write this frame as <strong>RST</strong> — a compact alias:</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;margin:0.5rem 0;font-size:0.85rem;">
+        <div style="padding:0.5rem;background:#07101e;border:1px solid #CC44FF;border-radius:6px;text-align:center;">
+          <span style="color:#CC44FF;font-weight:700">R̂</span><br>
+          <span style="color:#888;font-size:0.75rem">= x₂ = Radial</span>
+        </div>
+        <div style="padding:0.5rem;background:#07101e;border:1px solid #FF44CC;border-radius:6px;text-align:center;">
+          <span style="color:#FF44CC;font-weight:700">Ŝ</span><br>
+          <span style="color:#888;font-size:0.75rem">= y₂ = East</span>
+        </div>
+        <div style="padding:0.5rem;background:#07101e;border:1px solid #44FFCC;border-radius:6px;text-align:center;">
+          <span style="color:#44FFCC;font-weight:700">T̂</span><br>
+          <span style="color:#888;font-size:0.75rem">= z₂ = Cross-track</span>
+        </div>
+      </div>
+      <p style="font-size:0.8rem;color:#6a90b0;">
+        Any time you see a force vector with subscript <em>RST</em>, its three
+        components are along R̂, Ŝ, T̂ = x₂, y₂, z₂ of the Vehicle-Pointing Frame.</p>`,
     camera: { pos: [6, 5, 10], target: [0, 0, 0], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -1606,20 +1625,30 @@ const SLIDES = [
   {
     title: 'Velocity-Referenced Frame (VRF)',
     html: `
-      <p>The <span class="chip chip-vrf">VRF</span> is obtained from RST by two rotations
-      that align the \\(x_v\\)-axis with the velocity vector.</p>
+      <p>The <span class="chip chip-vrf">VRF</span> (<strong>OX″Y″Z″</strong>, Lesson&nbsp;2)
+      is obtained from the Vehicle-Pointing Frame <strong>OX₂Y₂Z₂</strong> by two successive
+      rotations defined by the velocity vector direction.</p>
       <div class="eq-block">
-        <div class="eq-label">Two-step rotation</div>
-        \\[\\mathbf{T}_{\\text{RST} \\to \\text{VRF}} = R_Y(-\\gamma)\\,R_Z(\\psi)\\]
+        <div class="eq-label">Two-step rotation from OX₂Y₂Z₂ (Lesson 2)</div>
+        \\[\\text{Step 1: rotate }\\textcolor{#FF44CC}{\\psi}\\text{ about }\\hat{e}_{x_2}=\\hat{R}\\quad(\\text{heading azimuth})\\]
+        \\[\\text{Step 2: rotate }\\textcolor{#FFEE77}{-\\gamma}\\text{ about new }z'\\quad(\\text{flight-path angle})\\]
+        \\[\\mathbf{T}_{\\text{OX}_2 \\to \\text{OX}''} = R_{z'}(\\textcolor{#FFEE77}{-\\gamma})\\,R_{x_2}(\\textcolor{#FF44CC}{\\psi})\\]
       </div>
       <div class="eq-block">
-        <div class="eq-label">Axis definitions</div>
-        \\[\\hat{x}_v \\parallel \\vec{v}\\quad(\\text{along velocity})\\]
-        \\[\\hat{z}_v \\perp \\vec{v},\\; \\hat{z}_v \\text{ lies in local horiz. plane}\\]
-        \\[\\hat{y}_v = \\hat{z}_v \\times \\hat{x}_v\\]
+        <div class="eq-label">Axis definitions (this presentation)</div>
+        \\[\\hat{x}_v \\parallel \\vec{v}\\quad(\\text{along velocity — }\\hat{e}_{y''} \\text{ in Lesson 2})\\]
+        \\[\\hat{z}_v \\perp \\vec{v},\\; \\hat{z}_v \\text{ lies in local horizontal plane}\\]
+        \\[\\hat{y}_v = \\hat{z}_v \\times \\hat{x}_v\\quad(\\text{completes right-hand system})\\]
       </div>
-      <p>Forces are most naturally expressed in this frame, then transformed back to
-      RST for the equations of motion.</p>
+      <p style="font-size:0.82rem;color:#6a90b0;border-left:2px solid #1e3a5f;padding-left:0.7rem;margin-top:0.8rem;">
+        <strong style="color:#8ab8d8">Convention note:</strong> Lesson&nbsp;2 places velocity along
+        ê<sub>y″</sub>; this presentation uses x̂<sub>v</sub>. The physical frame is identical —
+        the axis labels are permuted. All force equations in later slides use the x̂<sub>v</sub>
+        convention consistently.
+      </p>
+      <p style="margin-top:0.9rem;">Forces expressed in VRF use frame-native scalars
+      (\\(\\textcolor{#FF9944}{D}\\), \\(\\textcolor{#FF6699}{L}\\), \\(\\textcolor{#FF4444}{T}\\)),
+      then rotated back to RST via the transpose of this rotation chain.</p>
       <div style="margin-top:1.1rem;">
         <div style="font-size:0.72rem;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:0.5rem">Toggle Frames</div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
