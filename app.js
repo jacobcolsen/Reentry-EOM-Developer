@@ -29,6 +29,7 @@ const STATE = {
   slideGen:       0,           // incremented on every slide/substep clear; guards stale delayed calls
   orbitT:         0.72,
   earthT:         0,
+  suppressEarthUpdate: false,   // pause animate-loop earthT accumulation during DCM demo
   gsapTween:      null,
   gammaAnim:      null,        // GSAP tween for γ oscillation on slide 5
   vrfAnim:        null,        // GSAP tween for RST→VRF rotation on slide 7
@@ -1984,19 +1985,42 @@ const SLIDES = [
     },
     exit() {},
     substeps: [
-      // ── substep 0: OXYZ → OX₁Y₁Z₁ (Earth spin) ─────────────────────────
+      // ── substep 0: OXYZ → OX₁Y₁Z₁  (Earth spin — animated) ─────────────
       {
         html: '',
         enter3D() {
           clearSlideObjects();
+          const gen = STATE.slideGen;
+
+          // Freeze the animate-loop so we can manually drive STATE.earthT
+          STATE.suppressEarthUpdate = true;
+          STATE.earthT = 0;
+
           setFrameVisibility({ eci: true, ecef: true });
-          animateGroupIn(STATE.persistent.ecefGroup, 0.25);
+          setGroupVisible(STATE.persistent.ecefGroup, true);
+          STATE.persistent.ecefGroup.scale.set(1, 1, 1);
           tweenCamera([8, 8, 6], [0, 0, 0], 0.9);
+
+          // Oscillate STATE.earthT 0 → 60° → 0 so Earth + ECEF axes visibly spin
+          const spinTween = gsap.to(STATE, {
+            earthT: Math.PI / 3, duration: 2.5, ease: 'power2.inOut', repeat: -1, yoyo: true,
+            onUpdate() {
+              if (STATE.slideGen !== gen) { this.kill(); return; }
+              const rd = document.getElementById('dcm-angle-readout');
+              if (rd) rd.textContent = `ω⊕Δt = ${(STATE.earthT * 180 / Math.PI).toFixed(1)}°`;
+            },
+          });
+          const cleanup = () => {
+            if (STATE.slideGen !== gen) {
+              spinTween.kill(); STATE.suppressEarthUpdate = false; gsap.ticker.remove(cleanup);
+            }
+          };
+          gsap.ticker.add(cleanup);
+
           setSlidePanel(`
             <h3>OXYZ &rarr; OX₁Y₁Z₁ &mdash; Earth Spin</h3>
-            <p>The Planet-Fixed frame <strong>OX₁Y₁Z₁</strong> rotates with Earth. A single
-            rotation about the polar ẑ-axis by the accumulated angle \\(\\omega_\\oplus\\Delta t\\)
-            relates it to the inertial <strong>OXYZ</strong> frame.</p>
+            <p>A single rotation about the polar ẑ-axis by \\(\\omega_\\oplus\\Delta t\\) carries
+            OX₁Y₁Z₁ away from OXYZ. The amber axes spin with Earth — watch the DCM angle change.</p>
             <div class="eq-block">
               <div class="eq-label">DCM &mdash; Lesson 2</div>
               \\[[\\hat{e}_1] = R_z(\\omega_\\oplus\\Delta t)\\,[\\hat{e}]\\]
@@ -2004,121 +2028,263 @@ const SLIDES = [
                 \\cos(\\omega_\\oplus\\Delta t) & \\sin(\\omega_\\oplus\\Delta t) & 0 \\\\
                 -\\sin(\\omega_\\oplus\\Delta t) & \\cos(\\omega_\\oplus\\Delta t) & 0 \\\\
                 0 & 0 & 1
-              \\end{bmatrix}\\begin{bmatrix}\\hat{e}_x\\\\\\hat{e}_y\\\\\\hat{e}_z\\end{bmatrix}\\]
+              \\end{bmatrix}\\]
             </div>
-            <p style="font-size:0.82rem;color:#6a90b0;">The amber <strong>OX₁Y₁Z₁</strong> axes
-            animate in relative to the white <strong>OXYZ</strong> axes — exactly the rotation
-            this DCM describes. \\(\\omega_\\oplus = 7.292\\times10^{-5}\\) rad/s.</p>
-            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong>
+            <div style="background:#07121f;border:1px solid #1a4a6a;border-radius:8px;
+                        padding:0.5rem 1rem;display:flex;align-items:center;gap:1rem;margin-top:0.7rem;">
+              <span style="font-size:0.7rem;letter-spacing:.12em;color:#3a6a9a;text-transform:uppercase;">Live angle</span>
+              <span id="dcm-angle-readout" style="font-size:1.3rem;font-weight:700;color:#FF8800;font-family:monospace;">ω⊕Δt = 0.0°</span>
+            </div>
+            <p style="margin-top:0.6rem;font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong>
             for OX₁Y₁Z₁ &rarr; OX₂Y₂Z₂.</p>`);
         },
       },
-      // ── substep 1: OX₁Y₁Z₁ → OX₂Y₂Z₂ (Vehicle-Pointing) ──────────────
+
+      // ── substep 1: OX₁Y₁Z₁ → OX₂Y₂Z₂ (two-phase rotation) ────────────
       {
         html: '',
         enter3D() {
           clearSlideObjects();
-          const s = getSpacecraftState(0.72);
-          setGroupVisible(STATE.persistent.ecefGroup, true);
-          setFrameVisibility({ ecef: true, rst: true });
-          animateGroupIn(STATE.persistent.rstGroup, 0.25);
+          const gen = STATE.slideGen;
+          const s   = getSpacecraftState(0.72);
+
+          STATE.suppressEarthUpdate = true;
+          STATE.earthT = 0;
+
+          setFrameVisibility({ ecef: true });
+          setGroupVisible(STATE.persistent.rstGroup, false);
           tweenCamera([5, 4, 8], [s.pos.x, s.pos.y, s.pos.z], 0.9);
+
+          // Build a temporary phantom OX₂Y₂Z₂ that rotates in two steps
+          const L = 2.1, O = new THREE.Vector3(0, 0, 0);
+
+          // Phase start: aligned with ECEF x₁ (before any rotation)
+          const startX = new THREE.Vector3(1, 0, 0);
+          const startY = new THREE.Vector3(0, 0, 1);
+          const startZ = new THREE.Vector3(0, 1, 0);
+
+          // Phase 1 end: longitude rotation only — x₂ in equatorial plane at spacecraft longitude
+          const eqDir  = new THREE.Vector3(s.R_hat.x, 0, s.R_hat.z).normalize();
+          const midX   = eqDir.clone();
+          const midY   = new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), eqDir).normalize().negate();
+          const midZ   = new THREE.Vector3(0, 1, 0);
+
+          // Phase 2 end: actual RST directions
+          const endX = s.R_hat.clone();
+          const endY = s.S_hat.clone();
+          const endZ = s.T_hat.clone();
+
+          const lonDeg = (Math.atan2(s.R_hat.z, s.R_hat.x) * 180 / Math.PI).toFixed(1);
+          const latDeg = (Math.asin(s.R_hat.y)              * 180 / Math.PI).toFixed(1);
+
+          const phantomX = new THREE.ArrowHelper(startX.clone(), O, L, COLORS.rst.r, 0.18, 0.09);
+          const phantomY = new THREE.ArrowHelper(startY.clone(), O, L, COLORS.rst.s, 0.18, 0.09);
+          const phantomZ = new THREE.ArrowHelper(startZ.clone(), O, L, COLORS.rst.t, 0.18, 0.09);
+          const phGroup  = new THREE.Group();
+          phGroup.add(phantomX, phantomY, phantomZ);
+          addSlideObj(phGroup);
+
+          const stepEl = () => document.getElementById('dcm-step-readout');
+          const angEl  = () => document.getElementById('dcm-ang-readout');
+
+          // Phase 1: longitude (0 → 1)
+          const p1 = { t: 0 };
+          gsap.to(p1, {
+            t: 1, duration: 1.8, delay: 0.3, ease: 'power2.inOut',
+            onUpdate() {
+              if (STATE.slideGen !== gen) { this.kill(); return; }
+              phantomX.setDirection(new THREE.Vector3().lerpVectors(startX, midX, p1.t).normalize());
+              phantomY.setDirection(new THREE.Vector3().lerpVectors(startY, midY, p1.t).normalize());
+              phantomZ.setDirection(new THREE.Vector3().lerpVectors(startZ, midZ, p1.t).normalize());
+              const d = (p1.t * parseFloat(lonDeg)).toFixed(1);
+              if (angEl()) angEl().textContent = `θ = ${d}°`;
+            },
+            onComplete() {
+              if (STATE.slideGen !== gen) return;
+              if (stepEl()) stepEl().textContent = 'Step 2: latitude  R_y₂(−φ)';
+              if (angEl())  angEl().textContent  = 'φ = 0.0°';
+              // Phase 2: latitude
+              const p2 = { t: 0 };
+              gsap.to(p2, {
+                t: 1, duration: 1.8, ease: 'power2.inOut',
+                onUpdate() {
+                  if (STATE.slideGen !== gen) { this.kill(); return; }
+                  phantomX.setDirection(new THREE.Vector3().lerpVectors(midX, endX, p2.t).normalize());
+                  phantomY.setDirection(new THREE.Vector3().lerpVectors(midY, endY, p2.t).normalize());
+                  phantomZ.setDirection(new THREE.Vector3().lerpVectors(midZ, endZ, p2.t).normalize());
+                  const d = (p2.t * parseFloat(latDeg)).toFixed(1);
+                  if (angEl()) angEl().textContent = `φ = ${d}°`;
+                },
+              });
+            },
+          });
+
+          const cleanup = () => {
+            if (STATE.slideGen !== gen) {
+              STATE.suppressEarthUpdate = false; gsap.ticker.remove(cleanup);
+            }
+          };
+          gsap.ticker.add(cleanup);
+
           setSlidePanel(`
             <h3>OX₁Y₁Z₁ &rarr; OX₂Y₂Z₂ &mdash; Vehicle-Pointing</h3>
-            <p>Two successive rotations using longitude \\(\\textcolor{#44FFFF}{\\theta}\\)
-            and latitude \\(\\textcolor{#AAFF44}{\\phi}\\) align the x₂-axis with the
-            vehicle position vector.</p>
+            <p>Two rotations swing x₂ onto the position vector: first longitude
+            \\(\\textcolor{#44FFFF}{\\theta}\\) about z₁, then latitude
+            \\(\\textcolor{#AAFF44}{\\phi}\\) about y₂. Watch the colored axes rotate in two phases.</p>
             <div class="eq-block">
-              <div class="eq-label">DCM &mdash; Lesson 2</div>
+              <div class="eq-label">Combined DCM &mdash; Lesson 2</div>
               \\[[\\hat{e}_2] = R_{y_2}(-\\textcolor{#AAFF44}{\\phi})\\,R_{z_1}(\\textcolor{#44FFFF}{\\theta})\\,[\\hat{e}_1]\\]
               \\[= \\begin{bmatrix}
                 \\cos\\textcolor{#AAFF44}{\\phi}\\cos\\textcolor{#44FFFF}{\\theta} &
                 \\cos\\textcolor{#AAFF44}{\\phi}\\sin\\textcolor{#44FFFF}{\\theta} &
                 \\sin\\textcolor{#AAFF44}{\\phi} \\\\
-                -\\sin\\textcolor{#44FFFF}{\\theta} &
-                \\cos\\textcolor{#44FFFF}{\\theta} &
-                0 \\\\
+                -\\sin\\textcolor{#44FFFF}{\\theta} & \\cos\\textcolor{#44FFFF}{\\theta} & 0 \\\\
                 -\\sin\\textcolor{#AAFF44}{\\phi}\\cos\\textcolor{#44FFFF}{\\theta} &
                 -\\sin\\textcolor{#AAFF44}{\\phi}\\sin\\textcolor{#44FFFF}{\\theta} &
                 \\cos\\textcolor{#AAFF44}{\\phi}
               \\end{bmatrix}\\]
             </div>
-            <p style="font-size:0.82rem;color:#6a90b0;">OX₂Y₂Z₂ = <strong>RST</strong> in
-            this presentation: x₂=R̂ (radial), y₂=Ŝ (east), z₂=T̂ (cross-track). The purple
-            RST axes animate in at the vehicle position.</p>
-            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong>
+            <div style="background:#07121f;border:1px solid #1a4a6a;border-radius:8px;
+                        padding:0.5rem 1rem;margin-top:0.6rem;">
+              <div id="dcm-step-readout" style="font-size:0.72rem;letter-spacing:.1em;color:#3a6a9a;
+                   text-transform:uppercase;margin-bottom:0.2rem;">Step 1: longitude  R_z₁(θ)</div>
+              <span id="dcm-ang-readout" style="font-size:1.3rem;font-weight:700;font-family:monospace;color:#44FFFF;">θ = 0.0°</span>
+            </div>
+            <p style="font-size:0.81rem;color:#3a6a9a;margin-top:0.6rem;">Press <strong>Next&nbsp;&rarr;</strong>
             for OX₂Y₂Z₂ &rarr; OX″Y″Z″.</p>`);
         },
       },
-      // ── substep 2: OX₂Y₂Z₂ → OX″Y″Z″ (Velocity-Referenced) ────────────
+
+      // ── substep 2: OX₂Y₂Z₂ → OX″Y″Z″ (VRF rotation — animated) ────────
       {
         html: '',
         enter3D() {
           clearSlideObjects();
+          const gen = STATE.slideGen;
+          STATE.suppressEarthUpdate = false;
           const s = getSpacecraftState(0.72);
+
           setFrameVisibility({ rst: true, vrf: true, vel: true });
-          animateGroupIn(STATE.persistent.vrfGroup, 0.25);
           tweenCamera([3, 3, 7], [s.pos.x, s.pos.y, s.pos.z], 0.9);
+
+          // Prime VRF arrows at RST directions so the rotation is visible
+          const x_v = s.vel.clone().normalize();
+          const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
+          const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
+
+          const vrfGroup = STATE.persistent.vrfGroup;
+          const arrows   = vrfGroup ? vrfGroup.children.filter(c => c.isArrowHelper) : [];
+          const startDirs = [s.R_hat.clone(), s.S_hat.clone(), s.T_hat.clone()];
+          const endDirs   = [x_v.clone(), y_v.clone(), z_v.clone()];
+
+          if (arrows[0]) arrows[0].setDirection(startDirs[0]);
+          if (arrows[1]) arrows[1].setDirection(startDirs[1]);
+          if (arrows[2]) arrows[2].setDirection(startDirs[2]);
+          setGroupVisible(vrfGroup, true);
+          vrfGroup.scale.set(1, 1, 1);
+
+          const psiDeg   = (Math.atan2(x_v.dot(s.T_hat), x_v.dot(s.S_hat)) * 180 / Math.PI).toFixed(1);
+          const gammaDeg = (Math.asin(Math.max(-1, Math.min(1, x_v.dot(s.R_hat)))) * 180 / Math.PI).toFixed(1);
+
+          const proxy = { t: 0 };
+          const rotTween = gsap.to(proxy, {
+            t: 1, duration: 2.0, delay: 0.4, ease: 'power2.inOut',
+            onUpdate() {
+              if (STATE.slideGen !== gen) { this.kill(); return; }
+              arrows.forEach((arrow, i) => {
+                if (!arrow) return;
+                arrow.setDirection(
+                  new THREE.Vector3().lerpVectors(startDirs[i], endDirs[i], proxy.t).normalize()
+                );
+              });
+              const rd = document.getElementById('dcm-vrf-readout');
+              if (rd) rd.textContent =
+                `ψ = ${(proxy.t * parseFloat(psiDeg)).toFixed(1)}°   γ = ${(proxy.t * parseFloat(gammaDeg)).toFixed(1)}°`;
+            },
+          });
+
+          const cleanup = () => {
+            if (STATE.slideGen !== gen) { rotTween.kill(); gsap.ticker.remove(cleanup); }
+          };
+          gsap.ticker.add(cleanup);
+
           setSlidePanel(`
             <h3>OX₂Y₂Z₂ &rarr; OX″Y″Z″ &mdash; Velocity-Referenced</h3>
-            <p>Step through OX′Y′Z′ using heading
-            \\(\\textcolor{#FF44CC}{\\psi}\\) and flight-path angle
-            \\(\\textcolor{#FFEE77}{\\gamma}\\) to align the frame with the velocity vector.</p>
+            <p>VRF axes start aligned with RST (purple), then rotate — heading
+            \\(\\textcolor{#FF44CC}{\\psi}\\) about x₂, flight-path
+            \\(\\textcolor{#FFEE77}{\\gamma}\\) about z′ — until ê<sub>y″</sub> points along
+            velocity.</p>
             <div class="eq-block">
-              <div class="eq-label">DCM &mdash; Lesson 2</div>
+              <div class="eq-label">Combined DCM &mdash; Lesson 2</div>
               \\[[\\hat{e}''] = R_{z'}(-\\textcolor{#FFEE77}{\\gamma})\\,R_{x_2}(\\textcolor{#FF44CC}{\\psi})\\,[\\hat{e}_2]\\]
               \\[= \\begin{bmatrix}
                 \\cos\\textcolor{#FFEE77}{\\gamma} &
-                -\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} &
-                -\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} \\\\
+                {-\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}} &
+                {-\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}} \\\\
                 \\sin\\textcolor{#FFEE77}{\\gamma} &
                 \\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} &
                 \\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} \\\\
-                0 & -\\sin\\textcolor{#FF44CC}{\\psi} & \\cos\\textcolor{#FF44CC}{\\psi}
+                0 & {-\\sin\\textcolor{#FF44CC}{\\psi}} & \\cos\\textcolor{#FF44CC}{\\psi}
               \\end{bmatrix}\\]
             </div>
-            <p style="font-size:0.82rem;color:#6a90b0;">Lesson 2 places velocity along
-            ê<sub>y″</sub> (2nd row). This presentation labels that axis x̂<sub>v</sub> —
-            the same physical frame, axes permuted. The green VRF axes animate in from RST.</p>
+            <div style="background:#07121f;border:1px solid #1a4a6a;border-radius:8px;
+                        padding:0.5rem 1rem;margin-top:0.6rem;">
+              <div style="font-size:0.72rem;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:0.2rem;">Live rotation angles</div>
+              <span id="dcm-vrf-readout" style="font-size:1.1rem;font-weight:700;font-family:monospace;color:#FFEE77;">ψ = 0.0°   γ = 0.0°</span>
+            </div>
+            <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.5rem;">ê<sub>y″</sub> (row 2) is the velocity direction. This presentation labels it x̂<sub>v</sub>.</p>
             <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong>
             for the complete chain.</p>`);
         },
       },
-      // ── substep 3: Full chain summary ─────────────────────────────────────
+
+      // ── substep 3: Full chain — all frames cascade in ────────────────────
       {
         html: '',
         enter3D() {
           clearSlideObjects();
+          STATE.suppressEarthUpdate = false;
           const s = getSpacecraftState(0.72);
+
+          // Restore VRF arrows to their actual built directions
+          const vrfGroup = STATE.persistent.vrfGroup;
+          const arrows   = vrfGroup ? vrfGroup.children.filter(c => c.isArrowHelper) : [];
+          const x_v = s.vel.clone().normalize();
+          const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
+          const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
+          if (arrows[0]) arrows[0].setDirection(x_v);
+          if (arrows[1]) arrows[1].setDirection(y_v);
+          if (arrows[2]) arrows[2].setDirection(z_v);
+
           setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true });
           animateGroupIn(STATE.persistent.eciGroup,  0.0);
-          animateGroupIn(STATE.persistent.ecefGroup, 0.1);
-          animateGroupIn(STATE.persistent.rstGroup,  0.3);
-          animateGroupIn(STATE.persistent.vrfGroup,  0.5);
+          animateGroupIn(STATE.persistent.ecefGroup, 0.3);
+          animateGroupIn(STATE.persistent.rstGroup,  0.6);
+          animateGroupIn(STATE.persistent.vrfGroup,  0.9);
           tweenCamera([7, 5, 10], [s.pos.x * 0.6, s.pos.y * 0.6, s.pos.z * 0.6], 0.9);
+
           setSlidePanel(`
             <h3>Complete Transformation Chain</h3>
             <div class="eq-block">
               <div class="eq-label">Full DCM chain &mdash; Lesson 2</div>
-              \\[[\\hat{e}''] = \\underbrace{C_{OX_2\\to OX''}}_{\\text{attitude}}\\;
-                \\underbrace{C_{OX_1\\to OX_2}}_{\\text{position}}\\;
-                \\underbrace{C_{OXYZ\\to OX_1}}_{\\text{Earth spin}}\\;[\\hat{e}]\\]
+              \\[[\\hat{e}''] =
+                \\underbrace{C_{OX_2\\to OX''}}_{\\textcolor{#44FF44}{\\text{attitude}}}\;
+                \\underbrace{C_{OX_1\\to OX_2}}_{\\textcolor{#CC44FF}{\\text{position}}}\;
+                \\underbrace{C_{OXYZ\\to OX_1}}_{\\textcolor{#FF8800}{\\text{Earth spin}}}\;[\\hat{e}]\\]
             </div>
-            <div style="display:flex;gap:0.35rem;align-items:center;flex-wrap:wrap;font-size:0.78rem;margin:0.7rem 0;">
+            <div style="display:flex;gap:0.35rem;align-items:center;flex-wrap:wrap;font-size:0.78rem;margin:0.8rem 0;">
               <span class="chip chip-eci">OXYZ</span>
-              <span style="color:#3a6a9a">&rarr;</span>
+              <span style="color:#FF8800;font-size:0.72rem">&rarr;R_z&rarr;</span>
               <span class="chip chip-ecef">OX₁Y₁Z₁</span>
-              <span style="color:#3a6a9a">&rarr;</span>
+              <span style="color:#CC44FF;font-size:0.72rem">&rarr;R_yR_z&rarr;</span>
               <span class="chip chip-rst">OX₂Y₂Z₂</span>
-              <span style="color:#3a6a9a">&rarr;</span>
+              <span style="color:#44FF44;font-size:0.72rem">&rarr;R_zR_x&rarr;</span>
               <span class="chip chip-vrf">OX″Y″Z″</span>
             </div>
-            <p style="font-size:0.82rem;color:#6a90b0;">All four frames are live simultaneously.
-            Forces computed in OX″Y″Z″ are rotated back through the transpose of this chain to
-            express them in OXYZ for Newton&apos;s law.</p>
+            <p style="font-size:0.82rem;color:#6a90b0;">Each frame cascades in as its DCM is applied.
+            To express OX″Y″Z″ forces in OXYZ, transpose each matrix and apply in reverse order.</p>
             <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.5rem;">
-              <strong style="color:#8ab8d8;">Inverse = Transpose</strong> — since every
-              DCM is orthonormal, \\(C^{-1}=C^T\\). Transposing gives OX″Y″Z″&rarr;OXYZ.</p>`);
+              <strong style="color:#8ab8d8;">C⁻¹ = Cᵀ</strong> — every DCM is orthonormal.</p>`);
         },
       },
     ],
@@ -2781,8 +2947,8 @@ function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
 
-  // Earth rotation
-  STATE.earthT += delta * EARTH_ROT_SPD;
+  // Earth rotation (suppressed during DCM animation demo on slide 14)
+  if (!STATE.suppressEarthUpdate) STATE.earthT += delta * EARTH_ROT_SPD;
   if (STATE.persistent.earthMesh) STATE.persistent.earthMesh.rotation.y = STATE.earthT;
   if (STATE.persistent.ecefGroup) STATE.persistent.ecefGroup.rotation.y = STATE.earthT;
 
