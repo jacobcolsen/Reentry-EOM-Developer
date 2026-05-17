@@ -1519,6 +1519,8 @@ const SLIDES = [
         <span style="color:#44FFEE">sin ψ</span>.</p>`,
     camera: { pos: [2.5, 1.5, 1.5], target: [0, 0, 0], dur: 1.2 },
     enter() {
+      STATE.orbitT = 0.72;
+      updateLiveVectors();
       STATE.persistent.orbitLine.visible = true;
       setFrameVisibility({ vel: true });
 
@@ -3086,8 +3088,8 @@ function animate() {
   if (STATE.persistent.earthMesh) STATE.persistent.earthMesh.rotation.y = STATE.earthT;
   if (STATE.persistent.ecefGroup) STATE.persistent.ecefGroup.rotation.y = STATE.earthT;
 
-  // Live orbit only on slide 10 (index 9)
-  if (STATE.currentSlide === 9) {
+  // Live orbit only on slide 13 (index 12) — Rotating Frame Conversion
+  if (STATE.currentSlide === 12) {
     STATE.orbitT += delta * ORBIT_SPD;
     updateLiveVectors();
   }
