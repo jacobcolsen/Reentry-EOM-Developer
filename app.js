@@ -902,10 +902,13 @@ const SLIDES = [
       <strong>geocentric longitude</strong>
       <span style="color:#FF44CC;font-weight:600">\\(\\lambda\\)</span> and
       <strong>geocentric latitude</strong>
-      <span style="color:#44FFEE;font-weight:600">\\(\\phi\\)</span>.
-      The <span style="color:#FFD700;font-weight:600">velocity vector <em>v</em></span>
-      can be broken into components that directly drive these rates —
-      press <strong>Next →</strong> to see each step.</p>`,
+      <span style="color:#44FFEE;font-weight:600">\\(\\phi\\)</span>.</p>
+      <p>Watch the <span style="color:#FFD700;font-weight:600">velocity vector</span>
+      on this <strong>eccentric orbit</strong> (\\(e = 0.3\\)) — it swings direction
+      <em>and</em> grows longer through periapsis, shrinks near apoapsis.
+      This is Kepler&rsquo;s second law in action.</p>
+      <p style="font-size:0.82rem;color:#6a90b0;">Press <strong>Next →</strong>
+      to decompose <em>v</em> into its \\(\\lambda\\) and \\(\\phi\\) rate components.</p>`,
     camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 1.0 },
     substeps: [
       // ── substep 0: Step 1 — γ decomposition (animated) ──
@@ -918,6 +921,19 @@ const SLIDES = [
               \\underbrace{\\textcolor{#00DDFF}{v\\cos\\gamma}}_{v_h\\ =\\ \\text{horizontal speed}}\\]
           </div>`,
         enter3D() {
+          // Stop the Keplerian animation and restore spacecraft to the reference position
+          clearSlideObjects();
+          STATE.persistent.orbitLine.visible = true;
+          const s0 = getSpacecraftState(0.72);
+          if (STATE.spacecraft) {
+            STATE.spacecraft.position.copy(s0.pos);
+            const mat = new THREE.Matrix4().lookAt(s0.pos, s0.pos.clone().add(s0.vel), s0.R_hat);
+            STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+            STATE.spacecraft.quaternion.multiply(
+              new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
+            );
+          }
+
           const GAMMA  = 25 * Math.PI / 180;
           const s      = getSpacecraftState(0.72);
           const R      = s.R_hat;
@@ -938,6 +954,13 @@ const SLIDES = [
           const CAM_DELAY = 1.0;
 
           // ── Build all geometry at scale≈0 (hidden until camera arrives) ──
+          // Gold velocity vector (full v)
+          const vg = new THREE.Group();
+          vg.position.copy(s.pos);
+          vg.add(new THREE.ArrowHelper(vHat, new THREE.Vector3(), vLen, 0xFFD700, 0.09, 0.045));
+          vg.scale.set(0.001, 0.001, 0.001);
+          addSlideObj(vg);
+
           const cg = new THREE.Group();
           cg.position.copy(s.pos);
           cg.add(new THREE.ArrowHelper(hDir, new THREE.Vector3(), hLen, 0x00DDFF, 0.07, 0.035));
@@ -970,6 +993,8 @@ const SLIDES = [
           addSlideObj(gArc);
 
           const lblG = new THREE.Group();
+          lblG.add(makeFloatLabel('v',
+            s.pos.clone().addScaledVector(vHat, vLen * 0.55).addScaledVector(R, 0.10), 0xFFD700));
           lblG.add(makeFloatLabel('v cosγ',
             s.pos.clone().addScaledVector(hDir, hLen * 0.5).addScaledVector(R, -0.13), 0x00DDFF));
           lblG.add(makeFloatLabel('v sinγ',
@@ -988,11 +1013,12 @@ const SLIDES = [
           const gen0 = STATE.slideGen;
           gsap.delayedCall(CAM_DELAY, () => {
             if (STATE.slideGen !== gen0) return;
-            gsap.to(cg.scale,  { x: 1, y: 1, z: 1, duration: 0.75, ease: 'power2.out' });
-            gsap.to(rg.scale,  { x: 1, y: 1, z: 1, duration: 0.60, delay: 0.60, ease: 'power2.out' });
-            gsap.to(raMat,     { opacity: 0.6,  duration: 0.35, delay: 1.20 });
-            gsap.to(arcMat,    { opacity: 0.90, duration: 0.35, delay: 1.20 });
-            gsap.delayedCall(1.3, () => {
+            gsap.to(vg.scale,  { x: 1, y: 1, z: 1, duration: 0.55, ease: 'back.out(1.3)' });
+            gsap.to(cg.scale,  { x: 1, y: 1, z: 1, duration: 0.75, delay: 0.45, ease: 'power2.out' });
+            gsap.to(rg.scale,  { x: 1, y: 1, z: 1, duration: 0.60, delay: 1.05, ease: 'power2.out' });
+            gsap.to(raMat,     { opacity: 0.6,  duration: 0.35, delay: 1.65 });
+            gsap.to(arcMat,    { opacity: 0.90, duration: 0.35, delay: 1.65 });
+            gsap.delayedCall(1.75, () => {
               if (STATE.slideGen !== gen0) return;
               lblG.visible = true;
               lblG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
@@ -1117,92 +1143,123 @@ const SLIDES = [
       },
     ],
     enter() {
-      STATE.persistent.orbitLine.visible = true;
+      // Hide the circular persistent orbit; this slide uses its own eccentric orbit
+      STATE.persistent.orbitLine.visible = false;
       setFrameVisibility({});
 
-      const s      = getSpacecraftState(0.72);
-      // Re-tween camera with spacecraft as pivot so OrbitControls orbits around it
-      // Position: +z > 0.615*+x so Earth appears on the left, close enough to see spacecraft clearly
-      tweenCamera([2.0, 1.5, 2.5], [s.pos.x, s.pos.y, s.pos.z], 1.0);
-      const R      = s.R_hat;
-      const phi    = Math.asin(R.y);
-      const lambda = Math.atan2(R.z, R.x);
+      // ── Keplerian eccentric orbit params ──────────────────────────────────
+      const ECC_A   = 1.6;          // semi-major axis
+      const ECC_E   = 0.3;          // eccentricity (periapsis = 1.12 > Earth radius)
+      const ECC_INC = ORBIT_INCL;   // same 45° inclination
+      // Orbital plane basis vectors in Three.js world
+      const p_hat   = new THREE.Vector3(1, 0, 0);
+      const q_hat   = new THREE.Vector3(0, Math.sin(ECC_INC), Math.cos(ECC_INC));
 
-      // Latitude ring (magenta)
-      const latPts = [];
-      for (let i = 0; i <= 96; i++) {
-        const a = (i / 96) * Math.PI * 2;
-        latPts.push(new THREE.Vector3(
-          Math.cos(phi) * Math.cos(a) * (EARTH_RADIUS + 0.008),
-          Math.sin(phi)              * (EARTH_RADIUS + 0.008),
-          Math.cos(phi) * Math.sin(a) * (EARTH_RADIUS + 0.008)
-        ));
+      function keplerE(M, e) {
+        let E = M;
+        for (let i = 0; i < 12; i++) E += (M - E + e * Math.sin(E)) / (1 - e * Math.cos(E));
+        return E;
       }
-      addSlideObj(new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints(latPts),
-        new THREE.LineBasicMaterial({ color: 0xFF44CC, transparent: true, opacity: 0.85 })
-      ));
-      // Meridian arc (teal)
-      const merPts = [];
-      for (let i = 0; i <= 48; i++) {
-        const p = (i / 48) * phi;
-        merPts.push(new THREE.Vector3(
-          Math.cos(p) * Math.cos(lambda) * (EARTH_RADIUS + 0.008),
-          Math.sin(p)                    * (EARTH_RADIUS + 0.008),
-          Math.cos(p) * Math.sin(lambda) * (EARTH_RADIUS + 0.008)
-        ));
+
+      function eccState(M) {
+        const E    = keplerE(M, ECC_E);
+        const cosE = Math.cos(E), sinE = Math.sin(E);
+        const r    = ECC_A * (1 - ECC_E * cosE);
+        const x    = ECC_A * (cosE - ECC_E);
+        const y    = ECC_A * Math.sqrt(1 - ECC_E * ECC_E) * sinE;
+        const pos  = p_hat.clone().multiplyScalar(x).addScaledVector(q_hat, y);
+        // Velocity from Kepler (factor n*a²/r, normalized to visual scale)
+        const fac  = ECC_A * ECC_A / r;   // n*a²/r with n=1 for visual timing
+        const vx   = -fac * sinE;
+        const vy   =  fac * Math.sqrt(1 - ECC_E * ECC_E) * cosE;
+        const vel  = p_hat.clone().multiplyScalar(vx).addScaledVector(q_hat, vy);
+        return { pos, vel, r, R_hat: pos.clone().normalize() };
       }
+
+      // ── Draw elliptical orbit line ────────────────────────────────────────
+      const oPts = [];
+      for (let i = 0; i <= 240; i++) {
+        oPts.push(eccState((i / 240) * Math.PI * 2).pos);
+      }
+      oPts.push(oPts[0].clone()); // close the loop
       addSlideObj(new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints(merPts),
-        new THREE.LineBasicMaterial({ color: 0x44FFEE, transparent: true, opacity: 0.85 })
+        new THREE.BufferGeometry().setFromPoints(oPts),
+        new THREE.LineBasicMaterial({ color: 0x2a4a6a, transparent: true, opacity: 0.8 })
       ));
-      // Radial altitude line
-      const subPt  = R.clone().multiplyScalar(EARTH_RADIUS + 0.008);
-      const altLine = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([subPt, s.pos]),
-        new THREE.LineDashedMaterial({ color: 0x334466, dashSize: 0.04, gapSize: 0.03, opacity: 0.6, transparent: true })
+
+      // ── Periapsis / apoapsis markers ──────────────────────────────────────
+      const periPt = eccState(0).pos;
+      const apoPt  = eccState(Math.PI).pos;
+      const markerG = new THREE.Group();
+      markerG.add(makeFloatLabel('periapsis', periPt.clone().addScaledVector(periPt.clone().normalize(), 0.12), 0xFFAA44));
+      markerG.add(makeFloatLabel('apoapsis',  apoPt.clone().addScaledVector(apoPt.clone().normalize(),  0.12), 0x88AACC));
+      addSlideObj(markerG);
+
+      // ── Live velocity arrow ───────────────────────────────────────────────
+      const velArrow = new THREE.ArrowHelper(
+        new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 0.5, 0xFFD700, 0.09, 0.045
       );
-      altLine.computeLineDistances();
-      addSlideObj(altLine);
-      // φ / λ labels
-      const lG = new THREE.Group();
-      lG.add(makeFloatLabel('φ (lat)',
-        new THREE.Vector3(
-          Math.cos(phi * 0.55) * Math.cos(lambda) * (EARTH_RADIUS + 0.15),
-          Math.sin(phi * 0.55)                    * (EARTH_RADIUS + 0.15),
-          Math.cos(phi * 0.55) * Math.sin(lambda) * (EARTH_RADIUS + 0.15)), 0x44FFEE));
-      lG.add(makeFloatLabel('λ (lon)',
-        new THREE.Vector3(
-          Math.cos(phi) * Math.cos(lambda + Math.PI * 0.3) * (EARTH_RADIUS + 0.2),
-          Math.sin(phi)                                    * (EARTH_RADIUS + 0.2),
-          Math.cos(phi) * Math.sin(lambda + Math.PI * 0.3) * (EARTH_RADIUS + 0.2)), 0xFF44CC));
-      addSlideObj(lG);
+      addSlideObj(velArrow);
 
-      // Gold velocity arrow — animates in with a slight overshoot
-      const GAMMA    = 25 * Math.PI / 180;
-      const hDir     = s.vel.clone().normalize();
-      const vHatDemo = hDir.clone().multiplyScalar(Math.cos(GAMMA)).addScaledVector(R, Math.sin(GAMMA)).normalize();
-      const vLen     = 0.82;
-      const vg = new THREE.Group();
-      vg.position.copy(s.pos);
-      vg.add(new THREE.ArrowHelper(vHatDemo, new THREE.Vector3(), vLen, 0xFFD700, 0.09, 0.045));
-      vg.scale.set(0.001, 0.001, 0.001);
-      addSlideObj(vg);
-      gsap.to(vg.scale, { x: 1, y: 1, z: 1, duration: 0.8, delay: 0.25, ease: 'back.out(1.3)' });
-      // Label appears after arrow
-      const lblG = new THREE.Group();
-      lblG.add(makeFloatLabel('v  (γ=25° demo)',
-        s.pos.clone().addScaledVector(vHatDemo, vLen * 0.52).addScaledVector(R, 0.13), 0xFFD700));
-      lblG.visible = false;
-      addSlideObj(lblG);
-      const genV = STATE.slideGen;
-      gsap.delayedCall(0.85, () => {
-        if (STATE.slideGen !== genV) return;
-        lblG.visible = true;
-        lblG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
-      });
+      // ── Velocity label (CSS2D) ────────────────────────────────────────────
+      const velLabelGrp = new THREE.Group();
+      velLabelGrp.add(makeFloatLabel('v', new THREE.Vector3(), 0xFFD700));
+      addSlideObj(velLabelGrp);
+
+      // ── Animation ticker (Keplerian — real physics) ───────────────────────
+      const V_MAX      = ECC_A / (1 - ECC_E);  // proportional to max speed (at periapsis)
+      const ARROW_SCALE = 0.7 / V_MAX;           // map max speed → 0.7 arrow length
+      const N_VIS      = 0.32;                   // visual mean motion (rad/s)
+      const M_START    = 2.6;                    // near apoapsis — user sees it accelerate
+      const t0         = performance.now();
+      const gen        = STATE.slideGen;
+
+      function tick() {
+        if (STATE.slideGen !== gen) { gsap.ticker.remove(tick); return; }
+        const M   = (M_START + N_VIS * (performance.now() - t0) * 0.001) % (Math.PI * 2);
+        const { pos, vel, R_hat } = eccState(M);
+        const speed  = vel.length();
+        const velHat = vel.clone().normalize();
+        const vLen   = speed * ARROW_SCALE;
+        const headLen = Math.min(vLen * 0.18, 0.12);
+        const headW   = Math.min(vLen * 0.08, 0.055);
+
+        // Move spacecraft
+        if (STATE.spacecraft) {
+          STATE.spacecraft.position.copy(pos);
+          const mat = new THREE.Matrix4().lookAt(pos, pos.clone().add(velHat), R_hat);
+          STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+          STATE.spacecraft.quaternion.multiply(
+            new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
+          );
+        }
+
+        // Update velocity arrow
+        velArrow.position.copy(pos);
+        velArrow.setDirection(velHat);
+        velArrow.setLength(vLen, headLen, headW);
+
+        // Update label position
+        const lblPos = pos.clone().addScaledVector(velHat, vLen * 0.55).addScaledVector(R_hat, 0.1);
+        velLabelGrp.position.copy(lblPos);
+      }
+
+      gsap.ticker.add(tick);
+      tweenCamera([4, 4, 8], [0, 0, 0], 1.0);
     },
-    exit() {},
+    exit() {
+      // Restore spacecraft to the standard circular-orbit reference position
+      const s = getSpacecraftState(0.72);
+      if (STATE.spacecraft) {
+        STATE.spacecraft.position.copy(s.pos);
+        const mat = new THREE.Matrix4().lookAt(s.pos, s.pos.clone().add(s.vel), s.R_hat);
+        STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+        STATE.spacecraft.quaternion.multiply(
+          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
+        );
+      }
+      STATE.persistent.orbitLine.visible = true;
+    },
   },
 
   // ── 5: Flight-Path Angle γ ─────────────────────────────────────────────
