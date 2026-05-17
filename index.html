@@ -914,20 +914,21 @@ const SLIDES = [
   {
     title: 'Geocentric-Equatorial Frame (ECI)',
     html: `
-      <p>The <span class="chip chip-eci">ECI Frame</span> is our inertial reference — fixed in space,
-      origin at Earth's center.</p>
+      <p>The <span class="chip chip-eci">ECI Frame</span> (<strong>OXYZ</strong>, Lesson&nbsp;2)
+      is our inertial reference — fixed in space, origin at Earth's center.</p>
       <div class="eq-block">
-        <div class="eq-label">Axis definitions</div>
-        \\[\\hat{X} \\rightarrow \\text{Vernal Equinox}\\]
-        \\[\\hat{Z} \\rightarrow \\text{North Pole}\\]
-        \\[\\hat{Y} = \\hat{Z} \\times \\hat{X}\\]
+        <div class="eq-label">Axis definitions (Lesson 2)</div>
+        \\[\\hat{e}_x \\rightarrow \\text{Vernal Equinox}\\]
+        \\[\\hat{e}_z \\rightarrow \\text{North Pole}\\]
+        \\[\\hat{e}_y = \\hat{e}_z \\times \\hat{e}_x \\quad\\text{(completes right-hand system)}\\]
       </div>
       <p>Because this frame does <em>not</em> rotate with Earth, Newton's Second Law
       holds in its standard inertial form:</p>
       <div class="eq-block">
         \\[m\\ddot{\\vec{r}}_I = \\vec{F}_{\\text{total}}\\]
       </div>
-      <p>All other frames we introduce will be defined relative to this one.</p>`,
+      <p>All subsequent frames — OX₁Y₁Z₁, OX₂Y₂Z₂, OX″Y″Z″ — are defined by rotations
+      relative to OXYZ. The DCMs on slide&nbsp;14 give the full transformation chain.</p>`,
     camera: { pos: [8, 6, 8], target: [0, 0, 0], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -939,27 +940,28 @@ const SLIDES = [
 
   // ── 2: ECEF Frame ──────────────────────────────────────────────────────
   {
-    title: 'Planet-Fixed Frame (ECEF)',
+    title: 'Planet-Fixed Frame (OX₁Y₁Z₁)',
     html: `
-      <p>The <span class="chip chip-ecef">ECEF Frame</span> rotates with Earth at constant
-      angular velocity \\(\\Omega\\) about the polar axis.</p>
+      <p>The <span class="chip chip-ecef">Planet-Fixed Frame</span> (<strong>OX₁Y₁Z₁</strong>,
+      Lesson&nbsp;2) rotates with Earth at constant angular velocity \\(\\Omega\\) about the
+      polar axis.</p>
       <div class="eq-block">
-        <div class="eq-label">Earth's rotation</div>
-        \\[\\Omega = 7.292 \\times 10^{-5} \\ \\text{rad/s}\\]
+        <div class="eq-label">Earth&apos;s rotation rate</div>
+        \\[\\omega_\\oplus = 7.292 \\times 10^{-5} \\ \\text{rad/s}\\]
       </div>
       <div class="eq-block">
-        <div class="eq-label">ECI → ECEF rotation matrix</div>
-        \\[\\mathbf{T}_{\\text{ECI} \\to \\text{ECEF}} = R_Z(\\theta_E)\\]
-        \\[R_Z(\\theta) = \\begin{bmatrix}
-          \\cos\\theta & \\sin\\theta & 0 \\\\
-          -\\sin\\theta & \\cos\\theta & 0 \\\\
+        <div class="eq-label">DCM — OXYZ &rarr; OX₁Y₁Z₁ (Lesson 2)</div>
+        \\[[\\hat{e}_1] = R_z(\\omega_\\oplus\\Delta t)\\,[\\hat{e}]\\]
+        \\[R_z(\\omega_\\oplus\\Delta t) = \\begin{bmatrix}
+          \\cos(\\omega_\\oplus\\Delta t) & \\sin(\\omega_\\oplus\\Delta t) & 0 \\\\
+          -\\sin(\\omega_\\oplus\\Delta t) & \\cos(\\omega_\\oplus\\Delta t) & 0 \\\\
           0 & 0 & 1
         \\end{bmatrix}\\]
       </div>
       <p>The scene is frozen at a moment in time — the
-      <span class="chip chip-ecef">amber ECEF axes</span> are offset from the
-      <span class="chip chip-eci">white ECI axes</span> by the current Earth rotation
-      angle \\(\\theta_E\\). As Earth spins, this offset grows at rate \\(\\Omega\\).</p>`,
+      <span class="chip chip-ecef">amber OX₁Y₁Z₁ axes</span> are offset from the
+      <span class="chip chip-eci">white OXYZ axes</span> by the current Earth rotation
+      angle \\(\\omega_\\oplus\\Delta t\\). As Earth spins, this offset grows continuously.</p>`,
     camera: { pos: [8, 8, 6], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -1657,7 +1659,7 @@ const SLIDES = [
           <button id="toggle-vel8" style="padding:.35rem .8rem;background:#1a1200;border:1px solid #FFD700;border-radius:6px;color:#FFD700;font-size:.8rem;cursor:pointer;letter-spacing:.04em;transition:opacity .15s,border-color .15s;">● Velocity</button>
         </div>
       </div>`,
-    camera: { pos: [3, 3, 7], target: [0, 0, 0], dur: 1.0 },
+    camera: { pos: [3, 3, 7], target: [1.17, 0.72, 0.72], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
       setFrameVisibility({ rst: true, vrf: true, vel: true });
@@ -1895,20 +1897,25 @@ const SLIDES = [
   {
     title: 'Lift Force & Bank Angle θ',
     html: `
-      <p>Lift is <em>perpendicular</em> to velocity. The <strong>bank angle</strong>
-      \\(\\theta\\) defines its orientation about the velocity axis.</p>
+      <p>Lift is <em>perpendicular</em> to velocity. In the
+      <span class="chip chip-vrf">VRF</span> (<strong>OX″Y″Z″</strong>), the <strong>bank
+      angle</strong> \\(\\textcolor{#44FFFF}{\\theta}\\) rotates the lift vector about the
+      velocity axis \\(\\hat{x}_v\\).</p>
       <div class="eq-block">
-        <div class="eq-label">L-V-N reference frame</div>
-        \\[\\hat{V} \\parallel \\vec{v},\\quad \\hat{L} = \\hat{V}\\times\\hat{N},\\quad
-        \\hat{N} = -(\\hat{R} - (\\hat{R}\\cdot\\hat{V})\\hat{V})^{\\text{norm}}\\]
+        <div class="eq-label">Lift in OX″Y″Z″ — bank rotation about x̂<sub>v</sub></div>
+        \\[\\vec{F}_L = \\textcolor{#FF6699}{L}\\begin{bmatrix}0\\\\\\cos\\textcolor{#44FFFF}{\\theta}\\\\\\sin\\textcolor{#44FFFF}{\\theta}\\end{bmatrix}_{OX''Y''Z''}
+        = \\textcolor{#FF6699}{L}\\bigl(\\cos\\textcolor{#44FFFF}{\\theta}\\,\\hat{y}_v + \\sin\\textcolor{#44FFFF}{\\theta}\\,\\hat{z}_v\\bigr)\\]
       </div>
-      <div class="eq-block">
-        <div class="eq-label">Lift vector</div>
-        \\[\\vec{F}_L = \\textcolor{#FF6699}{L}(\\cos\\textcolor{#44FFFF}{\\theta}\\,\\hat{L} + \\sin\\textcolor{#44FFFF}{\\theta}\\,\\hat{N})\\]
+      <p>At \\(\\textcolor{#44FFFF}{\\theta}=0\\), lift points along ŷ<sub>v</sub> (away from
+      Earth, &perp; to velocity). Banking sweeps it toward ẑ<sub>v</sub> (lateral), generating
+      a cross-range acceleration component.</p>
+      <div style="background:#07121f;border:1px solid #1a4a6a;border-radius:8px;padding:0.55rem 1rem;margin-top:0.8rem;display:flex;align-items:center;gap:1.2rem;">
+        <span style="font-size:0.72rem;letter-spacing:.12em;color:#3a6a9a;text-transform:uppercase;white-space:nowrap;">Bank Angle</span>
+        <span id="bank-readout" style="font-size:1.5rem;font-weight:700;color:#44FFFF;font-family:monospace;letter-spacing:0.04em;">θ = 0.0°</span>
       </div>
-      <p>Watch the <span class="chip chip-lift" data-force-hover="lift">lift arrow</span> rotate around the velocity
-      axis as bank angle \\(\\theta\\) changes — this is how a lifting entry vehicle controls
-      its trajectory.</p>`,
+      <p style="margin-top:0.7rem;font-size:0.82rem;color:#6a90b0;">Varying \\(\\textcolor{#44FFFF}{\\theta}\\) is the primary guidance mechanism for
+      lifting entry — it modulates both downrange and cross-range acceleration without
+      changing lift magnitude.</p>`,
     camera: { pos: [3, 4, 6], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -1921,10 +1928,10 @@ const SLIDES = [
       const lift_hat = R.clone().addScaledVector(v_h, -R.dot(v_h)).normalize();
       const lat_hat  = new THREE.Vector3().crossVectors(v_h, lift_hat).normalize();
 
-      // L-V-N triad arrows (N = downward, L = lateral)
+      // VRF perpendicular axes — ŷᵥ (away from Earth ⊥ velocity) and ẑᵥ (lateral)
       const lvnGroup = new THREE.Group();
-      lvnGroup.add(makeArrow(lift_hat.clone().negate(), s.pos, 0.38, 0x8888FF, 'N̂'));
-      lvnGroup.add(makeArrow(lat_hat,                   s.pos, 0.38, 0xFF88AA, 'L̂'));
+      lvnGroup.add(makeArrow(lift_hat, s.pos, 0.38, 0x88FF88, 'ŷᵥ'));
+      lvnGroup.add(makeArrow(lat_hat,  s.pos, 0.38, 0xFF88AA, 'ẑᵥ'));
       addSlideObj(lvnGroup);
 
       // θ arc (0° → 60°) in the perpendicular plane
@@ -1959,6 +1966,9 @@ const SLIDES = [
           const bankUp = lift_hat.clone().multiplyScalar(Math.cos(theta.val))
             .addScaledVector(lat_hat, Math.sin(theta.val));
           STATE.persistent.liftArrow.setDirection(bankUp.clone().normalize());
+          // Live readout
+          const rd = document.getElementById('bank-readout');
+          if (rd) rd.textContent = `θ = ${(theta.val * 180 / Math.PI).toFixed(1)}°`;
           // Roll the spacecraft in sync — bank angle is rotation of body around velocity axis
           if (STATE.spacecraft) {
             const mat = new THREE.Matrix4().lookAt(
@@ -2036,67 +2046,183 @@ const SLIDES = [
 
   // ── 14: Frame Rotation Matrices ────────────────────────────────────────
   {
-    title: 'Frame Rotation Matrices',
+    title: 'Coordinate Frame Transformations (Lesson 2)',
     html: `
-      <p>Every frame-to-frame rotation is encoded in a 3&times;3 orthogonal matrix.
-      Three matrices chain together to carry any vector from VRF up to ECI &mdash; the
-      coordinate system where Newton&apos;s law applies.</p>
-
-      <h3>Earth Spin &mdash; ECI &harr; ECEF</h3>
-      <div class="eq-block">
-        <div class="eq-label">rotation by &theta;<sub>E</sub> = &Omega;t about polar axis</div>
-        \\[C_{ECI\\leftarrow ECEF} = R_Z(\\theta_E) =
-          \\begin{bmatrix}
-            \\cos\\theta_E & -\\sin\\theta_E & 0 \\\\
-            \\sin\\theta_E &  \\cos\\theta_E & 0 \\\\
-            0 & 0 & 1
-          \\end{bmatrix}\\]
+      <p>Lesson&nbsp;2 derives three successive Direction Cosine Matrices (DCMs) that carry
+      any vector from the body frame to inertial space. Each is a 3&times;3 orthogonal matrix
+      — its inverse equals its transpose.</p>
+      <div style="display:flex;flex-direction:column;gap:0.45rem;margin:1rem 0;">
+        <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.8rem;">
+          <span class="chip chip-eci" style="white-space:nowrap">OXYZ</span>
+          <span style="color:#2a5a8a;flex:1;padding:0.25rem 0.6rem;border:1px dashed #1a3a5a;border-radius:4px;text-align:center;">
+            \\(R_z(\\omega_\\oplus\\Delta t)\\) &mdash; Earth spin
+          </span>
+          <span class="chip chip-ecef" style="white-space:nowrap">OX₁Y₁Z₁</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.8rem;">
+          <span class="chip chip-ecef" style="white-space:nowrap">OX₁Y₁Z₁</span>
+          <span style="color:#2a5a8a;flex:1;padding:0.25rem 0.6rem;border:1px dashed #1a3a5a;border-radius:4px;text-align:center;">
+            \\(R_{y_2}(-\\phi)\\,R_{z_1}(\\theta)\\) &mdash; Vehicle-Pointing
+          </span>
+          <span class="chip chip-rst" style="white-space:nowrap">OX₂Y₂Z₂</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.8rem;">
+          <span class="chip chip-rst" style="white-space:nowrap">OX₂Y₂Z₂</span>
+          <span style="color:#2a5a8a;flex:1;padding:0.25rem 0.6rem;border:1px dashed #1a3a5a;border-radius:4px;text-align:center;">
+            \\(R_{z'}(-\\gamma)\\,R_{x_2}(\\psi)\\) &mdash; Velocity-Referenced
+          </span>
+          <span class="chip chip-vrf" style="white-space:nowrap">OX″Y″Z″</span>
+        </div>
       </div>
-
-      <h3>Vehicle Position &mdash; ECI &harr; RST</h3>
-      <div class="eq-block">
-        <div class="eq-label">columns = RST unit vectors expressed in ECI</div>
-        \\[C_{E\\leftarrow R} = \\bigl[\\hat{R}\\;\\big|\\;\\hat{S}\\;\\big|\\;\\hat{T}\\bigr],
-        \\qquad C_{E\\leftarrow R}^{-1} = C_{E\\leftarrow R}^{T}\\]
-      </div>
-
-      <h3>Flight Attitude &mdash; RST &harr; VRF</h3>
-      <div class="eq-block">
-        <div class="eq-label">heading &psi; about T&#x0302;, then flight-path &gamma; about y&#x0302;<sub>v</sub></div>
-        \\[C_{V\\leftarrow R} = R_Z(\\textcolor{#FF44CC}{\\psi})\\,R_Y(-\\textcolor{#FFEE77}{\\gamma})\\]
-        \\[R_Z(\\textcolor{#FF44CC}{\\psi})=\\begin{bmatrix}\\cos\\textcolor{#FF44CC}{\\psi}&-\\sin\\textcolor{#FF44CC}{\\psi}&0\\\\\\sin\\textcolor{#FF44CC}{\\psi}&\\cos\\textcolor{#FF44CC}{\\psi}&0\\\\0&0&1\\end{bmatrix},\\quad
-        R_Y(-\\textcolor{#FFEE77}{\\gamma})=\\begin{bmatrix}\\cos\\textcolor{#FFEE77}{\\gamma}&0&\\sin\\textcolor{#FFEE77}{\\gamma}\\\\0&1&0\\\\-\\sin\\textcolor{#FFEE77}{\\gamma}&0&\\cos\\textcolor{#FFEE77}{\\gamma}\\end{bmatrix}\\]
-        \\[C_{R\\leftarrow V} = C_{V\\leftarrow R}^{T} = R_Y(\\textcolor{#FFEE77}{\\gamma})\\,R_Z(-\\textcolor{#FF44CC}{\\psi})\\]
-      </div>
-
-      <h3>Complete Chain &mdash; VRF &rarr; ECI</h3>
-      <div class="eq-block">
-        \\[\\vec{v}_{ECI} =
-          \\underbrace{C_{E\\leftarrow R}}_{\\text{position}}\\;
-          \\underbrace{C_{R\\leftarrow V}}_{\\text{attitude}}\\;
-          \\vec{v}_{VRF}\\]
-      </div>
-      <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-top:0.7rem;font-size:0.82rem;">
-        <span class="chip chip-vrf">VRF</span>
-        <span style="color:#3a6a9a">&nbsp;&rarr;&nbsp;\\(C_{R\\leftarrow V}\\)&nbsp;&rarr;&nbsp;</span>
-        <span class="chip chip-rst">RST</span>
-        <span style="color:#3a6a9a">&nbsp;&rarr;&nbsp;\\(C_{E\\leftarrow R}\\)&nbsp;&rarr;&nbsp;</span>
-        <span class="chip chip-eci">ECI</span>
-      </div>`,
-    camera: { pos: [7, 5, 10], target: [0, 0, 0], dur: 1.2 },
+      <p style="font-size:0.82rem;color:#6a90b0;">Press <strong>Next&nbsp;&rarr;</strong> to step through each
+      DCM — the full 3&times;3 matrix is shown alongside the animated frame transformation.</p>`,
+    camera: { pos: [7, 5, 10], target: [1.17, 0.72, 0.72], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      // Build up the chain: ECI first, then RST, then VRF
-      setFrameVisibility({ eci: true, rst: true, vel: true });
-      animateGroupIn(STATE.persistent.rstGroup, 0.2);
-      const gen = STATE.slideGen;
-      gsap.delayedCall(0.55, () => {
-        if (STATE.slideGen !== gen) return;
-        setGroupVisible(STATE.persistent.vrfGroup, true);
-        animateGroupIn(STATE.persistent.vrfGroup, 0);
-      });
+      setFrameVisibility({ eci: true });
+      const s = getSpacecraftState(0.72);
+      tweenCamera([7, 5, 10], [s.pos.x * 0.6, s.pos.y * 0.6, s.pos.z * 0.6], 1.2);
     },
     exit() {},
+    substeps: [
+      // ── substep 0: OXYZ → OX₁Y₁Z₁ (Earth spin) ─────────────────────────
+      {
+        html: '',
+        enter3D() {
+          clearSlideObjects();
+          setFrameVisibility({ eci: true, ecef: true });
+          animateGroupIn(STATE.persistent.ecefGroup, 0.25);
+          tweenCamera([8, 8, 6], [0, 0, 0], 0.9);
+          setSlidePanel(`
+            <h3>OXYZ &rarr; OX₁Y₁Z₁ &mdash; Earth Spin</h3>
+            <p>The Planet-Fixed frame <strong>OX₁Y₁Z₁</strong> rotates with Earth. A single
+            rotation about the polar ẑ-axis by the accumulated angle \\(\\omega_\\oplus\\Delta t\\)
+            relates it to the inertial <strong>OXYZ</strong> frame.</p>
+            <div class="eq-block">
+              <div class="eq-label">DCM &mdash; Lesson 2</div>
+              \\[[\\hat{e}_1] = R_z(\\omega_\\oplus\\Delta t)\\,[\\hat{e}]\\]
+              \\[= \\begin{bmatrix}
+                \\cos(\\omega_\\oplus\\Delta t) & \\sin(\\omega_\\oplus\\Delta t) & 0 \\\\
+                -\\sin(\\omega_\\oplus\\Delta t) & \\cos(\\omega_\\oplus\\Delta t) & 0 \\\\
+                0 & 0 & 1
+              \\end{bmatrix}\\begin{bmatrix}\\hat{e}_x\\\\\\hat{e}_y\\\\\\hat{e}_z\\end{bmatrix}\\]
+            </div>
+            <p style="font-size:0.82rem;color:#6a90b0;">The amber <strong>OX₁Y₁Z₁</strong> axes
+            animate in relative to the white <strong>OXYZ</strong> axes — exactly the rotation
+            this DCM describes. \\(\\Omega = 7.292\\times10^{-5}\\) rad/s.</p>
+            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong>
+            for OX₁Y₁Z₁ &rarr; OX₂Y₂Z₂.</p>`);
+        },
+      },
+      // ── substep 1: OX₁Y₁Z₁ → OX₂Y₂Z₂ (Vehicle-Pointing) ──────────────
+      {
+        html: '',
+        enter3D() {
+          clearSlideObjects();
+          const s = getSpacecraftState(0.72);
+          setGroupVisible(STATE.persistent.ecefGroup, true);
+          setFrameVisibility({ ecef: true, rst: true });
+          animateGroupIn(STATE.persistent.rstGroup, 0.25);
+          tweenCamera([5, 4, 8], [s.pos.x, s.pos.y, s.pos.z], 0.9);
+          setSlidePanel(`
+            <h3>OX₁Y₁Z₁ &rarr; OX₂Y₂Z₂ &mdash; Vehicle-Pointing</h3>
+            <p>Two successive rotations using longitude \\(\\textcolor{#44FFFF}{\\theta}\\)
+            and latitude \\(\\textcolor{#AAFF44}{\\phi}\\) align the x₂-axis with the
+            vehicle position vector.</p>
+            <div class="eq-block">
+              <div class="eq-label">DCM &mdash; Lesson 2</div>
+              \\[[\\hat{e}_2] = R_{y_2}(-\\textcolor{#AAFF44}{\\phi})\\,R_{z_1}(\\textcolor{#44FFFF}{\\theta})\\,[\\hat{e}_1]\\]
+              \\[= \\begin{bmatrix}
+                \\cos\\textcolor{#AAFF44}{\\phi}\\cos\\textcolor{#44FFFF}{\\theta} &
+                \\cos\\textcolor{#AAFF44}{\\phi}\\sin\\textcolor{#44FFFF}{\\theta} &
+                \\sin\\textcolor{#AAFF44}{\\phi} \\\\
+                -\\sin\\textcolor{#44FFFF}{\\theta} &
+                \\cos\\textcolor{#44FFFF}{\\theta} &
+                0 \\\\
+                -\\sin\\textcolor{#AAFF44}{\\phi}\\cos\\textcolor{#44FFFF}{\\theta} &
+                -\\sin\\textcolor{#AAFF44}{\\phi}\\sin\\textcolor{#44FFFF}{\\theta} &
+                \\cos\\textcolor{#AAFF44}{\\phi}
+              \\end{bmatrix}\\]
+            </div>
+            <p style="font-size:0.82rem;color:#6a90b0;">OX₂Y₂Z₂ = <strong>RST</strong> in
+            this presentation: x₂=R̂ (radial), y₂=Ŝ (east), z₂=T̂ (cross-track). The purple
+            RST axes animate in at the vehicle position.</p>
+            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong>
+            for OX₂Y₂Z₂ &rarr; OX″Y″Z″.</p>`);
+        },
+      },
+      // ── substep 2: OX₂Y₂Z₂ → OX″Y″Z″ (Velocity-Referenced) ────────────
+      {
+        html: '',
+        enter3D() {
+          clearSlideObjects();
+          const s = getSpacecraftState(0.72);
+          setFrameVisibility({ rst: true, vrf: true, vel: true });
+          animateGroupIn(STATE.persistent.vrfGroup, 0.25);
+          tweenCamera([3, 3, 7], [s.pos.x, s.pos.y, s.pos.z], 0.9);
+          setSlidePanel(`
+            <h3>OX₂Y₂Z₂ &rarr; OX″Y″Z″ &mdash; Velocity-Referenced</h3>
+            <p>Step through OX′Y′Z′ using heading
+            \\(\\textcolor{#FF44CC}{\\psi}\\) and flight-path angle
+            \\(\\textcolor{#FFEE77}{\\gamma}\\) to align the frame with the velocity vector.</p>
+            <div class="eq-block">
+              <div class="eq-label">DCM &mdash; Lesson 2</div>
+              \\[[\\hat{e}''] = R_{z'}(-\\textcolor{#FFEE77}{\\gamma})\\,R_{x_2}(\\textcolor{#FF44CC}{\\psi})\\,[\\hat{e}_2]\\]
+              \\[= \\begin{bmatrix}
+                \\cos\\textcolor{#FFEE77}{\\gamma} &
+                -\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} &
+                -\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} \\\\
+                \\sin\\textcolor{#FFEE77}{\\gamma} &
+                \\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} &
+                \\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} \\\\
+                0 & -\\sin\\textcolor{#FF44CC}{\\psi} & \\cos\\textcolor{#FF44CC}{\\psi}
+              \\end{bmatrix}\\]
+            </div>
+            <p style="font-size:0.82rem;color:#6a90b0;">Lesson 2 places velocity along
+            ê<sub>y″</sub> (2nd row). This presentation labels that axis x̂<sub>v</sub> —
+            the same physical frame, axes permuted. The green VRF axes animate in from RST.</p>
+            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong>
+            for the complete chain.</p>`);
+        },
+      },
+      // ── substep 3: Full chain summary ─────────────────────────────────────
+      {
+        html: '',
+        enter3D() {
+          clearSlideObjects();
+          const s = getSpacecraftState(0.72);
+          setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true });
+          animateGroupIn(STATE.persistent.eciGroup,  0.0);
+          animateGroupIn(STATE.persistent.ecefGroup, 0.1);
+          animateGroupIn(STATE.persistent.rstGroup,  0.3);
+          animateGroupIn(STATE.persistent.vrfGroup,  0.5);
+          tweenCamera([7, 5, 10], [s.pos.x * 0.6, s.pos.y * 0.6, s.pos.z * 0.6], 0.9);
+          setSlidePanel(`
+            <h3>Complete Transformation Chain</h3>
+            <div class="eq-block">
+              <div class="eq-label">Full DCM chain &mdash; Lesson 2</div>
+              \\[[\\hat{e}''] = \\underbrace{C_{OX_2\\to OX''}}_{\\text{attitude}}\\;
+                \\underbrace{C_{OX_1\\to OX_2}}_{\\text{position}}\\;
+                \\underbrace{C_{OXYZ\\to OX_1}}_{\\text{Earth spin}}\\;[\\hat{e}]\\]
+            </div>
+            <div style="display:flex;gap:0.35rem;align-items:center;flex-wrap:wrap;font-size:0.78rem;margin:0.7rem 0;">
+              <span class="chip chip-eci">OXYZ</span>
+              <span style="color:#3a6a9a">&rarr;</span>
+              <span class="chip chip-ecef">OX₁Y₁Z₁</span>
+              <span style="color:#3a6a9a">&rarr;</span>
+              <span class="chip chip-rst">OX₂Y₂Z₂</span>
+              <span style="color:#3a6a9a">&rarr;</span>
+              <span class="chip chip-vrf">OX″Y″Z″</span>
+            </div>
+            <p style="font-size:0.82rem;color:#6a90b0;">All four frames are live simultaneously.
+            Forces computed in OX″Y″Z″ are rotated back through the transpose of this chain to
+            express them in OXYZ for Newton&apos;s law.</p>
+            <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.5rem;">
+              <strong style="color:#8ab8d8;">Inverse = Transpose</strong> — since every
+              DCM is orthonormal, \\(C^{-1}=C^T\\). Transposing gives OX″Y″Z″&rarr;OXYZ.</p>`);
+        },
+      },
+    ],
   },
 
   // ── 15: Forces in the Inertial Frame ───────────────────────────────────
