@@ -2676,15 +2676,26 @@ const SLIDES = [
       addSlideObj(netArrow);
       setSlidePanel(`
         <h3>F<sub>net</sub> &mdash; ECI components</h3>
-        <p>The net force drives acceleration along X&#x302;, &#x176;, &#x17C;:</p>
+        <p style="font-size:0.82rem;">All forces summed in ECI — each row is one axis component:</p>
         <div class="eq-block">
-          \\[\\vec{F}_{net} = F_{X}\\hat{X} + F_{Y}\\hat{Y} + F_{Z}\\hat{Z}\\]
+          <div class="eq-label">ECI component breakdown</div>
+          \\[\\begin{aligned}
+            \\textcolor{#FF3333}{F_X} &= C_{E\\leftarrow R}\\bigl[\\textcolor{#6699FF}{-\\tfrac{\\mu m}{r^2}}
+              +(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\sin\\textcolor{#FFEE77}{\\gamma}
+              - \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FFEE77}{\\gamma}\\bigr] \\\\[4pt]
+            \\textcolor{#33FF33}{F_Y} &= C_{E\\leftarrow R}\\bigl[(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}
+              + \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}
+              + \\textcolor{#FF6699}{L}\\sin\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FF44CC}{\\psi}\\bigr] \\\\[4pt]
+            \\textcolor{#3399FF}{F_Z} &= C_{E\\leftarrow R}\\bigl[(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}
+              + \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}
+              - \\textcolor{#FF6699}{L}\\sin\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FF44CC}{\\psi}\\bigr]
+          \\end{aligned}\\]
         </div>
-        ${eciEqBlock(`\\vec{F}_{net} = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#6699FF}{-\\tfrac{\\mu m}{r^2}}+(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\sin\\textcolor{#FFEE77}{\\gamma} - \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FFEE77}{\\gamma}\\\\(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} + \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} + \\textcolor{#FF6699}{L}\\sin\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FF44CC}{\\psi}\\\\(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} + \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} - \\textcolor{#FF6699}{L}\\sin\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FF44CC}{\\psi}\\end{bmatrix}_{ECI}`)}
-        <p style="font-size:0.8rem;color:#6a8aaa;">
+        <p style="font-size:0.8rem;color:#6a8aaa;margin-top:0.4rem;">
           <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
           <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
-          <span style="color:#3399FF">&#9632;</span> Ẑ
+          <span style="color:#3399FF">&#9632;</span> Ẑ &ensp;&ensp;
+          Then: \\(\\;m\\ddot{\\vec{r}}_I = \\vec{F}_{net}\\)
         </p>`);
       buildECIChain(netDir.clone().multiplyScalar(netLen), s.pos, gen, 0.35);
     },
@@ -2698,24 +2709,34 @@ const SLIDES = [
   {
     title: 'Complete 3-DOF Equations of Motion',
     html: `
-      <p style="font-size:0.82rem;margin-bottom:0.5rem;">Six coupled scalar ODEs —
+      <p style="margin-bottom:0.6rem;">Six coupled scalar ODEs —
       complete <strong>3-DOF point-mass</strong> model.</p>
-      <div style="font-size:0.72rem;">
-        <div class="eq-block" style="margin-bottom:0.4rem;padding:0.5rem 0.8rem;">
-          <div class="eq-label" style="margin-bottom:0.2rem;">Kinematics</div>
-          \\[\\dot{r} = v\\sin\\gamma\\]
-          \\[\\dot{\\lambda} = \\tfrac{v\\cos\\gamma\\cos\\psi}{r\\cos\\phi}\\]
-          \\[\\dot{\\phi} = \\tfrac{v\\cos\\gamma\\sin\\psi}{r}\\]
-        </div>
-        <div class="eq-block" style="margin-bottom:0.4rem;padding:0.5rem 0.8rem;">
-          <div class="eq-label" style="margin-bottom:0.2rem;">Forces</div>
-          \\[\\dot{v} = \\tfrac{T\\cos\\alpha_T - D}{m} - g\\sin\\gamma + \\omega_\\oplus^2 r\\cos\\phi(\\sin\\gamma\\cos\\phi - \\cos\\gamma\\sin\\phi\\cos\\psi)\\]
-          \\[\\dot{\\gamma} = \\tfrac{1}{v}\\!\\left[\\tfrac{L\\cos\\theta}{m} - \\left(g - \\tfrac{v^2}{r}\\right)\\cos\\gamma + 2\\omega_\\oplus v\\cos\\phi\\cos\\psi + \\omega_\\oplus^2 r\\cos\\phi(\\cos\\gamma\\cos\\phi + \\sin\\gamma\\sin\\phi\\cos\\psi)\\right]\\]
-          \\[\\dot{\\psi} = \\tfrac{1}{v\\cos\\gamma}\\!\\left[\\tfrac{L\\sin\\theta}{m\\cos\\gamma} + \\tfrac{v^2\\cos^2\\!\\gamma\\sin\\psi\\tan\\phi}{r} - 2\\omega_\\oplus v(\\tan\\gamma\\cos\\phi\\cos\\psi - \\sin\\phi) + \\tfrac{\\omega_\\oplus^2 r\\sin\\phi\\cos\\phi\\sin\\psi}{\\cos\\gamma}\\right]\\]
-        </div>
+      <div class="eq-block" style="margin-bottom:0.5rem;">
+        <div class="eq-label">Kinematics</div>
+        \\[\\dot{r} = v\\sin\\gamma\\]
+        \\[\\dot{\\lambda} = \\frac{v\\cos\\gamma\\cos\\psi}{r\\cos\\phi}\\]
+        \\[\\dot{\\phi} = \\frac{v\\cos\\gamma\\sin\\psi}{r}\\]
       </div>
-      <p style="font-size:0.78rem;margin:0.3rem 0;">\\(\\mathbf{x} = (r,\\,v,\\,\\gamma,\\,\\psi,\\,\\lambda,\\,\\phi)^T\\)</p>
-      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">
+      <div class="eq-block" style="margin-bottom:0.5rem;">
+        <div class="eq-label">Forces</div>
+        \\[\\begin{split}
+          \\dot{v} = \\frac{T\\cos\\alpha_T - D}{m} &- g\\sin\\gamma \\\\
+          &+ \\omega_\\oplus^2 r\\cos\\phi(\\sin\\gamma\\cos\\phi - \\cos\\gamma\\sin\\phi\\cos\\psi)
+        \\end{split}\\]
+        \\[\\begin{split}
+          \\dot{\\gamma} = \\frac{1}{v}\\biggl[\\frac{L\\cos\\theta}{m} &-
+            \\Bigl(g - \\frac{v^2}{r}\\Bigr)\\cos\\gamma + 2\\omega_\\oplus v\\cos\\phi\\cos\\psi \\\\
+          &+ \\omega_\\oplus^2 r\\cos\\phi(\\cos\\gamma\\cos\\phi + \\sin\\gamma\\sin\\phi\\cos\\psi)\\biggr]
+        \\end{split}\\]
+        \\[\\begin{split}
+          \\dot{\\psi} = \\frac{1}{v\\cos\\gamma}\\biggl[\\frac{L\\sin\\theta}{m\\cos\\gamma} &+
+            \\frac{v^2\\cos^2\\!\\gamma\\sin\\psi\\tan\\phi}{r} \\\\
+          &- 2\\omega_\\oplus v(\\tan\\gamma\\cos\\phi\\cos\\psi - \\sin\\phi) \\\\
+          &+ \\frac{\\omega_\\oplus^2 r\\sin\\phi\\cos\\phi\\sin\\psi}{\\cos\\gamma}\\biggr]
+        \\end{split}\\]
+      </div>
+      <p style="margin:0.3rem 0 0.5rem;">\\(\\mathbf{x} = (r,\\,v,\\,\\gamma,\\,\\psi,\\,\\lambda,\\,\\phi)^T\\)</p>
+      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
         <span class="chip chip-grav"   data-force-hover="grav">Gravity</span>
         <span class="chip chip-drag"   data-force-hover="drag">Drag</span>
         <span class="chip chip-lift"   data-force-hover="lift">Lift</span>
