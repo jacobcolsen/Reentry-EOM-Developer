@@ -1625,317 +1625,7 @@ const SLIDES = [
     },
   },
 
-  // ── 11: Newton's 2nd Law ────────────────────────────────────────────────
-  {
-    title: "Newton's Second Law",
-    html: `
-      <p>With constant mass, Newton's Second Law in the inertial frame gives us the
-      starting point for the entire EOM derivation.</p>
-      <div class="eq-block">
-        <div class="eq-label">Inertial EOM</div>
-        \\[m\\ddot{\\vec{r}}_I = \\vec{F}_T + \\vec{F}_{\\text{aero}} + \\vec{F}_g\\]
-      </div>
-      <h3>Forces acting on the vehicle</h3>
-      <ul>
-        <li><span class="chip chip-thrust" data-force-hover="thrust">Thrust</span> — propulsive force</li>
-        <li><span class="chip chip-drag" data-force-hover="drag">Drag</span> — aerodynamic retarding force</li>
-        <li><span class="chip chip-lift" data-force-hover="lift">Lift</span> — aerodynamic perpendicular force</li>
-        <li><span class="chip chip-grav" data-force-hover="grav">Gravity</span> — central body attraction</li>
-      </ul>
-      <p>The superscript \\(I\\) on \\(\\ddot{\\vec{r}}\\) emphasizes the derivative is taken
-      with respect to the <em>inertial</em> frame.</p>`,
-    camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 1.0 },
-    enter() {
-      STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ vrf: true, vel: true });
-      setForceVisibility({ grav: true, drag: true, lift: true });
-      [STATE.persistent.gravArrow, STATE.persistent.dragArrow, STATE.persistent.liftArrow]
-        .forEach((a, i) => {
-          if (!a) return;
-          a.scale.set(0, 0, 0);
-          a.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-          gsap.to(a.scale, {
-            x: 1, y: 1, z: 1, duration: 0.5, delay: 0.3 + i * 0.25, ease: 'back.out(1.4)',
-            onComplete() {
-              a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-            }
-          });
-        });
-    },
-    exit() { setForceVisibility({}); },
-  },
-
-  // ── 12: Rotating Frame Conversion ───────────────────────────────────────
-  {
-    title: 'Rotating Frame Conversion',
-    html: `
-      <p>Reentry trajectory measurement is more convenient in the rotating, planet-fixed
-      frame. Converting introduces two new acceleration terms.</p>
-      <div class="eq-block">
-        <div class="eq-label">Inertial vs. rotating derivative</div>
-        \\[\\ddot{\\vec{r}}_I = \\underbrace{\\ddot{\\vec{r}}_{\\text{rot}}}_{\\text{rel. accel.}}
-          + \\underbrace{2\\vec{\\omega}_\\oplus\\times\\dot{\\vec{r}}_{\\text{rot}}}_{\\text{Coriolis}}
-          + \\underbrace{\\vec{\\omega}_\\oplus\\times(\\vec{\\omega}_\\oplus\\times\\vec{r})}_{\\text{centripetal}}\\]
-      </div>
-      <ul>
-        <li><span class="chip" style="background:#001a1a;border:1px solid #44FFFF;color:#44FFFF" data-force-hover="cor">Coriolis</span> — depends on velocity relative to planet</li>
-        <li><span class="chip" style="background:#120a1a;border:1px solid #AA44FF;color:#AA44FF" data-force-hover="cen">Centripetal</span> — depends on distance from spin axis</li>
-      </ul>
-      <p>Both terms update in real-time as the spacecraft moves — watch the arrows change
-      direction along the orbit.</p>`,
-    camera: { pos: [5, 5, 8], target: [0, 0, 0], dur: 1.0 },
-    enter() {
-      STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true, ecef: true });
-      setForceVisibility({ coriolis: true, centrip: true });
-      [STATE.persistent.coriolisArrow, STATE.persistent.centripArrow].forEach((a, i) => {
-        if (!a) return;
-        a.scale.set(0, 0, 0);
-        a.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-        gsap.to(a.scale, {
-          x: 1, y: 1, z: 1, duration: 0.5, delay: 0.3 + i * 0.22, ease: 'back.out(1.4)',
-          onComplete() {
-            a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-          }
-        });
-      });
-    },
-    exit() {
-      setForceVisibility({});
-      // Reset orbit back to frozen position so other slides are unaffected
-      STATE.orbitT = 0.72;
-      if (STATE.spacecraft) {
-        const s0 = getSpacecraftState(0.72);
-        STATE.spacecraft.position.copy(s0.pos);
-        const v0 = s0.vel.clone().normalize();
-        const lh = s0.R_hat.clone().addScaledVector(v0, -s0.R_hat.dot(v0)).normalize();
-        const mat = new THREE.Matrix4().lookAt(s0.pos, s0.pos.clone().add(s0.vel), lh);
-        STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
-        STATE.spacecraft.quaternion.multiply(
-          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
-        );
-      }
-    },
-  },
-
-  // ── 13: Gravitational Force ────────────────────────────────────────────
-  {
-    title: 'Gravitational Force',
-    html: `
-      <p>Gravity acts radially inward along \\(-\\hat{R}\\) and follows the inverse-square law.</p>
-      <div class="eq-block">
-        <div class="eq-label">Gravitational force</div>
-        \\[\\vec{F}_g = \\textcolor{#6699FF}{-\\frac{\\mu m}{r^2}}\\hat{R}\\]
-        \\[\\mu = GM_\\oplus = 3.986 \\times 10^{14}\\ \\text{m}^3/\\text{s}^2\\]
-      </div>
-      <p>In the vehicle-pointing frame, the gravitational acceleration vector has only
-      a radial component:</p>
-      <div class="eq-block">
-        \\[\\vec{g} = -\\frac{\\mu}{r^2}\\hat{R} = \\begin{bmatrix}-g \\\\ 0 \\\\ 0\\end{bmatrix}_{\\text{RST}}\\]
-      </div>
-      <p>The <span class="chip chip-grav" data-force-hover="grav">gravity arrow</span> grows longer as the spacecraft
-      descends closer to Earth.</p>`,
-    camera: { pos: [4, 2, 9], target: [0, 0, 0], dur: 1.2 },
-    enter() {
-      STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ rst: true });
-      setForceVisibility({ grav: true });
-      const s = getSpacecraftState(0.72);
-      addSlideObj(new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), s.pos]),
-        new THREE.LineBasicMaterial({ color: COLORS.grav, transparent: true, opacity: 0.30 })
-      ));
-    },
-    exit() { setForceVisibility({}); },
-  },
-
-  // ── 14: Drag Force ─────────────────────────────────────────────────────
-  {
-    title: 'Drag Force',
-    html: `
-      <p><span class="chip chip-drag" data-force-hover="drag">Drag</span> acts directly <em>opposite</em> to the velocity vector — always in the
-      \\(-\\hat{x}_v\\) direction of the VRF.</p>
-      <div class="eq-block">
-        <div class="eq-label">Aerodynamic drag</div>
-        \\[\\vec{F}_D = -\\frac{1}{2}\\rho V^2 S C_D\\,\\hat{v}\\]
-      </div>
-      <ul>
-        <li>\\(\\rho\\) — atmospheric density (decreases with altitude)</li>
-        <li>\\(V\\) — speed relative to planet-fixed frame</li>
-        <li>\\(S\\) — reference area</li>
-        <li>\\(C_D\\) — drag coefficient</li>
-      </ul>
-      <div class="eq-block">
-        <div class="eq-label">In vehicle-pointing frame</div>
-        \\[\\vec{F}_D = \\begin{bmatrix}
-          \\textcolor{#FF9944}{D}\\sin\\textcolor{#FFEE77}{\\gamma} \\\\ \\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} \\\\ \\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}
-        \\end{bmatrix}_{\\text{RST}}\\]
-      </div>`,
-    camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
-    enter() {
-      STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ vrf: true, vel: true });
-      setForceVisibility({ drag: true });
-      if (STATE.persistent.dragArrow) STATE.persistent.dragArrow.scale.set(1.4, 1.4, 1.4);
-    },
-    exit() {
-      if (STATE.persistent.dragArrow) STATE.persistent.dragArrow.scale.set(1, 1, 1);
-      setForceVisibility({});
-    },
-  },
-
-  // ── 15: Lift Force & Bank Angle ────────────────────────────────────────
-  {
-    title: 'Lift Force & Bank Angle θ',
-    html: `
-      <p>Lift is <em>perpendicular</em> to velocity. In the
-      <span class="chip chip-vrf">VRF</span> (<strong>OX″Y″Z″</strong>), the <strong>bank
-      angle</strong> \\(\\textcolor{#44FFFF}{\\theta}\\) rotates the lift vector about the
-      velocity axis \\(\\hat{x}_v\\).</p>
-      <div class="eq-block">
-        <div class="eq-label">Lift in OX″Y″Z″ — bank rotation about x̂<sub>v</sub></div>
-        \\[\\vec{F}_L = \\textcolor{#FF6699}{L}\\begin{bmatrix}0\\\\\\cos\\textcolor{#44FFFF}{\\theta}\\\\\\sin\\textcolor{#44FFFF}{\\theta}\\end{bmatrix}_{OX''Y''Z''}
-        = \\textcolor{#FF6699}{L}\\bigl(\\cos\\textcolor{#44FFFF}{\\theta}\\,\\hat{y}_v + \\sin\\textcolor{#44FFFF}{\\theta}\\,\\hat{z}_v\\bigr)\\]
-      </div>
-      <p>At \\(\\textcolor{#44FFFF}{\\theta}=0\\), lift points along ŷ<sub>v</sub> (away from
-      Earth, &perp; to velocity). Banking sweeps it toward ẑ<sub>v</sub> (lateral), generating
-      a cross-range acceleration component.</p>
-      <div style="background:#07121f;border:1px solid #1a4a6a;border-radius:8px;padding:0.55rem 1rem;margin-top:0.8rem;display:flex;align-items:center;gap:1.2rem;">
-        <span style="font-size:0.72rem;letter-spacing:.12em;color:#3a6a9a;text-transform:uppercase;white-space:nowrap;">Bank Angle</span>
-        <span id="bank-readout" style="font-size:1.5rem;font-weight:700;color:#44FFFF;font-family:monospace;letter-spacing:0.04em;">θ = 0.0°</span>
-      </div>
-      <p style="margin-top:0.7rem;font-size:0.82rem;color:#6a90b0;">Varying \\(\\textcolor{#44FFFF}{\\theta}\\) is the primary guidance mechanism for
-      lifting entry — it modulates both downrange and cross-range acceleration without
-      changing lift magnitude.</p>`,
-    camera: { pos: [3, 4, 6], target: [0, 0, 0], dur: 1.0 },
-    enter() {
-      STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ vrf: true, vel: true });
-      setForceVisibility({ lift: true });
-
-      const s = getSpacecraftState(0.72);
-      const v_h = s.vel.clone().normalize();
-      const R   = s.R_hat;
-      const lift_hat = R.clone().addScaledVector(v_h, -R.dot(v_h)).normalize();
-      const lat_hat  = new THREE.Vector3().crossVectors(v_h, lift_hat).normalize();
-
-      // VRF perpendicular axes — ŷᵥ (away from Earth ⊥ velocity) and ẑᵥ (lateral)
-      const lvnGroup = new THREE.Group();
-      lvnGroup.add(makeArrow(lift_hat, s.pos, 0.38, 0x88FF88, 'ŷᵥ'));
-      lvnGroup.add(makeArrow(lat_hat,  s.pos, 0.38, 0xFF88AA, 'ẑᵥ'));
-      addSlideObj(lvnGroup);
-
-      // θ arc (0° → 60°) in the perpendicular plane
-      const arcPts = [];
-      for (let i = 0; i <= 32; i++) {
-        const a = (i / 32) * (Math.PI / 3);
-        arcPts.push(s.pos.clone()
-          .addScaledVector(lift_hat, Math.cos(a) * 0.30)
-          .addScaledVector(lat_hat,  Math.sin(a) * 0.30));
-      }
-      addSlideObj(new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints(arcPts),
-        new THREE.LineBasicMaterial({ color: COLORS.arc })
-      ));
-
-      // θ label at arc midpoint (30°)
-      const lG = new THREE.Group();
-      lG.add(makeFloatLabel('θ',
-        s.pos.clone()
-          .addScaledVector(lift_hat, Math.cos(Math.PI / 6) * 0.42)
-          .addScaledVector(lat_hat,  Math.sin(Math.PI / 6) * 0.42),
-        COLORS.arc));
-      addSlideObj(lG);
-
-      // Bank angle animation: rotate lift around velocity axis, yoyo 0°→60°
-      const theta = { val: 0 };
-      STATE.bankAnim = gsap.to(theta, {
-        val: Math.PI / 3, duration: 2.2, ease: 'power2.inOut', repeat: -1, yoyo: true,
-        onUpdate() {
-          if (!STATE.persistent.liftArrow) return;
-          // Lift rotates around velocity axis by θ
-          const bankUp = lift_hat.clone().multiplyScalar(Math.cos(theta.val))
-            .addScaledVector(lat_hat, Math.sin(theta.val));
-          STATE.persistent.liftArrow.setDirection(bankUp.clone().normalize());
-          // Live readout
-          const rd = document.getElementById('bank-readout');
-          if (rd) rd.textContent = `θ = ${(theta.val * 180 / Math.PI).toFixed(1)}°`;
-          // Roll the spacecraft in sync — bank angle is rotation of body around velocity axis
-          if (STATE.spacecraft) {
-            const mat = new THREE.Matrix4().lookAt(
-              s.pos, s.pos.clone().add(s.vel), bankUp
-            );
-            STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
-            STATE.spacecraft.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2));
-          }
-        }
-      });
-    },
-    exit() {
-      if (STATE.bankAnim) { STATE.bankAnim.kill(); STATE.bankAnim = null; }
-      const s  = getSpacecraftState(0.72);
-      const vh = s.vel.clone().normalize();
-      const lh = s.R_hat.clone().addScaledVector(vh, -s.R_hat.dot(vh)).normalize();
-      if (STATE.persistent.liftArrow) STATE.persistent.liftArrow.setDirection(lh);
-      // Restore spacecraft to wings-level (θ = 0)
-      if (STATE.spacecraft) {
-        const mat = new THREE.Matrix4().lookAt(s.pos, s.pos.clone().add(s.vel), lh);
-        STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
-        STATE.spacecraft.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2));
-      }
-      setForceVisibility({});
-    },
-  },
-
-  // ── 16: Thrust Force ───────────────────────────────────────────────────
-  {
-    title: 'Thrust Force',
-    html: `
-      <p>Thrust is expressed in the VRF using a pitch angle \\(\\alpha_T\\) and a
-      bank angle \\(\\beta_T\\).</p>
-      <div class="eq-block">
-        <div class="eq-label">Thrust vector (VRF)</div>
-        \\[\\vec{F}_T = T\\begin{bmatrix}
-          \\cos\\alpha_T \\\\
-          \\sin\\alpha_T\\cos\\beta_T \\\\
-          \\sin\\alpha_T\\sin\\beta_T
-        \\end{bmatrix}_{\\text{VRF}}\\]
-      </div>
-      <p>Transforming to RST via \\(\\mathbf{T}_{\\text{VRF}\\to\\text{RST}}\\) gives the
-      thrust components used in the force equations.</p>
-      <p>All four forces are now simultaneously visible on the vehicle.</p>
-      <p style="margin-top:0.9rem;font-size:0.82rem;color:#3a6a9a;">Hover to highlight in scene:</p>
-      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.3rem;">
-        <span class="chip chip-grav"   data-force-hover="grav">Gravity</span>
-        <span class="chip chip-drag"   data-force-hover="drag">Drag</span>
-        <span class="chip chip-lift"   data-force-hover="lift">Lift</span>
-        <span class="chip chip-thrust" data-force-hover="thrust">Thrust</span>
-      </div>`,
-    camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
-    enter() {
-      STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ vrf: true, vel: true });
-      setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
-      // Thrust fades in last
-      if (STATE.persistent.thrustArrow) {
-        STATE.persistent.thrustArrow.scale.set(0, 0, 0);
-        STATE.persistent.thrustArrow.traverse(o => {
-          if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; }
-        });
-        gsap.to(STATE.persistent.thrustArrow.scale, {
-          x: 1, y: 1, z: 1, duration: 0.55, delay: 0.4, ease: 'back.out(1.4)',
-          onComplete() {
-            STATE.persistent.thrustArrow.traverse(o => {
-              if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; }
-            });
-          }
-        });
-      }
-    },
-    exit() { setForceVisibility({}); },
-  },
-
-  // ── 17: Frame Rotation Matrices ────────────────────────────────────────
+  // ── 11: Frame Rotation Matrices ────────────────────────────────────────
   {
     title: 'Coordinate Frame Transformations',
     html: `
@@ -1974,7 +1664,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 18: OXYZ → OX₁Y₁Z₁ — Earth Spin ──────────────────────────────────
+  // ── 12: OXYZ → OX₁Y₁Z₁ — Earth Spin ──────────────────────────────────
   {
     title: 'OXYZ → OX₁Y₁Z₁: Earth Spin',
     html: '',
@@ -2025,7 +1715,7 @@ const SLIDES = [
     exit() { STATE.suppressEarthUpdate = false; },
   },
 
-  // ── 19: OX₁Y₁Z₁ → OX₂Y₂Z₂ — Vehicle-Pointing ─────────────────────────
+  // ── 13: OX₁Y₁Z₁ → OX₂Y₂Z₂ — Vehicle-Pointing ─────────────────────────
   {
     title: 'OX₁Y₁Z₁ → OX₂Y₂Z₂: Vehicle-Pointing',
     html: '',
@@ -2129,7 +1819,7 @@ const SLIDES = [
     exit() { STATE.suppressEarthUpdate = false; },
   },
 
-  // ── 20: OX₂Y₂Z₂ → OX″Y″Z″ — Velocity-Referenced ──────────────────────
+  // ── 14: OX₂Y₂Z₂ → OX″Y″Z″ — Velocity-Referenced ──────────────────────
   {
     title: 'OX₂Y₂Z₂ → OX″Y″Z″: Velocity-Referenced',
     html: '',
@@ -2253,7 +1943,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 21: Complete Transformation Chain ──────────────────────────────────
+  // ── 15: Complete Transformation Chain ──────────────────────────────────
   {
     title: 'Complete Transformation Chain',
     html: '',
@@ -2304,61 +1994,131 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 32: Forces in the Inertial Frame ───────────────────────────────────
+  // ── 16: Newton's 2nd Law ────────────────────────────────────────────────
   {
-    title: 'Forces in the Inertial Frame',
+    title: "Newton's Second Law",
     html: `
-      <p>Each force lives in its <em>natural</em> frame — gravity in
-      <span class="chip chip-rst" style="font-size:0.75em">RST</span>, aerodynamics
-      and thrust in <span class="chip chip-vrf" style="font-size:0.75em">VRF</span>.</p>
-      <p>Step through each force below: first in its home frame, then watch it automatically
-      decompose into <span class="chip chip-eci" style="font-size:0.75em">ECI</span> X/Y/Z
-      components. Press <strong>Next&nbsp;&rarr;</strong> to begin.</p>`,
-    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+      <p>With constant mass, Newton's Second Law in the inertial frame gives us the
+      starting point for the entire EOM derivation.</p>
+      <div class="eq-block">
+        <div class="eq-label">Inertial EOM</div>
+        \\[m\\ddot{\\vec{r}}_I = \\vec{F}_T + \\vec{F}_{\\text{aero}} + \\vec{F}_g\\]
+      </div>
+      <h3>Forces acting on the vehicle</h3>
+      <ul>
+        <li><span class="chip chip-thrust" data-force-hover="thrust">Thrust</span> — propulsive force</li>
+        <li><span class="chip chip-drag" data-force-hover="drag">Drag</span> — aerodynamic retarding force</li>
+        <li><span class="chip chip-lift" data-force-hover="lift">Lift</span> — aerodynamic perpendicular force</li>
+        <li><span class="chip chip-grav" data-force-hover="grav">Gravity</span> — central body attraction</li>
+      </ul>
+      <p>The superscript \\(I\\) on \\(\\ddot{\\vec{r}}\\) emphasizes the derivative is taken
+      with respect to the <em>inertial</em> frame.</p>`,
+    camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({});
-      _forceFrameArrows = [];
+      setFrameVisibility({ vrf: true, vel: true });
+      setForceVisibility({ grav: true, drag: true, lift: true });
+      [STATE.persistent.gravArrow, STATE.persistent.dragArrow, STATE.persistent.liftArrow]
+        .forEach((a, i) => {
+          if (!a) return;
+          a.scale.set(0, 0, 0);
+          a.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+          gsap.to(a.scale, {
+            x: 1, y: 1, z: 1, duration: 0.5, delay: 0.3 + i * 0.25, ease: 'back.out(1.4)',
+            onComplete() {
+              a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+            }
+          });
+        });
     },
+    exit() { setForceVisibility({}); },
   },
 
-  // ── 22: Gravity — Natural Frame ────────────────────────────────────────
+  // ── 17: Rotating Frame Conversion ───────────────────────────────────────
   {
-    title: 'Gravity — Natural Frame (RST)',
-    html: '',
-    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+    title: 'Rotating Frame Conversion',
+    html: `
+      <p>Reentry trajectory measurement is more convenient in the rotating, planet-fixed
+      frame. Converting introduces two new acceleration terms.</p>
+      <div class="eq-block">
+        <div class="eq-label">Inertial vs. rotating derivative</div>
+        \\[\\ddot{\\vec{r}}_I = \\underbrace{\\ddot{\\vec{r}}_{\\text{rot}}}_{\\text{rel. accel.}}
+          + \\underbrace{2\\vec{\\omega}_\\oplus\\times\\dot{\\vec{r}}_{\\text{rot}}}_{\\text{Coriolis}}
+          + \\underbrace{\\vec{\\omega}_\\oplus\\times(\\vec{\\omega}_\\oplus\\times\\vec{r})}_{\\text{centripetal}}\\]
+      </div>
+      <ul>
+        <li><span class="chip" style="background:#001a1a;border:1px solid #44FFFF;color:#44FFFF" data-force-hover="cor">Coriolis</span> — depends on velocity relative to planet</li>
+        <li><span class="chip" style="background:#120a1a;border:1px solid #AA44FF;color:#AA44FF" data-force-hover="cen">Centripetal</span> — depends on distance from spin axis</li>
+      </ul>
+      <p>Both terms update in real-time as the spacecraft moves — watch the arrows change
+      direction along the orbit.</p>`,
+    camera: { pos: [5, 5, 8], target: [0, 0, 0], dur: 1.0 },
     enter() {
-      clearSlideObjects();
-      const s = getSpacecraftState(0.72);
-      setGroupVisible(STATE.persistent.eciGroup, false);
-      setGroupVisible(STATE.persistent.vrfGroup, false);
-      setGroupVisible(STATE.persistent.rstGroup, true);
-      animateGroupIn(STATE.persistent.rstGroup, 0.1);
-      if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
-      const gArr = STATE.persistent.gravArrow;
-      if (gArr) {
-        gArr.scale.set(1, 1, 1);
-        gArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-      }
-      setForceVisibility({ grav: true });
-      restoreAllArrowMaterials();
-      highlightArrow(STATE.persistent.gravArrow, COLORS.grav);
-      setSlidePanel(`
-        <h3>Gravity &mdash; in <span class="chip chip-rst">RST</span></h3>
-        <p>Gravity acts purely along &minus;R&#x302; (nadir, towards Earth&apos;s centre).
-        In RST it has one non-zero component:</p>
-        <div class="eq-block">
-          <div class="eq-label">Gravity in RST frame</div>
-          \\[\\vec{F}_g = \\begin{bmatrix}\\textcolor{#6699FF}{-\\mu m/r^2}\\\\0\\\\0\\end{bmatrix}_{RST}\\]
-        </div>`);
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ eci: true, ecef: true });
+      setForceVisibility({ coriolis: true, centrip: true });
+      [STATE.persistent.coriolisArrow, STATE.persistent.centripArrow].forEach((a, i) => {
+        if (!a) return;
+        a.scale.set(0, 0, 0);
+        a.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+        gsap.to(a.scale, {
+          x: 1, y: 1, z: 1, duration: 0.5, delay: 0.3 + i * 0.22, ease: 'back.out(1.4)',
+          onComplete() {
+            a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+          }
+        });
+      });
     },
-        exit() {
+    exit() {
       setForceVisibility({});
-      restoreAllArrowMaterials();
+      // Reset orbit back to frozen position so other slides are unaffected
+      STATE.orbitT = 0.72;
+      if (STATE.spacecraft) {
+        const s0 = getSpacecraftState(0.72);
+        STATE.spacecraft.position.copy(s0.pos);
+        const v0 = s0.vel.clone().normalize();
+        const lh = s0.R_hat.clone().addScaledVector(v0, -s0.R_hat.dot(v0)).normalize();
+        const mat = new THREE.Matrix4().lookAt(s0.pos, s0.pos.clone().add(s0.vel), lh);
+        STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+        STATE.spacecraft.quaternion.multiply(
+          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
+        );
+      }
     },
   },
 
-  // ── 23: Gravity — ECI Decomposition ────────────────────────────────────
+  // ── 18: Gravitational Force ────────────────────────────────────────────
+  {
+    title: 'Gravitational Force',
+    html: `
+      <p>Gravity acts radially inward along \\(-\\hat{R}\\) and follows the inverse-square law.</p>
+      <div class="eq-block">
+        <div class="eq-label">Gravitational force</div>
+        \\[\\vec{F}_g = \\textcolor{#6699FF}{-\\frac{\\mu m}{r^2}}\\hat{R}\\]
+        \\[\\mu = GM_\\oplus = 3.986 \\times 10^{14}\\ \\text{m}^3/\\text{s}^2\\]
+      </div>
+      <p>In the vehicle-pointing frame, the gravitational acceleration vector has only
+      a radial component:</p>
+      <div class="eq-block">
+        \\[\\vec{g} = -\\frac{\\mu}{r^2}\\hat{R} = \\begin{bmatrix}-g \\\\ 0 \\\\ 0\\end{bmatrix}_{\\text{RST}}\\]
+      </div>
+      <p>The <span class="chip chip-grav" data-force-hover="grav">gravity arrow</span> grows longer as the spacecraft
+      descends closer to Earth.</p>`,
+    camera: { pos: [4, 2, 9], target: [0, 0, 0], dur: 1.2 },
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ rst: true });
+      setForceVisibility({ grav: true });
+      const s = getSpacecraftState(0.72);
+      addSlideObj(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), s.pos]),
+        new THREE.LineBasicMaterial({ color: COLORS.grav, transparent: true, opacity: 0.30 })
+      ));
+    },
+    exit() { setForceVisibility({}); },
+  },
+
+  // ── 19: Gravity — ECI Decomposition ────────────────────────────────────
   {
     title: 'Gravity — ECI Decomposition',
     html: '',
@@ -2399,43 +2159,42 @@ const SLIDES = [
     },
   },
 
-  // ── 24: Drag — Natural Frame ────────────────────────────────────────────
+  // ── 20: Drag Force ─────────────────────────────────────────────────────
   {
-    title: 'Drag — Natural Frame (VRF)',
-    html: '',
-    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+    title: 'Drag Force',
+    html: `
+      <p><span class="chip chip-drag" data-force-hover="drag">Drag</span> acts directly <em>opposite</em> to the velocity vector — always in the
+      \\(-\\hat{x}_v\\) direction of the VRF.</p>
+      <div class="eq-block">
+        <div class="eq-label">Aerodynamic drag</div>
+        \\[\\vec{F}_D = -\\frac{1}{2}\\rho V^2 S C_D\\,\\hat{v}\\]
+      </div>
+      <ul>
+        <li>\\(\\rho\\) — atmospheric density (decreases with altitude)</li>
+        <li>\\(V\\) — speed relative to planet-fixed frame</li>
+        <li>\\(S\\) — reference area</li>
+        <li>\\(C_D\\) — drag coefficient</li>
+      </ul>
+      <div class="eq-block">
+        <div class="eq-label">In vehicle-pointing frame</div>
+        \\[\\vec{F}_D = \\begin{bmatrix}
+          \\textcolor{#FF9944}{D}\\sin\\textcolor{#FFEE77}{\\gamma} \\\\ \\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} \\\\ \\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}
+        \\end{bmatrix}_{\\text{RST}}\\]
+      </div>`,
+    camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
     enter() {
-      clearSlideObjects();
-      const s = getSpacecraftState(0.72);
-      setGroupVisible(STATE.persistent.eciGroup, false);
-      setGroupVisible(STATE.persistent.rstGroup, false);
-      setGroupVisible(STATE.persistent.vrfGroup, true);
-      animateGroupIn(STATE.persistent.vrfGroup, 0.1);
-      if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
-      const dArr = STATE.persistent.dragArrow;
-      if (dArr) {
-        dArr.scale.set(1, 1, 1);
-        dArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-      }
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ vrf: true, vel: true });
       setForceVisibility({ drag: true });
-      restoreAllArrowMaterials();
-      highlightArrow(STATE.persistent.dragArrow, COLORS.drag);
-      setSlidePanel(`
-        <h3>Drag &mdash; in <span class="chip chip-vrf">VRF</span></h3>
-        <p>Drag opposes the velocity vector, pointing along &minus;x&#x302;<sub>v</sub>
-        (first VRF axis). In VRF it is diagonal:</p>
-        <div class="eq-block">
-          <div class="eq-label">Drag in VRF frame</div>
-          \\[\\vec{F}_D = \\begin{bmatrix}\\textcolor{#FF9944}{-D}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
-        </div>`);
+      if (STATE.persistent.dragArrow) STATE.persistent.dragArrow.scale.set(1.4, 1.4, 1.4);
     },
-        exit() {
+    exit() {
+      if (STATE.persistent.dragArrow) STATE.persistent.dragArrow.scale.set(1, 1, 1);
       setForceVisibility({});
-      restoreAllArrowMaterials();
     },
   },
 
-  // ── 25: Drag — ECI Decomposition ───────────────────────────────────────
+  // ── 21: Drag — ECI Decomposition ───────────────────────────────────────
   {
     title: 'Drag — ECI Decomposition',
     html: '',
@@ -2481,43 +2240,110 @@ const SLIDES = [
     },
   },
 
-  // ── 26: Lift — Natural Frame ────────────────────────────────────────────
+  // ── 22: Lift Force & Bank Angle ────────────────────────────────────────
   {
-    title: 'Lift — Natural Frame (VRF)',
-    html: '',
-    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+    title: 'Lift Force & Bank Angle θ',
+    html: `
+      <p>Lift is <em>perpendicular</em> to velocity. In the
+      <span class="chip chip-vrf">VRF</span> (<strong>OX″Y″Z″</strong>), the <strong>bank
+      angle</strong> \\(\\textcolor{#44FFFF}{\\theta}\\) rotates the lift vector about the
+      velocity axis \\(\\hat{x}_v\\).</p>
+      <div class="eq-block">
+        <div class="eq-label">Lift in OX″Y″Z″ — bank rotation about x̂<sub>v</sub></div>
+        \\[\\vec{F}_L = \\textcolor{#FF6699}{L}\\begin{bmatrix}0\\\\\\cos\\textcolor{#44FFFF}{\\theta}\\\\\\sin\\textcolor{#44FFFF}{\\theta}\\end{bmatrix}_{OX''Y''Z''}
+        = \\textcolor{#FF6699}{L}\\bigl(\\cos\\textcolor{#44FFFF}{\\theta}\\,\\hat{y}_v + \\sin\\textcolor{#44FFFF}{\\theta}\\,\\hat{z}_v\\bigr)\\]
+      </div>
+      <p>At \\(\\textcolor{#44FFFF}{\\theta}=0\\), lift points along ŷ<sub>v</sub> (away from
+      Earth, &perp; to velocity). Banking sweeps it toward ẑ<sub>v</sub> (lateral), generating
+      a cross-range acceleration component.</p>
+      <div style="background:#07121f;border:1px solid #1a4a6a;border-radius:8px;padding:0.55rem 1rem;margin-top:0.8rem;display:flex;align-items:center;gap:1.2rem;">
+        <span style="font-size:0.72rem;letter-spacing:.12em;color:#3a6a9a;text-transform:uppercase;white-space:nowrap;">Bank Angle</span>
+        <span id="bank-readout" style="font-size:1.5rem;font-weight:700;color:#44FFFF;font-family:monospace;letter-spacing:0.04em;">θ = 0.0°</span>
+      </div>
+      <p style="margin-top:0.7rem;font-size:0.82rem;color:#6a90b0;">Varying \\(\\textcolor{#44FFFF}{\\theta}\\) is the primary guidance mechanism for
+      lifting entry — it modulates both downrange and cross-range acceleration without
+      changing lift magnitude.</p>`,
+    camera: { pos: [3, 4, 6], target: [0, 0, 0], dur: 1.0 },
     enter() {
-      clearSlideObjects();
-      const s = getSpacecraftState(0.72);
-      setGroupVisible(STATE.persistent.eciGroup, false);
-      setGroupVisible(STATE.persistent.rstGroup, false);
-      setGroupVisible(STATE.persistent.vrfGroup, true);
-      animateGroupIn(STATE.persistent.vrfGroup, 0.1);
-      if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
-      const lArr = STATE.persistent.liftArrow;
-      if (lArr) {
-        lArr.scale.set(1, 1, 1);
-        lArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-      }
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ vrf: true, vel: true });
       setForceVisibility({ lift: true });
-      restoreAllArrowMaterials();
-      highlightArrow(STATE.persistent.liftArrow, COLORS.lift);
-      setSlidePanel(`
-        <h3>Lift &mdash; in <span class="chip chip-vrf">VRF</span></h3>
-        <p>Lift acts perpendicular to velocity. With bank angle \\(\\theta\\)
-        it spans VRF &#x177;<sub>v</sub> and &#x17C;<sub>v</sub>:</p>
-        <div class="eq-block">
-          <div class="eq-label">Lift in VRF frame</div>
-          \\[\\vec{F}_L = \\begin{bmatrix}0\\\\\\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\\\\\textcolor{#FF6699}{-L}\\sin\\textcolor{#44FFFF}{\\theta}\\end{bmatrix}_{VRF}\\]
-        </div>`);
+
+      const s = getSpacecraftState(0.72);
+      const v_h = s.vel.clone().normalize();
+      const R   = s.R_hat;
+      const lift_hat = R.clone().addScaledVector(v_h, -R.dot(v_h)).normalize();
+      const lat_hat  = new THREE.Vector3().crossVectors(v_h, lift_hat).normalize();
+
+      // VRF perpendicular axes — ŷᵥ (away from Earth ⊥ velocity) and ẑᵥ (lateral)
+      const lvnGroup = new THREE.Group();
+      lvnGroup.add(makeArrow(lift_hat, s.pos, 0.38, 0x88FF88, 'ŷᵥ'));
+      lvnGroup.add(makeArrow(lat_hat,  s.pos, 0.38, 0xFF88AA, 'ẑᵥ'));
+      addSlideObj(lvnGroup);
+
+      // θ arc (0° → 60°) in the perpendicular plane
+      const arcPts = [];
+      for (let i = 0; i <= 32; i++) {
+        const a = (i / 32) * (Math.PI / 3);
+        arcPts.push(s.pos.clone()
+          .addScaledVector(lift_hat, Math.cos(a) * 0.30)
+          .addScaledVector(lat_hat,  Math.sin(a) * 0.30));
+      }
+      addSlideObj(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(arcPts),
+        new THREE.LineBasicMaterial({ color: COLORS.arc })
+      ));
+
+      // θ label at arc midpoint (30°)
+      const lG = new THREE.Group();
+      lG.add(makeFloatLabel('θ',
+        s.pos.clone()
+          .addScaledVector(lift_hat, Math.cos(Math.PI / 6) * 0.42)
+          .addScaledVector(lat_hat,  Math.sin(Math.PI / 6) * 0.42),
+        COLORS.arc));
+      addSlideObj(lG);
+
+      // Bank angle animation: rotate lift around velocity axis, yoyo 0°→60°
+      const theta = { val: 0 };
+      STATE.bankAnim = gsap.to(theta, {
+        val: Math.PI / 3, duration: 2.2, ease: 'power2.inOut', repeat: -1, yoyo: true,
+        onUpdate() {
+          if (!STATE.persistent.liftArrow) return;
+          // Lift rotates around velocity axis by θ
+          const bankUp = lift_hat.clone().multiplyScalar(Math.cos(theta.val))
+            .addScaledVector(lat_hat, Math.sin(theta.val));
+          STATE.persistent.liftArrow.setDirection(bankUp.clone().normalize());
+          // Live readout
+          const rd = document.getElementById('bank-readout');
+          if (rd) rd.textContent = `θ = ${(theta.val * 180 / Math.PI).toFixed(1)}°`;
+          // Roll the spacecraft in sync — bank angle is rotation of body around velocity axis
+          if (STATE.spacecraft) {
+            const mat = new THREE.Matrix4().lookAt(
+              s.pos, s.pos.clone().add(s.vel), bankUp
+            );
+            STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+            STATE.spacecraft.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2));
+          }
+        }
+      });
     },
-        exit() {
+    exit() {
+      if (STATE.bankAnim) { STATE.bankAnim.kill(); STATE.bankAnim = null; }
+      const s  = getSpacecraftState(0.72);
+      const vh = s.vel.clone().normalize();
+      const lh = s.R_hat.clone().addScaledVector(vh, -s.R_hat.dot(vh)).normalize();
+      if (STATE.persistent.liftArrow) STATE.persistent.liftArrow.setDirection(lh);
+      // Restore spacecraft to wings-level (θ = 0)
+      if (STATE.spacecraft) {
+        const mat = new THREE.Matrix4().lookAt(s.pos, s.pos.clone().add(s.vel), lh);
+        STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+        STATE.spacecraft.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2));
+      }
       setForceVisibility({});
-      restoreAllArrowMaterials();
     },
   },
 
-  // ── 27: Lift — ECI Decomposition ───────────────────────────────────────
+  // ── 23: Lift — ECI Decomposition ───────────────────────────────────────
   {
     title: 'Lift — ECI Decomposition',
     html: '',
@@ -2564,43 +2390,55 @@ const SLIDES = [
     },
   },
 
-  // ── 28: Thrust — Natural Frame ──────────────────────────────────────────
+  // ── 24: Thrust Force ───────────────────────────────────────────────────
   {
-    title: 'Thrust — Natural Frame (VRF)',
-    html: '',
-    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+    title: 'Thrust Force',
+    html: `
+      <p>Thrust is expressed in the VRF using a pitch angle \\(\\alpha_T\\) and a
+      bank angle \\(\\beta_T\\).</p>
+      <div class="eq-block">
+        <div class="eq-label">Thrust vector (VRF)</div>
+        \\[\\vec{F}_T = T\\begin{bmatrix}
+          \\cos\\alpha_T \\\\
+          \\sin\\alpha_T\\cos\\beta_T \\\\
+          \\sin\\alpha_T\\sin\\beta_T
+        \\end{bmatrix}_{\\text{VRF}}\\]
+      </div>
+      <p>Transforming to RST via \\(\\mathbf{T}_{\\text{VRF}\\to\\text{RST}}\\) gives the
+      thrust components used in the force equations.</p>
+      <p>All four forces are now simultaneously visible on the vehicle.</p>
+      <p style="margin-top:0.9rem;font-size:0.82rem;color:#3a6a9a;">Hover to highlight in scene:</p>
+      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.3rem;">
+        <span class="chip chip-grav"   data-force-hover="grav">Gravity</span>
+        <span class="chip chip-drag"   data-force-hover="drag">Drag</span>
+        <span class="chip chip-lift"   data-force-hover="lift">Lift</span>
+        <span class="chip chip-thrust" data-force-hover="thrust">Thrust</span>
+      </div>`,
+    camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
     enter() {
-      clearSlideObjects();
-      const s = getSpacecraftState(0.72);
-      setGroupVisible(STATE.persistent.eciGroup, false);
-      setGroupVisible(STATE.persistent.rstGroup, false);
-      setGroupVisible(STATE.persistent.vrfGroup, true);
-      animateGroupIn(STATE.persistent.vrfGroup, 0.1);
-      if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
-      const tArr = STATE.persistent.thrustArrow;
-      if (tArr) {
-        tArr.scale.set(1, 1, 1);
-        tArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ vrf: true, vel: true });
+      setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+      // Thrust fades in last
+      if (STATE.persistent.thrustArrow) {
+        STATE.persistent.thrustArrow.scale.set(0, 0, 0);
+        STATE.persistent.thrustArrow.traverse(o => {
+          if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; }
+        });
+        gsap.to(STATE.persistent.thrustArrow.scale, {
+          x: 1, y: 1, z: 1, duration: 0.55, delay: 0.4, ease: 'back.out(1.4)',
+          onComplete() {
+            STATE.persistent.thrustArrow.traverse(o => {
+              if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; }
+            });
+          }
+        });
       }
-      setForceVisibility({ thrust: true });
-      restoreAllArrowMaterials();
-      highlightArrow(STATE.persistent.thrustArrow, COLORS.thrust);
-      setSlidePanel(`
-        <h3>Thrust &mdash; in <span class="chip chip-vrf">VRF</span></h3>
-        <p>For zero thrust-pointing offset (\\(\\alpha_T = \\beta_T = 0\\)) thrust is
-        aligned with the velocity vector, along +x&#x302;<sub>v</sub>:</p>
-        <div class="eq-block">
-          <div class="eq-label">Thrust in VRF frame</div>
-          \\[\\vec{F}_T = \\begin{bmatrix}\\textcolor{#FF4444}{T}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
-        </div>`);
     },
-        exit() {
-      setForceVisibility({});
-      restoreAllArrowMaterials();
-    },
+    exit() { setForceVisibility({}); },
   },
 
-  // ── 29: Thrust — ECI Decomposition ─────────────────────────────────────
+  // ── 25: Thrust — ECI Decomposition ─────────────────────────────────────
   {
     title: 'Thrust — ECI Decomposition',
     html: '',
@@ -2646,7 +2484,7 @@ const SLIDES = [
     },
   },
 
-  // ── 30: Newton's Law — All Forces in ECI ───────────────────────────────
+  // ── 26: Newton's Law — All Forces in ECI ───────────────────────────────
   {
     title: 'Newton\'s Law — All Forces in ECI',
     html: '',
@@ -2704,7 +2542,7 @@ const SLIDES = [
     },
   },
 
-  // ── 31: F_net — ECI Components ──────────────────────────────────────────
+  // ── 27: F_net — ECI Components ──────────────────────────────────────────
   {
     title: 'F_net — ECI Components',
     html: '',
@@ -2758,7 +2596,7 @@ const SLIDES = [
     },
   },
 
-  // ── 33: Complete 3-DOF EOM ─────────────────────────────────────────────
+  // ── 28: Complete 3-DOF EOM ─────────────────────────────────────────────
   {
     title: 'Complete 3-DOF Equations of Motion',
     html: `
@@ -2817,7 +2655,7 @@ const SLIDES = [
     },
   },
 
-  // ── 34: Summary ────────────────────────────────────────────────────────
+  // ── 29: Summary ────────────────────────────────────────────────────────
   {
     title: 'Summary & Assumptions',
     html: `
@@ -3038,8 +2876,8 @@ function animate() {
   if (STATE.persistent.earthMesh) STATE.persistent.earthMesh.rotation.y = STATE.earthT;
   if (STATE.persistent.ecefGroup) STATE.persistent.ecefGroup.rotation.y = STATE.earthT;
 
-  // Live orbit only on slide 13 (index 12) — Rotating Frame Conversion
-  if (STATE.currentSlide === 12) {
+  // Live orbit only on slide 18 (index 17) — Rotating Frame Conversion
+  if (STATE.currentSlide === 17) {
     STATE.orbitT += delta * ORBIT_SPD;
     updateLiveVectors();
   }
