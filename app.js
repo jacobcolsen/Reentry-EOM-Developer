@@ -2632,6 +2632,22 @@ const SLIDES = [
         <span class="chip chip-drag"   data-force-hover="drag">Drag</span>
         <span class="chip chip-lift"   data-force-hover="lift">Lift</span>
         <span class="chip chip-thrust" data-force-hover="thrust">Thrust</span>
+      </div>
+      <div style="margin-top:0.75rem;border-top:1px solid #0e2035;padding-top:0.55rem;">
+        <div style="font-size:0.68rem;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:0.35rem;">Reference Frames</div>
+        <div style="display:flex;gap:0.3rem;flex-wrap:wrap;margin-bottom:0.45rem;">
+          <button id="eom-eci"    style="padding:.28rem .65rem;background:#07121f;border:1px solid #4466AA;border-radius:5px;color:#8899CC;font-size:.75rem;cursor:pointer;transition:opacity .15s">● ECI</button>
+          <button id="eom-rst"    style="padding:.28rem .65rem;background:#160a2a;border:1px solid #CC44FF;border-radius:5px;color:#DD88FF;font-size:.75rem;cursor:pointer;transition:opacity .15s">● RST</button>
+          <button id="eom-vrf"    style="padding:.28rem .65rem;background:#0a1a0a;border:1px solid #44FF44;border-radius:5px;color:#88FF88;font-size:.75rem;cursor:pointer;transition:opacity .15s">● VRF</button>
+        </div>
+        <div style="font-size:0.68rem;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:0.35rem;">Vectors</div>
+        <div style="display:flex;gap:0.3rem;flex-wrap:wrap;">
+          <button id="eom-vel"    style="padding:.28rem .65rem;background:#1a1200;border:1px solid #FFD700;border-radius:5px;color:#FFD700;font-size:.75rem;cursor:pointer;transition:opacity .15s">● Velocity</button>
+          <button id="eom-grav"   style="padding:.28rem .65rem;background:#0a0a1a;border:1px solid #6699FF;border-radius:5px;color:#99BBFF;font-size:.75rem;cursor:pointer;transition:opacity .15s">● Gravity</button>
+          <button id="eom-drag"   style="padding:.28rem .65rem;background:#1a0e00;border:1px solid #FF9944;border-radius:5px;color:#FFBB88;font-size:.75rem;cursor:pointer;transition:opacity .15s">● Drag</button>
+          <button id="eom-lift"   style="padding:.28rem .65rem;background:#1a0a10;border:1px solid #FF6699;border-radius:5px;color:#FFAABB;font-size:.75rem;cursor:pointer;transition:opacity .15s">● Lift</button>
+          <button id="eom-thrust" style="padding:.28rem .65rem;background:#1a0a0a;border:1px solid #FF4444;border-radius:5px;color:#FF9999;font-size:.75rem;cursor:pointer;transition:opacity .15s">● Thrust</button>
+        </div>
       </div>`,
     camera: { pos: [6, 5, 10], target: [0, 0, 0], dur: 1.5 },
     enter() {
@@ -2644,6 +2660,32 @@ const SLIDES = [
       }
       setFrameVisibility({ eci: true, rst: true, vrf: true, vel: true });
       setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+
+      // Wire toggle buttons — all start ON (opacity 1)
+      function wireBtn(id, getGroup, isArrow) {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.style.opacity = '1';
+        btn.addEventListener('click', () => {
+          const g = getGroup();
+          if (!g) return;
+          const show = !g.visible;
+          if (isArrow) {
+            g.visible = show;
+          } else {
+            setGroupVisible(g, show);
+          }
+          btn.style.opacity = show ? '1' : '0.35';
+        });
+      }
+      wireBtn('eom-eci',    () => STATE.persistent.eciGroup);
+      wireBtn('eom-rst',    () => STATE.persistent.rstGroup);
+      wireBtn('eom-vrf',    () => STATE.persistent.vrfGroup);
+      wireBtn('eom-vel',    () => STATE.persistent.velArrow,    true);
+      wireBtn('eom-grav',   () => STATE.persistent.gravArrow);
+      wireBtn('eom-drag',   () => STATE.persistent.dragArrow);
+      wireBtn('eom-lift',   () => STATE.persistent.liftArrow);
+      wireBtn('eom-thrust', () => STATE.persistent.thrustArrow);
     },
     exit() {
       if (STATE.persistent.orbitLine) {
