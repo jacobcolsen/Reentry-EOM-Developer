@@ -943,7 +943,7 @@ const SLIDES = [
     title: 'Planet-Fixed Frame (OX₁Y₁Z₁)',
     html: `
       <p>The <span class="chip chip-ecef">Planet-Fixed Frame</span> (<strong>OX₁Y₁Z₁</strong>,
-      Lesson&nbsp;2) rotates with Earth at constant angular velocity \\(\\Omega\\) about the
+      Lesson&nbsp;2) rotates with Earth at constant angular velocity \\(\\omega_\\oplus\\) about the
       polar axis.</p>
       <div class="eq-block">
         <div class="eq-label">Earth&apos;s rotation rate</div>
@@ -1783,8 +1783,8 @@ const SLIDES = [
       <div class="eq-block">
         <div class="eq-label">Inertial vs. rotating derivative</div>
         \\[\\ddot{\\vec{r}}_I = \\underbrace{\\ddot{\\vec{r}}_{\\text{rot}}}_{\\text{rel. accel.}}
-          + \\underbrace{2\\vec{\\Omega}\\times\\dot{\\vec{r}}_{\\text{rot}}}_{\\text{Coriolis}}
-          + \\underbrace{\\vec{\\Omega}\\times(\\vec{\\Omega}\\times\\vec{r})}_{\\text{centripetal}}\\]
+          + \\underbrace{2\\vec{\\omega}_\\oplus\\times\\dot{\\vec{r}}_{\\text{rot}}}_{\\text{Coriolis}}
+          + \\underbrace{\\vec{\\omega}_\\oplus\\times(\\vec{\\omega}_\\oplus\\times\\vec{r})}_{\\text{centripetal}}\\]
       </div>
       <ul>
         <li><span class="chip" style="background:#001a1a;border:1px solid #44FFFF;color:#44FFFF" data-force-hover="cor">Coriolis</span> — depends on velocity relative to planet</li>
@@ -2109,7 +2109,7 @@ const SLIDES = [
             </div>
             <p style="font-size:0.82rem;color:#6a90b0;">The amber <strong>OX₁Y₁Z₁</strong> axes
             animate in relative to the white <strong>OXYZ</strong> axes — exactly the rotation
-            this DCM describes. \\(\\Omega = 7.292\\times10^{-5}\\) rad/s.</p>
+            this DCM describes. \\(\\omega_\\oplus = 7.292\\times10^{-5}\\) rad/s.</p>
             <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong>
             for OX₁Y₁Z₁ &rarr; OX₂Y₂Z₂.</p>`);
         },
@@ -2633,9 +2633,9 @@ const SLIDES = [
       </div>
       <div class="eq-block">
         <div class="eq-label">3 Force equations</div>
-        \\[\\dot{v} = \\frac{T\\cos\\alpha_T}{m} - \\frac{D}{m} - g\\sin\\gamma + \\Omega^2 r\\cos\\phi(\\sin\\gamma\\cos\\phi - \\cos\\gamma\\sin\\phi\\cos\\psi)\\]
-        \\[\\dot{\\gamma} = \\frac{1}{v}\\left[\\frac{L\\cos\\theta}{m} - \\left(g - \\frac{v^2}{r}\\right)\\cos\\gamma + 2\\Omega v\\cos\\phi\\cos\\psi + \\Omega^2 r\\cos\\phi(\\cos\\gamma\\cos\\phi + \\sin\\gamma\\sin\\phi\\cos\\psi)\\right]\\]
-        \\[\\dot{\\psi} = \\frac{1}{v\\cos\\gamma}\\left[\\frac{L\\sin\\theta}{m\\cos\\gamma} + \\frac{v^2\\cos^2\\gamma\\sin\\psi\\tan\\phi}{r} - 2\\Omega v(\\tan\\gamma\\cos\\phi\\cos\\psi - \\sin\\phi) + \\frac{\\Omega^2 r\\sin\\phi\\cos\\phi\\sin\\psi}{\\cos\\gamma}\\right]\\]
+        \\[\\dot{v} = \\frac{T\\cos\\alpha_T}{m} - \\frac{D}{m} - g\\sin\\gamma + \\omega_\\oplus^2 r\\cos\\phi(\\sin\\gamma\\cos\\phi - \\cos\\gamma\\sin\\phi\\cos\\psi)\\]
+        \\[\\dot{\\gamma} = \\frac{1}{v}\\left[\\frac{L\\cos\\theta}{m} - \\left(g - \\frac{v^2}{r}\\right)\\cos\\gamma + 2\\omega_\\oplus v\\cos\\phi\\cos\\psi + \\omega_\\oplus^2 r\\cos\\phi(\\cos\\gamma\\cos\\phi + \\sin\\gamma\\sin\\phi\\cos\\psi)\\right]\\]
+        \\[\\dot{\\psi} = \\frac{1}{v\\cos\\gamma}\\left[\\frac{L\\sin\\theta}{m\\cos\\gamma} + \\frac{v^2\\cos^2\\gamma\\sin\\psi\\tan\\phi}{r} - 2\\omega_\\oplus v(\\tan\\gamma\\cos\\phi\\cos\\psi - \\sin\\phi) + \\frac{\\omega_\\oplus^2 r\\sin\\phi\\cos\\phi\\sin\\psi}{\\cos\\gamma}\\right]\\]
       </div>
       <p>State vector: \\(\\mathbf{x} = (r,\\,v,\\,\\gamma,\\,\\psi,\\,\\lambda,\\,\\phi)^T\\)</p>
       <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.7rem;">
