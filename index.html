@@ -2256,7 +2256,7 @@ const SLIDES = [
         },
       },
 
-      // ── substep 2: OX₂Y₂Z₂ → OX″Y″Z″ (close-up yoyo rotation) ──────────
+      // ── substep 2: OX₂Y₂Z₂ → OX″Y″Z″ (two-phase sequential rotation) ─────
       {
         html: '',
         enter3D() {
@@ -2268,103 +2268,110 @@ const SLIDES = [
           // Hide all persistent frames — draw local axes at spacecraft scale
           setFrameVisibility({});
 
-          // ── Camera: lock on the spacecraft from just above/outside along R_hat ──
-          // Offset = R_hat * 0.75 + T_hat * 0.25 (slight cross-track tilt so we see depth)
-          const camOff = s.R_hat.clone()
-            .addScaledVector(s.T_hat, 0.3)
-            .normalize()
-            .multiplyScalar(0.78);
-          const camPos = s.pos.clone().add(camOff);
-          tweenCamera([camPos.x, camPos.y, camPos.z], [s.pos.x, s.pos.y, s.pos.z], 0.9);
+          // Wide view showing Earth + spacecraft — mirrors the screenshot framing
+          tweenCamera([3.5, 2.5, 5.5], [s.pos.x, s.pos.y, s.pos.z], 0.9);
 
-          const L   = 0.50;
+          const L   = 0.65;
           const pos = s.pos.clone();
 
-          // Final VRF directions
-          const x_v = s.vel.clone().normalize();
-          const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
-          const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
+          // ── RST start directions ──────────────────────────────────────────────
+          const startX = s.R_hat.clone();
+          const startY = s.S_hat.clone();
+          const startZ = s.T_hat.clone();
 
-          // Rotation angles for readout
+          // ── Phase 1 end: rotate ψ about R̂ (heading azimuth) ─────────────────
+          // R_x₂(ψ): x₂=R̂ fixed; y₂→cos(ψ)Ŝ+sin(ψ)T̂; z₂→−sin(ψ)Ŝ+cos(ψ)T̂
+          const x_v     = s.vel.clone().normalize();
+          const z_v     = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
+          const y_v     = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
           const psiRad   = Math.atan2(x_v.dot(s.T_hat), x_v.dot(s.S_hat));
           const gammaRad = Math.asin(Math.max(-1, Math.min(1, x_v.dot(s.R_hat))));
           const psiDeg   = (psiRad   * 180 / Math.PI).toFixed(1);
           const gammaDeg = (gammaRad * 180 / Math.PI).toFixed(1);
 
-          // ── Ghost RST at spacecraft: dim purple — shows the "before" state ──
-          const ghostG = new THREE.Group();
-          ghostG.add(new THREE.ArrowHelper(s.R_hat, pos, L * 0.88, 0x330033, 0.055, 0.032));
-          ghostG.add(new THREE.ArrowHelper(s.S_hat, pos, L * 0.88, 0x220022, 0.055, 0.032));
-          ghostG.add(new THREE.ArrowHelper(s.T_hat, pos, L * 0.88, 0x220022, 0.055, 0.032));
-          addSlideObj(ghostG);
+          const qPsi = new THREE.Quaternion().setFromAxisAngle(s.R_hat, psiRad);
+          const midX = s.R_hat.clone();
+          const midY = s.S_hat.clone().applyQuaternion(qPsi);
+          const midZ = s.T_hat.clone().applyQuaternion(qPsi);
 
-          // Ghost RST labels (static, dim)
+          // ── Phase 2 end: rotate −γ about midZ (flight-path) ─────────────────
+          // endX=x_v, endY=y_v, endZ=midZ (unchanged)
+          const endX = x_v.clone();
+          const endY = y_v.clone();
+          const endZ = midZ.clone();
+
+          // ── Ghost RST — static dim purple reference ───────────────────────────
+          const ghostG = new THREE.Group();
+          ghostG.add(new THREE.ArrowHelper(startX, pos, L * 0.88, 0x330033, 0.055, 0.032));
+          ghostG.add(new THREE.ArrowHelper(startY, pos, L * 0.88, 0x220022, 0.055, 0.032));
+          ghostG.add(new THREE.ArrowHelper(startZ, pos, L * 0.88, 0x220022, 0.055, 0.032));
+          addSlideObj(ghostG);
           const glbl = new THREE.Group();
-          glbl.add(makeAxisLabel('x₂ (RST)', pos.clone().addScaledVector(s.R_hat, L*0.88+0.08), 0x553355));
-          glbl.add(makeAxisLabel('y₂ (RST)', pos.clone().addScaledVector(s.S_hat, L*0.88+0.08), 0x442244));
-          glbl.add(makeAxisLabel('z₂ (RST)', pos.clone().addScaledVector(s.T_hat, L*0.88+0.08), 0x442244));
+          glbl.add(makeAxisLabel('x₂', pos.clone().addScaledVector(startX, L*0.88+0.07), 0x553355));
+          glbl.add(makeAxisLabel('y₂', pos.clone().addScaledVector(startY, L*0.88+0.07), 0x442244));
+          glbl.add(makeAxisLabel('z₂', pos.clone().addScaledVector(startZ, L*0.88+0.07), 0x442244));
           addSlideObj(glbl);
 
-          // ── Bright animated VRF axes — start at RST, rotate to VRF ──────────
-          const aX = new THREE.ArrowHelper(s.R_hat.clone(), pos, L, COLORS.vrf.x, 0.075, 0.045);
-          const aY = new THREE.ArrowHelper(s.S_hat.clone(), pos, L, COLORS.vrf.y, 0.075, 0.045);
-          const aZ = new THREE.ArrowHelper(s.T_hat.clone(), pos, L, COLORS.vrf.z, 0.075, 0.045);
+          // ── Bright animated axes — start at RST ──────────────────────────────
+          const aX = new THREE.ArrowHelper(startX.clone(), pos, L, COLORS.vrf.x, 0.075, 0.045);
+          const aY = new THREE.ArrowHelper(startY.clone(), pos, L, COLORS.vrf.y, 0.075, 0.045);
+          const aZ = new THREE.ArrowHelper(startZ.clone(), pos, L, COLORS.vrf.z, 0.075, 0.045);
           const animG = new THREE.Group();
           animG.add(aX, aY, aZ);
           addSlideObj(animG);
 
-          // VRF labels at final positions
+          // VRF labels at final positions (visible throughout)
           const vlbl = new THREE.Group();
-          vlbl.add(makeAxisLabel('x̂ᵥ (vel)', pos.clone().addScaledVector(x_v, L + 0.10), COLORS.vrf.x));
-          vlbl.add(makeAxisLabel('ŷᵥ',        pos.clone().addScaledVector(y_v, L + 0.10), COLORS.vrf.y));
-          vlbl.add(makeAxisLabel('ẑᵥ (wing)', pos.clone().addScaledVector(z_v, L + 0.10), COLORS.vrf.z));
+          vlbl.add(makeAxisLabel('x̂ᵥ', pos.clone().addScaledVector(endX, L + 0.09), COLORS.vrf.x));
+          vlbl.add(makeAxisLabel('ŷᵥ',  pos.clone().addScaledVector(endY, L + 0.09), COLORS.vrf.y));
+          vlbl.add(makeAxisLabel('ẑᵥ',  pos.clone().addScaledVector(endZ, L + 0.09), COLORS.vrf.z));
           addSlideObj(vlbl);
 
-          // ── Swept arc in the local horizontal plane (heading rotation) ──────
-          const arcPts = [];
-          const arcN   = 48;
-          for (let i = 0; i <= arcN; i++) {
-            const frac = i / arcN;
-            const dir  = new THREE.Vector3()
-              .lerpVectors(s.S_hat, x_v, frac).normalize()
-              .multiplyScalar(L * 0.62);
-            arcPts.push(pos.clone().add(dir));
-          }
-          const arcLine = new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints(arcPts),
-            new THREE.LineBasicMaterial({ color: 0xFF44CC, opacity: 0.55, transparent: true })
-          );
-          addSlideObj(arcLine);
+          const stepEl = () => document.getElementById('dcm-vrf-step');
+          const angEl  = () => document.getElementById('dcm-vrf-ang');
 
-          // ── Yoyo animation: RST ↔ VRF ↔ RST … ───────────────────────────────
-          const proxy = { t: 0 };
-          const rotTween = gsap.to(proxy, {
-            t: 1, duration: 2.8, delay: 0.3, ease: 'power2.inOut', repeat: -1, yoyo: true,
+          // ── Phase 1: heading ψ about R̂ ───────────────────────────────────────
+          const p1 = { t: 0 };
+          gsap.to(p1, {
+            t: 1, duration: 1.8, delay: 0.3, ease: 'power2.inOut',
             onUpdate() {
               if (STATE.slideGen !== gen) { this.kill(); return; }
-              aX.setDirection(new THREE.Vector3().lerpVectors(s.R_hat, x_v, proxy.t).normalize());
-              aY.setDirection(new THREE.Vector3().lerpVectors(s.S_hat, y_v, proxy.t).normalize());
-              aZ.setDirection(new THREE.Vector3().lerpVectors(s.T_hat, z_v, proxy.t).normalize());
-              const rd = document.getElementById('dcm-vrf-readout');
-              if (rd) {
-                const psi = (proxy.t * parseFloat(psiDeg)).toFixed(1);
-                const gam = (proxy.t * parseFloat(gammaDeg)).toFixed(1);
-                rd.textContent = `ψ = ${psi}°   γ = ${gam}°`;
-              }
+              aX.setDirection(new THREE.Vector3().lerpVectors(startX, midX, p1.t).normalize());
+              aY.setDirection(new THREE.Vector3().lerpVectors(startY, midY, p1.t).normalize());
+              aZ.setDirection(new THREE.Vector3().lerpVectors(startZ, midZ, p1.t).normalize());
+              const d = (p1.t * parseFloat(psiDeg)).toFixed(1);
+              if (angEl()) angEl().textContent = `ψ = ${d}°`;
+            },
+            onComplete() {
+              if (STATE.slideGen !== gen) return;
+              if (stepEl()) stepEl().textContent = 'Step 2: flight-path  R_z′(−γ)';
+              if (angEl())  angEl().textContent  = 'γ = 0.0°';
+              // ── Phase 2: flight-path −γ about midZ ───────────────────────────
+              const p2 = { t: 0 };
+              gsap.to(p2, {
+                t: 1, duration: 1.8, ease: 'power2.inOut',
+                onUpdate() {
+                  if (STATE.slideGen !== gen) { this.kill(); return; }
+                  aX.setDirection(new THREE.Vector3().lerpVectors(midX, endX, p2.t).normalize());
+                  aY.setDirection(new THREE.Vector3().lerpVectors(midY, endY, p2.t).normalize());
+                  aZ.setDirection(new THREE.Vector3().lerpVectors(midZ, endZ, p2.t).normalize());
+                  const d = (p2.t * parseFloat(gammaDeg)).toFixed(1);
+                  if (angEl()) angEl().textContent = `γ = ${d}°`;
+                },
+              });
             },
           });
 
           const cleanup = () => {
-            if (STATE.slideGen !== gen) { rotTween.kill(); gsap.ticker.remove(cleanup); }
+            if (STATE.slideGen !== gen) { gsap.ticker.remove(cleanup); }
           };
           gsap.ticker.add(cleanup);
 
           setSlidePanel(`
             <h3>OX₂Y₂Z₂ &rarr; OX″Y″Z″ &mdash; Velocity-Referenced</h3>
-            <p>The camera is locked on the spacecraft. Dim purple axes = RST (start). Bright
-            green/yellow/teal axes rotate — heading \\(\\textcolor{#FF44CC}{\\psi}\\) about x₂,
-            then flight-path \\(\\textcolor{#FFEE77}{\\gamma}\\) about z′ — until x̂<sub>v</sub>
-            aligns with velocity. The animation loops so you can watch repeatedly.</p>
+            <p>Camera locked on spacecraft. Dim purple = RST reference. Bright axes rotate in
+            two steps: heading \\(\\textcolor{#FF44CC}{\\psi}\\) about x₂, then flight-path
+            \\(\\textcolor{#FFEE77}{\\gamma}\\) about the new z′.</p>
             <div class="eq-block">
               <div class="eq-label">Combined DCM &mdash; Lesson 2</div>
               \\[[\\hat{e}''] = R_{z'}(-\\textcolor{#FFEE77}{\\gamma})\\,R_{x_2}(\\textcolor{#FF44CC}{\\psi})\\,[\\hat{e}_2]\\]
@@ -2380,11 +2387,12 @@ const SLIDES = [
             </div>
             <div style="background:#07121f;border:1px solid #1a4a6a;border-radius:8px;
                         padding:0.5rem 1rem;margin-top:0.6rem;">
-              <div style="font-size:0.72rem;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:0.2rem;">Live rotation</div>
-              <span id="dcm-vrf-readout" style="font-size:1.1rem;font-weight:700;font-family:monospace;color:#FFEE77;">ψ = 0.0°   γ = 0.0°</span>
+              <div id="dcm-vrf-step" style="font-size:0.72rem;letter-spacing:.1em;color:#3a6a9a;
+                   text-transform:uppercase;margin-bottom:0.2rem;">Step 1: heading  R_x₂(ψ)</div>
+              <span id="dcm-vrf-ang" style="font-size:1.3rem;font-weight:700;font-family:monospace;color:#FF44CC;">ψ = 0.0°</span>
             </div>
             <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.5rem;">
-              ê<sub>y″</sub> (row 2 of DCM) is the velocity axis per Lesson 2, labeled x̂<sub>v</sub> in this presentation.</p>
+              ê<sub>y″</sub> (row 2 of DCM) is the velocity axis per Lesson 2, labeled x̂<sub>v</sub> here.</p>
             <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong>
             for the complete chain.</p>`);
         },
