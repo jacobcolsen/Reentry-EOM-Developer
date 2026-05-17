@@ -1258,6 +1258,7 @@ const SLIDES = [
       const hDir = s.vel.clone().normalize();
       const vLen = 0.82;
       const hLen = vLen * Math.cos(GAMMA);
+      const vHat = hDir.clone().multiplyScalar(Math.cos(GAMMA)).addScaledVector(R, Math.sin(GAMMA)).normalize();
       const psi  = Math.atan2(hDir.dot(s.T_hat), hDir.dot(s.S_hat));
       const hEnd = s.pos.clone().addScaledVector(hDir, hLen);
       const eastEnd = s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi));
@@ -1265,6 +1266,20 @@ const SLIDES = [
       const cp2 = s.pos.clone().addScaledVector(R, 2.0).addScaledVector(hDir, 0.4);
       tweenCamera([cp2.x, cp2.y, cp2.z], [s.pos.x, s.pos.y, s.pos.z], 0.85);
       const CAM_DELAY = 1.0;
+
+      // ── Full velocity vector (gold) ──
+      const vg = new THREE.Group();
+      vg.position.copy(s.pos);
+      vg.add(new THREE.ArrowHelper(vHat, new THREE.Vector3(), vLen, 0xFFD700, 0.09, 0.045));
+      vg.scale.set(0.001, 0.001, 0.001);
+      addSlideObj(vg);
+
+      // ── Horizontal speed component (cyan) ──
+      const cg = new THREE.Group();
+      cg.position.copy(s.pos);
+      cg.add(new THREE.ArrowHelper(hDir, new THREE.Vector3(), hLen, 0x00DDFF, 0.07, 0.035));
+      cg.scale.set(0.001, 0.001, 0.001);
+      addSlideObj(cg);
 
       const mg = Math.abs(Math.cos(psi)) > 0.05 ? (() => {
         const g = new THREE.Group();
@@ -1301,6 +1316,8 @@ const SLIDES = [
       addSlideObj(psiArc);
 
       const enG = new THREE.Group();
+      enG.add(makeFloatLabel('v', s.pos.clone().addScaledVector(vHat, vLen * 0.55).addScaledVector(R, 0.10), 0xFFD700));
+      enG.add(makeFloatLabel('v cosγ', s.pos.clone().addScaledVector(hDir, hLen * 0.5).addScaledVector(R, -0.13), 0x00DDFF));
       enG.add(makeFloatLabel('v cosγ cosψ',
         s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi) * 0.5).addScaledVector(R, -0.14), 0xFF44CC));
       enG.add(makeFloatLabel('v cosγ sinψ',
@@ -1314,11 +1331,13 @@ const SLIDES = [
       const gen1 = STATE.slideGen;
       gsap.delayedCall(CAM_DELAY, () => {
         if (STATE.slideGen !== gen1) return;
-        if (mg) gsap.to(mg.scale, { x:1,y:1,z:1, duration:0.75, ease:'power2.out' });
-        gsap.to(ng.scale,  { x:1,y:1,z:1, duration:0.60, delay:0.60, ease:'power2.out' });
-        gsap.to(rbMat, { opacity:0.55, duration:0.35, delay:1.20 });
-        gsap.to(psiArcMat, { opacity:0.90, duration:0.35, delay:1.20 });
-        gsap.delayedCall(1.3, () => {
+        gsap.to(vg.scale, { x:1,y:1,z:1, duration:0.55, ease:'back.out(1.3)' });
+        gsap.to(cg.scale, { x:1,y:1,z:1, duration:0.75, delay:0.45, ease:'power2.out' });
+        if (mg) gsap.to(mg.scale, { x:1,y:1,z:1, duration:0.75, delay:1.05, ease:'power2.out' });
+        gsap.to(ng.scale,  { x:1,y:1,z:1, duration:0.60, delay:1.65, ease:'power2.out' });
+        gsap.to(rbMat, { opacity:0.55, duration:0.35, delay:2.25 });
+        gsap.to(psiArcMat, { opacity:0.90, duration:0.35, delay:2.25 });
+        gsap.delayedCall(2.35, () => {
           if (STATE.slideGen !== gen1) return;
           enG.visible = true;
           enG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
@@ -2452,6 +2471,14 @@ const SLIDES = [
       setGroupVisible(STATE.persistent.rstGroup, false);
       setGroupVisible(STATE.persistent.eciGroup, true);
       animateGroupIn(STATE.persistent.eciGroup, 0.0);
+      if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
+      const gArr = STATE.persistent.gravArrow;
+      if (gArr) {
+        gArr.scale.set(1, 1, 1);
+        gArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+      }
+      setForceVisibility({ grav: true });
+      restoreAllArrowMaterials();
       setSlidePanel(`
         <h3>Gravity &mdash; in <span class="chip chip-eci">ECI</span></h3>
         <div class="eq-block">
@@ -2521,6 +2548,14 @@ const SLIDES = [
       setGroupVisible(STATE.persistent.vrfGroup, false);
       setGroupVisible(STATE.persistent.eciGroup, true);
       animateGroupIn(STATE.persistent.eciGroup, 0.0);
+      if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
+      const dArr = STATE.persistent.dragArrow;
+      if (dArr) {
+        dArr.scale.set(1, 1, 1);
+        dArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+      }
+      setForceVisibility({ drag: true });
+      restoreAllArrowMaterials();
       setSlidePanel(`
         <h3>Drag &mdash; in <span class="chip chip-eci">ECI</span></h3>
         <div class="eq-block">
@@ -2596,6 +2631,14 @@ const SLIDES = [
       setGroupVisible(STATE.persistent.vrfGroup, false);
       setGroupVisible(STATE.persistent.eciGroup, true);
       animateGroupIn(STATE.persistent.eciGroup, 0.0);
+      if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
+      const lArr = STATE.persistent.liftArrow;
+      if (lArr) {
+        lArr.scale.set(1, 1, 1);
+        lArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+      }
+      setForceVisibility({ lift: true });
+      restoreAllArrowMaterials();
       setSlidePanel(`
         <h3>Lift &mdash; in <span class="chip chip-eci">ECI</span></h3>
         <div class="eq-block">
@@ -2670,6 +2713,14 @@ const SLIDES = [
       setGroupVisible(STATE.persistent.vrfGroup, false);
       setGroupVisible(STATE.persistent.eciGroup, true);
       animateGroupIn(STATE.persistent.eciGroup, 0.0);
+      if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
+      const tArr = STATE.persistent.thrustArrow;
+      if (tArr) {
+        tArr.scale.set(1, 1, 1);
+        tArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+      }
+      setForceVisibility({ thrust: true });
+      restoreAllArrowMaterials();
       setSlidePanel(`
         <h3>Thrust &mdash; in <span class="chip chip-eci">ECI</span></h3>
         <div class="eq-block">
