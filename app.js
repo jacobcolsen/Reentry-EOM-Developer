@@ -2635,21 +2635,32 @@ const SLIDES = [
       </div>`,
     camera: { pos: [6, 5, 10], target: [0, 0, 0], dur: 1.5 },
     enter() {
+      STATE.orbitT = 0.72;
+      updateLiveVectors();
       STATE.persistent.orbitLine.visible = true;
       if (STATE.persistent.orbitLine) {
         STATE.persistent.orbitLine.material.color.setHex(0x2a88cc);
         STATE.persistent.orbitLine.material.opacity = 0.88;
       }
-      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true });
+      setFrameVisibility({ eci: true, rst: true, vrf: true, vel: true });
       setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
-      controls.autoRotate      = true;
-      controls.autoRotateSpeed = 0.5;
     },
     exit() {
-      controls.autoRotate = false;
       if (STATE.persistent.orbitLine) {
         STATE.persistent.orbitLine.material.color.setHex(0x4499bb);
         STATE.persistent.orbitLine.material.opacity = 0.65;
+      }
+      STATE.orbitT = 0.72;
+      if (STATE.spacecraft) {
+        const s0 = getSpacecraftState(0.72);
+        STATE.spacecraft.position.copy(s0.pos);
+        const v0  = s0.vel.clone().normalize();
+        const lh  = s0.R_hat.clone().addScaledVector(v0, -s0.R_hat.dot(v0)).normalize();
+        const mat = new THREE.Matrix4().lookAt(s0.pos, s0.pos.clone().add(s0.vel), lh);
+        STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+        STATE.spacecraft.quaternion.multiply(
+          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
+        );
       }
       setForceVisibility({});
     },
@@ -2876,8 +2887,8 @@ function animate() {
   if (STATE.persistent.earthMesh) STATE.persistent.earthMesh.rotation.y = STATE.earthT;
   if (STATE.persistent.ecefGroup) STATE.persistent.ecefGroup.rotation.y = STATE.earthT;
 
-  // Live orbit only on slide 18 (index 17) — Rotating Frame Conversion
-  if (STATE.currentSlide === 17) {
+  // Live orbit on slide 18 (index 17) and slide 29 (index 28)
+  if (STATE.currentSlide === 17 || STATE.currentSlide === 28) {
     STATE.orbitT += delta * ORBIT_SPD;
     updateLiveVectors();
   }
