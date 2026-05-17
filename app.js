@@ -814,10 +814,9 @@ const SLIDES = [
   {
     title: 'Geocentric-Equatorial Frame (ECI)',
     html: `
-      <p>The <span class="chip chip-eci">ECI Frame</span> (<strong>OXYZ</strong>, Lesson&nbsp;2)
-      is our inertial reference — fixed in space, origin at Earth's center.</p>
+      <p>The <span class="chip chip-eci">ECI Frame</span> (<strong>OXYZ</strong>) is our inertial reference — fixed in space, origin at Earth's center.</p>
       <div class="eq-block">
-        <div class="eq-label">Axis definitions (Lesson 2)</div>
+        <div class="eq-label">Axis definitions</div>
         \\[\\hat{e}_x \\rightarrow \\text{Vernal Equinox}\\]
         \\[\\hat{e}_z \\rightarrow \\text{North Pole}\\]
         \\[\\hat{e}_y = \\hat{e}_z \\times \\hat{e}_x \\quad\\text{(completes right-hand system)}\\]
@@ -843,14 +842,14 @@ const SLIDES = [
     title: 'Planet-Fixed Frame (OX₁Y₁Z₁)',
     html: `
       <p>The <span class="chip chip-ecef">Planet-Fixed Frame</span> (<strong>OX₁Y₁Z₁</strong>,
-      Lesson&nbsp;2) rotates with Earth at constant angular velocity \\(\\omega_\\oplus\\) about the
+      ) rotates with Earth at constant angular velocity \\(\\omega_\\oplus\\) about the
       polar axis.</p>
       <div class="eq-block">
         <div class="eq-label">Earth&apos;s rotation rate</div>
         \\[\\omega_\\oplus = 7.292 \\times 10^{-5} \\ \\text{rad/s}\\]
       </div>
       <div class="eq-block">
-        <div class="eq-label">DCM — OXYZ &rarr; OX₁Y₁Z₁ (Lesson 2)</div>
+        <div class="eq-label">DCM — OXYZ → OX₁Y₁Z₁</div>
         \\[[\\hat{e}_1] = R_z(\\omega_\\oplus\\Delta t)\\,[\\hat{e}]\\]
         \\[R_z(\\omega_\\oplus\\Delta t) = \\begin{bmatrix}
           \\cos(\\omega_\\oplus\\Delta t) & \\sin(\\omega_\\oplus\\Delta t) & 0 \\\\
@@ -876,10 +875,10 @@ const SLIDES = [
     title: 'Vehicle-Pointing Frame (OX₂Y₂Z₂)',
     html: `
       <p>The <span class="chip chip-rst">Vehicle-Pointing Frame</span>
-      (<strong>OX₂Y₂Z₂</strong>, Lesson&nbsp;2) has its <strong>origin at the planetary
+      (<strong>OX₂Y₂Z₂</strong>) has its <strong>origin at the planetary
       center</strong>, with axes locked to the vehicle&rsquo;s instantaneous position.</p>
       <div class="eq-block">
-        <div class="eq-label">Axis definitions (Lesson 2)</div>
+        <div class="eq-label">Axis definitions</div>
         \\[\\hat{e}_{x_2} = \\frac{\\vec{r}}{|\\vec{r}|}\\quad\\text{(radial — along position vector)}\\]
         \\[\\hat{e}_{y_2} = \\hat{e}_z \\times \\hat{e}_{x_2}\\quad\\text{(east — parallel to equatorial plane)}\\]
         \\[\\hat{e}_{z_2} = \\hat{e}_{x_2} \\times \\hat{e}_{y_2}\\quad\\text{(cross-track — completes RH system)}\\]
@@ -932,248 +931,14 @@ const SLIDES = [
       <p style="font-size:0.82rem;color:#6a90b0;">Press <strong>Next →</strong>
       to decompose <em>v</em> into its \\(\\lambda\\) and \\(\\phi\\) rate components.</p>`,
     camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 1.0 },
-    substeps: [
-      // ── substep 0: Step 1 — γ decomposition (animated) ──
-      {
-        html: `
-          <div class="eq-block">
-            <div class="eq-label">Step 1 — Split v by flight-path angle γ</div>
-            \\[\\underbrace{\\textcolor{#FF5555}{v\\sin\\gamma}}_{\\dot{r}\\ =\\ \\text{radial rate}}
-              \\qquad
-              \\underbrace{\\textcolor{#00DDFF}{v\\cos\\gamma}}_{v_h\\ =\\ \\text{horizontal speed}}\\]
-          </div>`,
-        enter3D() {
-          // Stop the Keplerian animation and restore spacecraft to the reference position
-          clearSlideObjects();
-          STATE.persistent.orbitLine.visible = true;
-          const s0 = getSpacecraftState(0.72);
-          if (STATE.spacecraft) {
-            STATE.spacecraft.position.copy(s0.pos);
-            const mat = new THREE.Matrix4().lookAt(s0.pos, s0.pos.clone().add(s0.vel), s0.R_hat);
-            STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
-            STATE.spacecraft.quaternion.multiply(
-              new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
-            );
-          }
-
-          const GAMMA  = 25 * Math.PI / 180;
-          const s      = getSpacecraftState(0.72);
-          const R      = s.R_hat;
-          const hDir   = s.vel.clone().normalize();
-          const vLen   = 0.82;
-          const hLen   = vLen * Math.cos(GAMMA);
-          const vHat   = hDir.clone().multiplyScalar(Math.cos(GAMMA)).addScaledVector(R, Math.sin(GAMMA)).normalize();
-          const hEnd   = s.pos.clone().addScaledVector(hDir, hLen);
-          const vTip   = s.pos.clone().addScaledVector(vHat, vLen);
-
-          // ── Zoom camera to close-up of vehicle first ──
-          const side = new THREE.Vector3().crossVectors(R, hDir).normalize();
-          const cp = s.pos.clone()
-            .addScaledVector(hDir, -1.8)
-            .addScaledVector(R,     0.7)
-            .addScaledVector(side,  1.3);
-          tweenCamera([cp.x, cp.y, cp.z], [s.pos.x, s.pos.y, s.pos.z], 0.85);
-          const CAM_DELAY = 1.0;
-
-          // ── Build all geometry at scale≈0 (hidden until camera arrives) ──
-          // Gold velocity vector (full v)
-          const vg = new THREE.Group();
-          vg.position.copy(s.pos);
-          vg.add(new THREE.ArrowHelper(vHat, new THREE.Vector3(), vLen, 0xFFD700, 0.09, 0.045));
-          vg.scale.set(0.001, 0.001, 0.001);
-          addSlideObj(vg);
-
-          const cg = new THREE.Group();
-          cg.position.copy(s.pos);
-          cg.add(new THREE.ArrowHelper(hDir, new THREE.Vector3(), hLen, 0x00DDFF, 0.07, 0.035));
-          cg.scale.set(0.001, 0.001, 0.001);
-          addSlideObj(cg);
-
-          const sinVec = new THREE.Vector3().subVectors(vTip, hEnd);
-          const sinLen = sinVec.length();
-          const sinDir = sinVec.clone().normalize();
-          const rg = new THREE.Group();
-          rg.position.copy(hEnd);
-          rg.add(new THREE.ArrowHelper(sinDir, new THREE.Vector3(), sinLen, 0xFF5555, 0.07, 0.035));
-          rg.scale.set(0.001, 0.001, 0.001);
-          addSlideObj(rg);
-
-          const ra    = 0.036;
-          const raMat = new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0 });
-          addSlideObj(new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints([
-              hEnd.clone().addScaledVector(R, ra),
-              hEnd.clone().addScaledVector(R, ra).addScaledVector(hDir, -ra),
-              hEnd.clone().addScaledVector(hDir, -ra),
-            ]), raMat));
-
-          // ── γ arc sweeps from hDir to vHat in the hDir-R plane ──
-          const arcR   = 0.22;
-          const arcMat = new THREE.LineBasicMaterial({ color: 0xFFEE77, transparent: true, opacity: 0 });
-          const gArc   = makeAngleArc(s.pos, hDir, R, arcR, 0, GAMMA, 0xFFEE77);
-          gArc.material = arcMat;
-          addSlideObj(gArc);
-
-          const lblG = new THREE.Group();
-          lblG.add(makeFloatLabel('v',
-            s.pos.clone().addScaledVector(vHat, vLen * 0.55).addScaledVector(R, 0.10), 0xFFD700));
-          lblG.add(makeFloatLabel('v cosγ',
-            s.pos.clone().addScaledVector(hDir, hLen * 0.5).addScaledVector(R, -0.13), 0x00DDFF));
-          lblG.add(makeFloatLabel('v sinγ',
-            hEnd.clone().lerp(vTip, 0.5).addScaledVector(hDir, -0.16), 0xFF5555));
-          // γ label at arc midpoint
-          const gammaA = GAMMA / 2;
-          lblG.add(makeFloatLabel('γ',
-            s.pos.clone()
-              .addScaledVector(hDir, (arcR + 0.10) * Math.cos(gammaA))
-              .addScaledVector(R,    (arcR + 0.10) * Math.sin(gammaA)),
-            0xFFEE77));
-          lblG.visible = false;
-          addSlideObj(lblG);
-
-          // ── Start projection animations once camera has arrived ──
-          const gen0 = STATE.slideGen;
-          gsap.delayedCall(CAM_DELAY, () => {
-            if (STATE.slideGen !== gen0) return;
-            gsap.to(vg.scale,  { x: 1, y: 1, z: 1, duration: 0.55, ease: 'back.out(1.3)' });
-            gsap.to(cg.scale,  { x: 1, y: 1, z: 1, duration: 0.75, delay: 0.45, ease: 'power2.out' });
-            gsap.to(rg.scale,  { x: 1, y: 1, z: 1, duration: 0.60, delay: 1.05, ease: 'power2.out' });
-            gsap.to(raMat,     { opacity: 0.6,  duration: 0.35, delay: 1.65 });
-            gsap.to(arcMat,    { opacity: 0.90, duration: 0.35, delay: 1.65 });
-            gsap.delayedCall(1.75, () => {
-              if (STATE.slideGen !== gen0) return;
-              lblG.visible = true;
-              lblG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
-            });
-          });
-        },
-      },
-      // ── substep 1: Step 2 — ψ split (animated) ──
-      {
-        html: `
-          <div class="eq-block">
-            <div class="eq-label">Step 2 — Split v cosγ by heading angle ψ</div>
-            \\[v_{\\text{east}} = \\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}
-              \\qquad
-              v_{\\text{north}} = \\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}\\]
-          </div>`,
-        enter3D() {
-          const GAMMA    = 25 * Math.PI / 180;
-          const cosG     = Math.cos(GAMMA);
-          const s        = getSpacecraftState(0.72);
-          const R        = s.R_hat;
-          const hDir     = s.vel.clone().normalize();
-          const vLen     = 0.82;
-          const hLen     = vLen * cosG;
-          const psi      = Math.atan2(hDir.dot(s.T_hat), hDir.dot(s.S_hat));
-          const hEnd     = s.pos.clone().addScaledVector(hDir, hLen);
-          const eastEnd  = s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi));
-
-          // ── Zoom to slightly overhead so the horizontal split is clear ──
-          const cp2 = s.pos.clone()
-            .addScaledVector(R,    2.0)
-            .addScaledVector(hDir, 0.4);
-          tweenCamera([cp2.x, cp2.y, cp2.z], [s.pos.x, s.pos.y, s.pos.z], 0.85);
-          const CAM_DELAY = 1.0;
-
-          // ── Build geometry at scale≈0 ──
-          const mg = Math.abs(Math.cos(psi)) > 0.05 ? (() => {
-            const g = new THREE.Group();
-            g.position.copy(s.pos);
-            g.add(new THREE.ArrowHelper(
-              s.S_hat.clone().multiplyScalar(Math.sign(Math.cos(psi))),
-              new THREE.Vector3(), hLen * Math.abs(Math.cos(psi)), 0xFF44CC, 0.06, 0.03));
-            g.scale.set(0.001, 0.001, 0.001);
-            addSlideObj(g);
-            return g;
-          })() : null;
-
-          const northVec = new THREE.Vector3().subVectors(hEnd, eastEnd);
-          const northLen = northVec.length();
-          const northDir = northVec.clone().normalize();
-          const ng = new THREE.Group();
-          ng.position.copy(eastEnd);
-          ng.add(new THREE.ArrowHelper(northDir, new THREE.Vector3(), northLen, 0x44FF88, 0.06, 0.030));
-          ng.scale.set(0.001, 0.001, 0.001);
-          addSlideObj(ng);
-
-          const rb    = 0.030;
-          const perp2 = new THREE.Vector3().crossVectors(s.S_hat, R).normalize();
-          const rbMat = new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0 });
-          addSlideObj(new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints([
-              eastEnd.clone().addScaledVector(perp2, rb),
-              eastEnd.clone().addScaledVector(perp2, rb).addScaledVector(s.S_hat, rb),
-              eastEnd.clone().addScaledVector(s.S_hat, rb),
-            ]), rbMat));
-
-          // ── ψ arc sweeps from S_hat (east) to hDir in the horizontal plane ──
-          const psiArcR   = 0.22;
-          const psiArcMat = new THREE.LineBasicMaterial({ color: 0xFFEE77, transparent: true, opacity: 0 });
-          const psiArc    = makeAngleArc(s.pos, s.S_hat, s.T_hat, psiArcR, 0, psi, 0xFFEE77);
-          psiArc.material = psiArcMat;
-          addSlideObj(psiArc);
-
-          const enG = new THREE.Group();
-          enG.add(makeFloatLabel('v cosγ cosψ',
-            s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi) * 0.5).addScaledVector(R, -0.14),
-            0xFF44CC));
-          enG.add(makeFloatLabel('v cosγ sinψ',
-            eastEnd.clone().lerp(hEnd, 0.5).addScaledVector(s.S_hat, -0.17),
-            0x44FF88));
-          // ψ label at arc midpoint
-          const psiA = psi / 2;
-          enG.add(makeFloatLabel('ψ',
-            s.pos.clone()
-              .addScaledVector(s.S_hat, (psiArcR + 0.10) * Math.cos(psiA))
-              .addScaledVector(s.T_hat, (psiArcR + 0.10) * Math.sin(psiA)),
-            0xFFEE77));
-          enG.visible = false;
-          addSlideObj(enG);
-
-          // ── Start animations once camera has arrived ──
-          const gen1 = STATE.slideGen;
-          gsap.delayedCall(CAM_DELAY, () => {
-            if (STATE.slideGen !== gen1) return;
-            if (mg) gsap.to(mg.scale, { x: 1, y: 1, z: 1, duration: 0.75, ease: 'power2.out' });
-            gsap.to(ng.scale,    { x: 1, y: 1, z: 1, duration: 0.60, delay: 0.60, ease: 'power2.out' });
-            gsap.to(rbMat,       { opacity: 0.55, duration: 0.35, delay: 1.20 });
-            gsap.to(psiArcMat,   { opacity: 0.90, duration: 0.35, delay: 1.20 });
-            gsap.delayedCall(1.3, () => {
-              if (STATE.slideGen !== gen1) return;
-              enG.visible = true;
-              enG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
-            });
-          });
-        },
-      },
-      // ── substep 2: Step 3 — angular rates (equations only) ──
-      {
-        html: `
-          <div class="eq-block">
-            <div class="eq-label">Step 3 — Convert speed to angular rate</div>
-            \\[\\textcolor{#44FFEE}{\\dot{\\phi}} = \\frac{v_{\\text{north}}}{r} = \\frac{\\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}}{r}\\]
-            \\[\\textcolor{#FF44CC}{\\dot{\\lambda}} = \\frac{v_{\\text{east}}}{r\\cos\\textcolor{#44FFEE}{\\phi}} = \\frac{\\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}}{r\\cos\\textcolor{#44FFEE}{\\phi}}\\]
-          </div>
-          <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.4rem;">
-            The extra \\(\\cos\\textcolor{#44FFEE}{\\phi}\\) in
-            \\(\\textcolor{#FF44CC}{\\dot\\lambda}\\):
-            a latitude circle at \\(\\textcolor{#44FFEE}{\\phi}\\) has radius
-            \\(r\\cos\\textcolor{#44FFEE}{\\phi}\\) — same eastward speed covers more
-            \\(\\textcolor{#FF44CC}{\\lambda}\\) degrees near the equator than near the poles.</p>`,
-        enter3D() {},
-      },
-    ],
     enter() {
       // Hide the circular persistent orbit; this slide uses its own eccentric orbit
       STATE.persistent.orbitLine.visible = false;
       setFrameVisibility({});
 
-      // ── Keplerian eccentric orbit params ──────────────────────────────────
-      const ECC_A   = 1.6;          // semi-major axis
-      const ECC_E   = 0.3;          // eccentricity (periapsis = 1.12 > Earth radius)
-      const ECC_INC = ORBIT_INCL;   // same 45° inclination
-      // Orbital plane basis vectors in Three.js world
+      const ECC_A   = 1.6;
+      const ECC_E   = 0.3;
+      const ECC_INC = ORBIT_INCL;
       const p_hat   = new THREE.Vector3(1, 0, 0);
       const q_hat   = new THREE.Vector3(0, Math.sin(ECC_INC), Math.cos(ECC_INC));
 
@@ -1182,7 +947,6 @@ const SLIDES = [
         for (let i = 0; i < 12; i++) E += (M - E + e * Math.sin(E)) / (1 - e * Math.cos(E));
         return E;
       }
-
       function eccState(M) {
         const E    = keplerE(M, ECC_E);
         const cosE = Math.cos(E), sinE = Math.sin(E);
@@ -1190,26 +954,21 @@ const SLIDES = [
         const x    = ECC_A * (cosE - ECC_E);
         const y    = ECC_A * Math.sqrt(1 - ECC_E * ECC_E) * sinE;
         const pos  = p_hat.clone().multiplyScalar(x).addScaledVector(q_hat, y);
-        // Velocity from Kepler (factor n*a²/r, normalized to visual scale)
-        const fac  = ECC_A * ECC_A / r;   // n*a²/r with n=1 for visual timing
+        const fac  = ECC_A * ECC_A / r;
         const vx   = -fac * sinE;
         const vy   =  fac * Math.sqrt(1 - ECC_E * ECC_E) * cosE;
         const vel  = p_hat.clone().multiplyScalar(vx).addScaledVector(q_hat, vy);
         return { pos, vel, r, R_hat: pos.clone().normalize() };
       }
 
-      // ── Draw elliptical orbit line ────────────────────────────────────────
       const oPts = [];
-      for (let i = 0; i <= 240; i++) {
-        oPts.push(eccState((i / 240) * Math.PI * 2).pos);
-      }
-      oPts.push(oPts[0].clone()); // close the loop
+      for (let i = 0; i <= 240; i++) oPts.push(eccState((i / 240) * Math.PI * 2).pos);
+      oPts.push(oPts[0].clone());
       addSlideObj(new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(oPts),
         new THREE.LineBasicMaterial({ color: 0x2a4a6a, transparent: true, opacity: 0.8 })
       ));
 
-      // ── Periapsis / apoapsis markers ──────────────────────────────────────
       const periPt = eccState(0).pos;
       const apoPt  = eccState(Math.PI).pos;
       const markerG = new THREE.Group();
@@ -1217,74 +976,290 @@ const SLIDES = [
       markerG.add(makeFloatLabel('apoapsis',  apoPt.clone().addScaledVector(apoPt.clone().normalize(),  0.12), 0x88AACC));
       addSlideObj(markerG);
 
-      // ── Live velocity arrow ───────────────────────────────────────────────
-      const velArrow = new THREE.ArrowHelper(
-        new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 0.5, 0xFFD700, 0.09, 0.045
-      );
+      const velArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 0.5, 0xFFD700, 0.09, 0.045);
       addSlideObj(velArrow);
-
-      // ── Velocity label (CSS2D) ────────────────────────────────────────────
       const velLabelGrp = new THREE.Group();
       velLabelGrp.add(makeFloatLabel('v', new THREE.Vector3(), 0xFFD700));
       addSlideObj(velLabelGrp);
 
-      // ── Animation ticker (Keplerian — real physics) ───────────────────────
-      const V_MAX      = ECC_A / (1 - ECC_E);  // proportional to max speed (at periapsis)
-      const ARROW_SCALE = 0.7 / V_MAX;           // map max speed → 0.7 arrow length
-      const N_VIS      = 0.32;                   // visual mean motion (rad/s)
-      const M_START    = 2.6;                    // near apoapsis — user sees it accelerate
-      const t0         = performance.now();
-      const gen        = STATE.slideGen;
-
+      const V_MAX = ECC_A / (1 - ECC_E);
+      const ARROW_SCALE = 0.7 / V_MAX;
+      const N_VIS = 0.32;
+      const M_START = 2.6;
+      const t0 = performance.now();
+      const gen = STATE.slideGen;
       function tick() {
         if (STATE.slideGen !== gen) { gsap.ticker.remove(tick); return; }
-        const M   = (M_START + N_VIS * (performance.now() - t0) * 0.001) % (Math.PI * 2);
+        const M = (M_START + N_VIS * (performance.now() - t0) * 0.001) % (Math.PI * 2);
         const { pos, vel, R_hat } = eccState(M);
-        const speed  = vel.length();
+        const speed = vel.length();
         const velHat = vel.clone().normalize();
-        const vLen   = speed * ARROW_SCALE;
+        const vLen = speed * ARROW_SCALE;
         const headLen = Math.min(vLen * 0.18, 0.12);
         const headW   = Math.min(vLen * 0.08, 0.055);
-
-        // Move spacecraft
         if (STATE.spacecraft) {
           STATE.spacecraft.position.copy(pos);
           const mat = new THREE.Matrix4().lookAt(pos, pos.clone().add(velHat), R_hat);
           STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
           STATE.spacecraft.quaternion.multiply(
-            new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
+            new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI / 2)
           );
         }
-
-        // Update velocity arrow
         velArrow.position.copy(pos);
         velArrow.setDirection(velHat);
         velArrow.setLength(vLen, headLen, headW);
-
-        // Update label position
         const lblPos = pos.clone().addScaledVector(velHat, vLen * 0.55).addScaledVector(R_hat, 0.1);
         velLabelGrp.position.copy(lblPos);
       }
-
       gsap.ticker.add(tick);
       tweenCamera([4, 4, 8], [0, 0, 0], 1.0);
     },
     exit() {
-      // Restore spacecraft to the standard circular-orbit reference position
       const s = getSpacecraftState(0.72);
       if (STATE.spacecraft) {
         STATE.spacecraft.position.copy(s.pos);
         const mat = new THREE.Matrix4().lookAt(s.pos, s.pos.clone().add(s.vel), s.R_hat);
         STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
         STATE.spacecraft.quaternion.multiply(
-          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
+          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI / 2)
         );
       }
       STATE.persistent.orbitLine.visible = true;
     },
   },
 
-  // ── 5: Flight-Path Angle γ ─────────────────────────────────────────────
+  // ── 5: Velocity Decomposition — Radial & Horizontal ────────────────────
+  {
+    title: 'Velocity Decomposition — Radial & Horizontal',
+    html: `
+      <div class="eq-block">
+        <div class="eq-label">Step 1 — Split v by flight-path angle γ</div>
+        \\[\\underbrace{\\textcolor{#FF5555}{v\\sin\\gamma}}_{\\dot{r}\\ =\\ \\text{radial rate}}
+          \\qquad
+          \\underbrace{\\textcolor{#00DDFF}{v\\cos\\gamma}}_{v_h\\ =\\ \\text{horizontal speed}}\\]
+      </div>`,
+    camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 0 },
+    enter() {
+      clearSlideObjects();
+      STATE.persistent.orbitLine.visible = true;
+      const s0 = getSpacecraftState(0.72);
+      if (STATE.spacecraft) {
+        STATE.spacecraft.position.copy(s0.pos);
+        const mat = new THREE.Matrix4().lookAt(s0.pos, s0.pos.clone().add(s0.vel), s0.R_hat);
+        STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+        STATE.spacecraft.quaternion.multiply(
+          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI / 2)
+        );
+      }
+      const GAMMA = 25 * Math.PI / 180;
+      const s = getSpacecraftState(0.72);
+      const R = s.R_hat;
+      const hDir = s.vel.clone().normalize();
+      const vLen = 0.82;
+      const hLen = vLen * Math.cos(GAMMA);
+      const vHat = hDir.clone().multiplyScalar(Math.cos(GAMMA)).addScaledVector(R, Math.sin(GAMMA)).normalize();
+      const hEnd = s.pos.clone().addScaledVector(hDir, hLen);
+      const vTip = s.pos.clone().addScaledVector(vHat, vLen);
+
+      const side = new THREE.Vector3().crossVectors(R, hDir).normalize();
+      const cp = s.pos.clone().addScaledVector(hDir, -1.8).addScaledVector(R, 0.7).addScaledVector(side, 1.3);
+      tweenCamera([cp.x, cp.y, cp.z], [s.pos.x, s.pos.y, s.pos.z], 0.85);
+      const CAM_DELAY = 1.0;
+
+      const vg = new THREE.Group();
+      vg.position.copy(s.pos);
+      vg.add(new THREE.ArrowHelper(vHat, new THREE.Vector3(), vLen, 0xFFD700, 0.09, 0.045));
+      vg.scale.set(0.001, 0.001, 0.001);
+      addSlideObj(vg);
+
+      const cg = new THREE.Group();
+      cg.position.copy(s.pos);
+      cg.add(new THREE.ArrowHelper(hDir, new THREE.Vector3(), hLen, 0x00DDFF, 0.07, 0.035));
+      cg.scale.set(0.001, 0.001, 0.001);
+      addSlideObj(cg);
+
+      const sinVec = new THREE.Vector3().subVectors(vTip, hEnd);
+      const sinLen = sinVec.length();
+      const sinDir = sinVec.clone().normalize();
+      const rg = new THREE.Group();
+      rg.position.copy(hEnd);
+      rg.add(new THREE.ArrowHelper(sinDir, new THREE.Vector3(), sinLen, 0xFF5555, 0.07, 0.035));
+      rg.scale.set(0.001, 0.001, 0.001);
+      addSlideObj(rg);
+
+      const ra = 0.036;
+      const raMat = new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0 });
+      addSlideObj(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+        hEnd.clone().addScaledVector(R, ra),
+        hEnd.clone().addScaledVector(R, ra).addScaledVector(hDir, -ra),
+        hEnd.clone().addScaledVector(hDir, -ra),
+      ]), raMat));
+
+      const arcMat = new THREE.LineBasicMaterial({ color: 0xFFEE77, transparent: true, opacity: 0 });
+      const gArc = makeAngleArc(s.pos, hDir, R, 0.22, 0, GAMMA, 0xFFEE77);
+      gArc.material = arcMat;
+      addSlideObj(gArc);
+
+      const lblG = new THREE.Group();
+      lblG.add(makeFloatLabel('v', s.pos.clone().addScaledVector(vHat, vLen * 0.55).addScaledVector(R, 0.10), 0xFFD700));
+      lblG.add(makeFloatLabel('v cosγ', s.pos.clone().addScaledVector(hDir, hLen * 0.5).addScaledVector(R, -0.13), 0x00DDFF));
+      lblG.add(makeFloatLabel('v sinγ', hEnd.clone().lerp(vTip, 0.5).addScaledVector(hDir, -0.16), 0xFF5555));
+      lblG.add(makeFloatLabel('γ', s.pos.clone()
+        .addScaledVector(hDir, (0.22 + 0.10) * Math.cos(GAMMA / 2))
+        .addScaledVector(R,    (0.22 + 0.10) * Math.sin(GAMMA / 2)), 0xFFEE77));
+      lblG.visible = false;
+      addSlideObj(lblG);
+
+      const gen0 = STATE.slideGen;
+      gsap.delayedCall(CAM_DELAY, () => {
+        if (STATE.slideGen !== gen0) return;
+        gsap.to(vg.scale, { x:1,y:1,z:1, duration:0.55, ease:'back.out(1.3)' });
+        gsap.to(cg.scale, { x:1,y:1,z:1, duration:0.75, delay:0.45, ease:'power2.out' });
+        gsap.to(rg.scale, { x:1,y:1,z:1, duration:0.60, delay:1.05, ease:'power2.out' });
+        gsap.to(raMat, { opacity:0.6, duration:0.35, delay:1.65 });
+        gsap.to(arcMat, { opacity:0.90, duration:0.35, delay:1.65 });
+        gsap.delayedCall(1.75, () => {
+          if (STATE.slideGen !== gen0) return;
+          lblG.visible = true;
+          lblG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
+        });
+      });
+    },
+    exit() {},
+  },
+
+  // ── 6: Velocity Decomposition — Heading Split ──────────────────────────
+  {
+    title: 'Velocity Decomposition — Heading Split',
+    html: `
+      <div class="eq-block">
+        <div class="eq-label">Step 2 — Split v cosγ by heading angle ψ</div>
+        \\[v_{\\text{east}} = \\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}
+          \\qquad
+          v_{\\text{north}} = \\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}\\]
+      </div>`,
+    camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 0 },
+    enter() {
+      clearSlideObjects();
+      STATE.persistent.orbitLine.visible = true;
+      const s0 = getSpacecraftState(0.72);
+      if (STATE.spacecraft) {
+        STATE.spacecraft.position.copy(s0.pos);
+        const mat = new THREE.Matrix4().lookAt(s0.pos, s0.pos.clone().add(s0.vel), s0.R_hat);
+        STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+        STATE.spacecraft.quaternion.multiply(
+          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI / 2)
+        );
+      }
+      const GAMMA = 25 * Math.PI / 180;
+      const s = getSpacecraftState(0.72);
+      const R = s.R_hat;
+      const hDir = s.vel.clone().normalize();
+      const vLen = 0.82;
+      const hLen = vLen * Math.cos(GAMMA);
+      const psi  = Math.atan2(hDir.dot(s.T_hat), hDir.dot(s.S_hat));
+      const hEnd = s.pos.clone().addScaledVector(hDir, hLen);
+      const eastEnd = s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi));
+
+      const cp2 = s.pos.clone().addScaledVector(R, 2.0).addScaledVector(hDir, 0.4);
+      tweenCamera([cp2.x, cp2.y, cp2.z], [s.pos.x, s.pos.y, s.pos.z], 0.85);
+      const CAM_DELAY = 1.0;
+
+      const mg = Math.abs(Math.cos(psi)) > 0.05 ? (() => {
+        const g = new THREE.Group();
+        g.position.copy(s.pos);
+        g.add(new THREE.ArrowHelper(
+          s.S_hat.clone().multiplyScalar(Math.sign(Math.cos(psi))),
+          new THREE.Vector3(), hLen * Math.abs(Math.cos(psi)), 0xFF44CC, 0.06, 0.03));
+        g.scale.set(0.001, 0.001, 0.001);
+        addSlideObj(g);
+        return g;
+      })() : null;
+
+      const northVec = new THREE.Vector3().subVectors(hEnd, eastEnd);
+      const northLen = northVec.length();
+      const northDir = northVec.clone().normalize();
+      const ng = new THREE.Group();
+      ng.position.copy(eastEnd);
+      ng.add(new THREE.ArrowHelper(northDir, new THREE.Vector3(), northLen, 0x44FF88, 0.06, 0.030));
+      ng.scale.set(0.001, 0.001, 0.001);
+      addSlideObj(ng);
+
+      const rb = 0.030;
+      const perp2 = new THREE.Vector3().crossVectors(s.S_hat, R).normalize();
+      const rbMat = new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0 });
+      addSlideObj(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+        eastEnd.clone().addScaledVector(perp2, rb),
+        eastEnd.clone().addScaledVector(perp2, rb).addScaledVector(s.S_hat, rb),
+        eastEnd.clone().addScaledVector(s.S_hat, rb),
+      ]), rbMat));
+
+      const psiArcMat = new THREE.LineBasicMaterial({ color: 0xFFEE77, transparent: true, opacity: 0 });
+      const psiArc = makeAngleArc(s.pos, s.S_hat, s.T_hat, 0.22, 0, psi, 0xFFEE77);
+      psiArc.material = psiArcMat;
+      addSlideObj(psiArc);
+
+      const enG = new THREE.Group();
+      enG.add(makeFloatLabel('v cosγ cosψ',
+        s.pos.clone().addScaledVector(s.S_hat, hLen * Math.cos(psi) * 0.5).addScaledVector(R, -0.14), 0xFF44CC));
+      enG.add(makeFloatLabel('v cosγ sinψ',
+        eastEnd.clone().lerp(hEnd, 0.5).addScaledVector(s.S_hat, -0.17), 0x44FF88));
+      enG.add(makeFloatLabel('ψ', s.pos.clone()
+        .addScaledVector(s.S_hat, (0.22 + 0.10) * Math.cos(psi / 2))
+        .addScaledVector(s.T_hat, (0.22 + 0.10) * Math.sin(psi / 2)), 0xFFEE77));
+      enG.visible = false;
+      addSlideObj(enG);
+
+      const gen1 = STATE.slideGen;
+      gsap.delayedCall(CAM_DELAY, () => {
+        if (STATE.slideGen !== gen1) return;
+        if (mg) gsap.to(mg.scale, { x:1,y:1,z:1, duration:0.75, ease:'power2.out' });
+        gsap.to(ng.scale,  { x:1,y:1,z:1, duration:0.60, delay:0.60, ease:'power2.out' });
+        gsap.to(rbMat, { opacity:0.55, duration:0.35, delay:1.20 });
+        gsap.to(psiArcMat, { opacity:0.90, duration:0.35, delay:1.20 });
+        gsap.delayedCall(1.3, () => {
+          if (STATE.slideGen !== gen1) return;
+          enG.visible = true;
+          enG.traverse(c => { if (c.isCSS2DObject) c.element.style.display = ''; });
+        });
+      });
+    },
+    exit() {},
+  },
+
+  // ── 7: Angular Rate Equations ───────────────────────────────────────────
+  {
+    title: 'Angular Rate Equations',
+    html: `
+      <div class="eq-block">
+        <div class="eq-label">Step 3 — Convert speed to angular rate</div>
+        \\[\\textcolor{#44FFEE}{\\dot{\\phi}} = \\frac{v_{\\text{north}}}{r} = \\frac{\\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}}{r}\\]
+        \\[\\textcolor{#FF44CC}{\\dot{\\lambda}} = \\frac{v_{\\text{east}}}{r\\cos\\textcolor{#44FFEE}{\\phi}} = \\frac{\\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}}{r\\cos\\textcolor{#44FFEE}{\\phi}}\\]
+      </div>
+      <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.4rem;">
+        The extra \\(\\cos\\textcolor{#44FFEE}{\\phi}\\) in
+        \\(\\textcolor{#FF44CC}{\\dot\\lambda}\\):
+        a latitude circle at \\(\\textcolor{#44FFEE}{\\phi}\\) has radius
+        \\(r\\cos\\textcolor{#44FFEE}{\\phi}\\) — same eastward speed covers more
+        \\(\\textcolor{#FF44CC}{\\lambda}\\) degrees near the equator than near the poles.</p>`,
+    camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 0 },
+    enter() {
+      clearSlideObjects();
+      STATE.persistent.orbitLine.visible = true;
+      const s = getSpacecraftState(0.72);
+      if (STATE.spacecraft) {
+        STATE.spacecraft.position.copy(s.pos);
+        const mat = new THREE.Matrix4().lookAt(s.pos, s.pos.clone().add(s.vel), s.R_hat);
+        STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+        STATE.spacecraft.quaternion.multiply(
+          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI / 2)
+        );
+      }
+    },
+    exit() {},
+  },
+
+  // ── 8: Flight-Path Angle γ ─────────────────────────────────────────────
   {
     title: 'Flight-Path Angle γ',
     html: `
@@ -1409,7 +1384,7 @@ const SLIDES = [
     },
   },
 
-  // ── 6: Heading Angle ψ ─────────────────────────────────────────────────
+  // ── 9: Heading Angle ψ ─────────────────────────────────────────────────
   {
     title: 'Heading Angle ψ',
     html: `
@@ -1523,30 +1498,25 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 7: Velocity-Referenced Frame ───────────────────────────────────────
+  // ── 10: Velocity-Referenced Frame ───────────────────────────────────────
   {
     title: 'Velocity-Referenced Frame (VRF)',
     html: `
-      <p>The <span class="chip chip-vrf">VRF</span> (<strong>OX″Y″Z″</strong>, Lesson&nbsp;2)
-      is obtained from the Vehicle-Pointing Frame <strong>OX₂Y₂Z₂</strong> by two successive
-      rotations defined by the velocity vector direction.</p>
+      <p>The <span class="chip chip-vrf">VRF</span> (<strong>OX″Y″Z″</strong>) is obtained from the Vehicle-Pointing Frame <strong>OX₂Y₂Z₂</strong> by two successive rotations defined by the velocity vector direction.</p>
       <div class="eq-block">
-        <div class="eq-label">Two-step rotation from OX₂Y₂Z₂ (Lesson 2)</div>
+        <div class="eq-label">Two-step rotation from OX₂Y₂Z₂</div>
         \\[\\text{Step 1: rotate }\\textcolor{#FF44CC}{\\psi}\\text{ about }\\hat{e}_{x_2}=\\hat{R}\\quad(\\text{heading azimuth})\\]
         \\[\\text{Step 2: rotate }\\textcolor{#FFEE77}{-\\gamma}\\text{ about new }z'\\quad(\\text{flight-path angle})\\]
         \\[\\mathbf{T}_{\\text{OX}_2 \\to \\text{OX}''} = R_{z'}(\\textcolor{#FFEE77}{-\\gamma})\\,R_{x_2}(\\textcolor{#FF44CC}{\\psi})\\]
       </div>
       <div class="eq-block">
         <div class="eq-label">Axis definitions (this presentation)</div>
-        \\[\\hat{x}_v \\parallel \\vec{v}\\quad(\\text{along velocity — }\\hat{e}_{y''} \\text{ in Lesson 2})\\]
+        \\[\\hat{x}_v \\parallel \\vec{v}\\quad(\\text{along velocity})\\]
         \\[\\hat{z}_v \\perp \\vec{v},\\; \\hat{z}_v \\text{ lies in local horizontal plane}\\]
         \\[\\hat{y}_v = \\hat{z}_v \\times \\hat{x}_v\\quad(\\text{completes right-hand system})\\]
       </div>
       <p style="font-size:0.82rem;color:#6a90b0;border-left:2px solid #1e3a5f;padding-left:0.7rem;margin-top:0.8rem;">
-        <strong style="color:#8ab8d8">Convention note:</strong> Lesson&nbsp;2 places velocity along
-        ê<sub>y″</sub>; this presentation uses x̂<sub>v</sub>. The physical frame is identical —
-        the axis labels are permuted. All force equations in later slides use the x̂<sub>v</sub>
-        convention consistently.
+        <strong style="color:#8ab8d8">Convention note:</strong> Velocity is along x̂<sub>v</sub>. All force equations use this convention consistently.
       </p>
       <p style="margin-top:0.9rem;">Forces expressed in VRF use frame-native scalars
       (\\(\\textcolor{#FF9944}{D}\\), \\(\\textcolor{#FF6699}{L}\\), \\(\\textcolor{#FF4444}{T}\\)),
@@ -1634,7 +1604,7 @@ const SLIDES = [
     },
   },
 
-  // ── 8: Newton's 2nd Law ────────────────────────────────────────────────
+  // ── 11: Newton's 2nd Law ────────────────────────────────────────────────
   {
     title: "Newton's Second Law",
     html: `
@@ -1674,7 +1644,7 @@ const SLIDES = [
     exit() { setForceVisibility({}); },
   },
 
-  // ── 9: Rotating Frame Conversion ───────────────────────────────────────
+  // ── 12: Rotating Frame Conversion ───────────────────────────────────────
   {
     title: 'Rotating Frame Conversion',
     html: `
@@ -1727,7 +1697,7 @@ const SLIDES = [
     },
   },
 
-  // ── 10: Gravitational Force ────────────────────────────────────────────
+  // ── 13: Gravitational Force ────────────────────────────────────────────
   {
     title: 'Gravitational Force',
     html: `
@@ -1758,7 +1728,7 @@ const SLIDES = [
     exit() { setForceVisibility({}); },
   },
 
-  // ── 11: Drag Force ─────────────────────────────────────────────────────
+  // ── 14: Drag Force ─────────────────────────────────────────────────────
   {
     title: 'Drag Force',
     html: `
@@ -1793,7 +1763,7 @@ const SLIDES = [
     },
   },
 
-  // ── 12: Lift Force & Bank Angle ────────────────────────────────────────
+  // ── 15: Lift Force & Bank Angle ────────────────────────────────────────
   {
     title: 'Lift Force & Bank Angle θ',
     html: `
@@ -1896,7 +1866,7 @@ const SLIDES = [
     },
   },
 
-  // ── 13: Thrust Force ───────────────────────────────────────────────────
+  // ── 16: Thrust Force ───────────────────────────────────────────────────
   {
     title: 'Thrust Force',
     html: `
@@ -1944,13 +1914,11 @@ const SLIDES = [
     exit() { setForceVisibility({}); },
   },
 
-  // ── 14: Frame Rotation Matrices ────────────────────────────────────────
+  // ── 17: Frame Rotation Matrices ────────────────────────────────────────
   {
-    title: 'Coordinate Frame Transformations (Lesson 2)',
+    title: 'Coordinate Frame Transformations',
     html: `
-      <p>Lesson&nbsp;2 derives three successive Direction Cosine Matrices (DCMs) that carry
-      any vector from the body frame to inertial space. Each is a 3&times;3 orthogonal matrix
-      — its inverse equals its transpose.</p>
+      <p>Three successive Direction Cosine Matrices (DCMs) carry any vector from body to inertial space. Each 3×3 orthogonal matrix has inverse equal to its transpose.</p>
       <div style="display:flex;flex-direction:column;gap:0.45rem;margin:1rem 0;">
         <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.8rem;">
           <span class="chip chip-eci" style="white-space:nowrap">OXYZ</span>
@@ -1974,8 +1942,7 @@ const SLIDES = [
           <span class="chip chip-vrf" style="white-space:nowrap">OX″Y″Z″</span>
         </div>
       </div>
-      <p style="font-size:0.82rem;color:#6a90b0;">Press <strong>Next&nbsp;&rarr;</strong> to step through each
-      DCM — the full 3&times;3 matrix is shown alongside the animated frame transformation.</p>`,
+      <p style="font-size:0.82rem;color:#6a90b0;">Press <strong>Next →</strong> to step through each animated DCM.</p>`,
     camera: { pos: [7, 5, 10], target: [1.17, 0.72, 0.72], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -1984,372 +1951,339 @@ const SLIDES = [
       tweenCamera([7, 5, 10], [s.pos.x * 0.6, s.pos.y * 0.6, s.pos.z * 0.6], 1.2);
     },
     exit() {},
-    substeps: [
-      // ── substep 0: OXYZ → OX₁Y₁Z₁  (Earth spin — animated) ─────────────
-      {
-        html: '',
-        enter3D() {
-          clearSlideObjects();
-          const gen = STATE.slideGen;
-
-          // Freeze the animate-loop so we can manually drive STATE.earthT
-          STATE.suppressEarthUpdate = true;
-          STATE.earthT = 0;
-
-          setFrameVisibility({ eci: true, ecef: true });
-          setGroupVisible(STATE.persistent.ecefGroup, true);
-          STATE.persistent.ecefGroup.scale.set(1, 1, 1);
-          tweenCamera([8, 8, 6], [0, 0, 0], 0.9);
-
-          // Oscillate STATE.earthT 0 → 60° → 0 so Earth + ECEF axes visibly spin
-          const spinTween = gsap.to(STATE, {
-            earthT: Math.PI / 3, duration: 2.5, ease: 'power2.inOut', repeat: -1, yoyo: true,
-            onUpdate() {
-              if (STATE.slideGen !== gen) { this.kill(); return; }
-              const rd = document.getElementById('dcm-angle-readout');
-              if (rd) rd.textContent = `ω⊕Δt = ${(STATE.earthT * 180 / Math.PI).toFixed(1)}°`;
-            },
-          });
-          const cleanup = () => {
-            if (STATE.slideGen !== gen) {
-              spinTween.kill(); STATE.suppressEarthUpdate = false; gsap.ticker.remove(cleanup);
-            }
-          };
-          gsap.ticker.add(cleanup);
-
-          setSlidePanel(`
-            <h3>OXYZ &rarr; OX₁Y₁Z₁ &mdash; Earth Spin</h3>
-            <p>A single rotation about the polar ẑ-axis by \\(\\omega_\\oplus\\Delta t\\) carries
-            OX₁Y₁Z₁ away from OXYZ. The amber axes spin with Earth — watch the DCM angle change.</p>
-            <div class="eq-block">
-              <div class="eq-label">DCM &mdash; Lesson 2</div>
-              \\[[\\hat{e}_1] = R_z(\\omega_\\oplus\\Delta t)\\,[\\hat{e}]\\]
-              \\[= \\begin{bmatrix}
-                \\cos(\\omega_\\oplus\\Delta t) & \\sin(\\omega_\\oplus\\Delta t) & 0 \\\\
-                -\\sin(\\omega_\\oplus\\Delta t) & \\cos(\\omega_\\oplus\\Delta t) & 0 \\\\
-                0 & 0 & 1
-              \\end{bmatrix}\\]
-            </div>
-            <div style="background:#07121f;border:1px solid #1a4a6a;border-radius:8px;
-                        padding:0.5rem 1rem;display:flex;align-items:center;gap:1rem;margin-top:0.7rem;">
-              <span style="font-size:0.7rem;letter-spacing:.12em;color:#3a6a9a;text-transform:uppercase;">Live angle</span>
-              <span id="dcm-angle-readout" style="font-size:1.3rem;font-weight:700;color:#FF8800;font-family:monospace;">ω⊕Δt = 0.0°</span>
-            </div>
-            <p style="margin-top:0.6rem;font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong>
-            for OX₁Y₁Z₁ &rarr; OX₂Y₂Z₂.</p>`);
-        },
-      },
-
-      // ── substep 1: OX₁Y₁Z₁ → OX₂Y₂Z₂ (two-phase rotation) ────────────
-      {
-        html: '',
-        enter3D() {
-          clearSlideObjects();
-          const gen = STATE.slideGen;
-          const s   = getSpacecraftState(0.72);
-
-          STATE.suppressEarthUpdate = true;
-          STATE.earthT = 0;
-
-          setFrameVisibility({ ecef: true });
-          setGroupVisible(STATE.persistent.rstGroup, false);
-          tweenCamera([5, 4, 8], [s.pos.x, s.pos.y, s.pos.z], 0.9);
-
-          // Build a temporary phantom OX₂Y₂Z₂ that rotates in two steps
-          const L = 2.1, O = new THREE.Vector3(0, 0, 0);
-
-          // Phase start: aligned with ECEF x₁ (before any rotation)
-          const startX = new THREE.Vector3(1, 0, 0);
-          const startY = new THREE.Vector3(0, 0, 1);
-          const startZ = new THREE.Vector3(0, 1, 0);
-
-          // Phase 1 end: longitude rotation only — x₂ in equatorial plane at spacecraft longitude
-          const eqDir  = new THREE.Vector3(s.R_hat.x, 0, s.R_hat.z).normalize();
-          const midX   = eqDir.clone();
-          const midY   = new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), eqDir).normalize().negate();
-          const midZ   = new THREE.Vector3(0, 1, 0);
-
-          // Phase 2 end: actual RST directions
-          const endX = s.R_hat.clone();
-          const endY = s.S_hat.clone();
-          const endZ = s.T_hat.clone();
-
-          const lonDeg = (Math.atan2(s.R_hat.z, s.R_hat.x) * 180 / Math.PI).toFixed(1);
-          const latDeg = (Math.asin(s.R_hat.y)              * 180 / Math.PI).toFixed(1);
-
-          const phantomX = new THREE.ArrowHelper(startX.clone(), O, L, COLORS.rst.r, 0.18, 0.09);
-          const phantomY = new THREE.ArrowHelper(startY.clone(), O, L, COLORS.rst.s, 0.18, 0.09);
-          const phantomZ = new THREE.ArrowHelper(startZ.clone(), O, L, COLORS.rst.t, 0.18, 0.09);
-          const phGroup  = new THREE.Group();
-          phGroup.add(phantomX, phantomY, phantomZ);
-          addSlideObj(phGroup);
-
-          const stepEl = () => document.getElementById('dcm-step-readout');
-          const angEl  = () => document.getElementById('dcm-ang-readout');
-
-          // Phase 1: longitude (0 → 1)
-          const p1 = { t: 0 };
-          gsap.to(p1, {
-            t: 1, duration: 1.8, delay: 0.3, ease: 'power2.inOut',
-            onUpdate() {
-              if (STATE.slideGen !== gen) { this.kill(); return; }
-              phantomX.setDirection(new THREE.Vector3().lerpVectors(startX, midX, p1.t).normalize());
-              phantomY.setDirection(new THREE.Vector3().lerpVectors(startY, midY, p1.t).normalize());
-              phantomZ.setDirection(new THREE.Vector3().lerpVectors(startZ, midZ, p1.t).normalize());
-              const d = (p1.t * parseFloat(lonDeg)).toFixed(1);
-              if (angEl()) angEl().textContent = `θ = ${d}°`;
-            },
-            onComplete() {
-              if (STATE.slideGen !== gen) return;
-              if (stepEl()) stepEl().textContent = 'Step 2: latitude  R_y₂(−φ)';
-              if (angEl())  angEl().textContent  = 'φ = 0.0°';
-              // Phase 2: latitude
-              const p2 = { t: 0 };
-              gsap.to(p2, {
-                t: 1, duration: 1.8, ease: 'power2.inOut',
-                onUpdate() {
-                  if (STATE.slideGen !== gen) { this.kill(); return; }
-                  phantomX.setDirection(new THREE.Vector3().lerpVectors(midX, endX, p2.t).normalize());
-                  phantomY.setDirection(new THREE.Vector3().lerpVectors(midY, endY, p2.t).normalize());
-                  phantomZ.setDirection(new THREE.Vector3().lerpVectors(midZ, endZ, p2.t).normalize());
-                  const d = (p2.t * parseFloat(latDeg)).toFixed(1);
-                  if (angEl()) angEl().textContent = `φ = ${d}°`;
-                },
-              });
-            },
-          });
-
-          const cleanup = () => {
-            if (STATE.slideGen !== gen) {
-              STATE.suppressEarthUpdate = false; gsap.ticker.remove(cleanup);
-            }
-          };
-          gsap.ticker.add(cleanup);
-
-          setSlidePanel(`
-            <h3>OX₁Y₁Z₁ &rarr; OX₂Y₂Z₂ &mdash; Vehicle-Pointing</h3>
-            <p>Two rotations swing x₂ onto the position vector: first longitude
-            \\(\\textcolor{#44FFFF}{\\theta}\\) about z₁, then latitude
-            \\(\\textcolor{#AAFF44}{\\phi}\\) about y₂. Watch the colored axes rotate in two phases.</p>
-            <div class="eq-block">
-              <div class="eq-label">Combined DCM &mdash; Lesson 2</div>
-              \\[[\\hat{e}_2] = R_{y_2}(-\\textcolor{#AAFF44}{\\phi})\\,R_{z_1}(\\textcolor{#44FFFF}{\\theta})\\,[\\hat{e}_1]\\]
-              \\[= \\begin{bmatrix}
-                \\cos\\textcolor{#AAFF44}{\\phi}\\cos\\textcolor{#44FFFF}{\\theta} &
-                \\cos\\textcolor{#AAFF44}{\\phi}\\sin\\textcolor{#44FFFF}{\\theta} &
-                \\sin\\textcolor{#AAFF44}{\\phi} \\\\
-                -\\sin\\textcolor{#44FFFF}{\\theta} & \\cos\\textcolor{#44FFFF}{\\theta} & 0 \\\\
-                -\\sin\\textcolor{#AAFF44}{\\phi}\\cos\\textcolor{#44FFFF}{\\theta} &
-                -\\sin\\textcolor{#AAFF44}{\\phi}\\sin\\textcolor{#44FFFF}{\\theta} &
-                \\cos\\textcolor{#AAFF44}{\\phi}
-              \\end{bmatrix}\\]
-            </div>
-            <div style="background:#07121f;border:1px solid #1a4a6a;border-radius:8px;
-                        padding:0.5rem 1rem;margin-top:0.6rem;">
-              <div id="dcm-step-readout" style="font-size:0.72rem;letter-spacing:.1em;color:#3a6a9a;
-                   text-transform:uppercase;margin-bottom:0.2rem;">Step 1: longitude  R_z₁(θ)</div>
-              <span id="dcm-ang-readout" style="font-size:1.3rem;font-weight:700;font-family:monospace;color:#44FFFF;">θ = 0.0°</span>
-            </div>
-            <p style="font-size:0.81rem;color:#3a6a9a;margin-top:0.6rem;">Press <strong>Next&nbsp;&rarr;</strong>
-            for OX₂Y₂Z₂ &rarr; OX″Y″Z″.</p>`);
-        },
-      },
-
-      // ── substep 2: OX₂Y₂Z₂ → OX″Y″Z″ (two-phase sequential rotation) ─────
-      {
-        html: '',
-        enter3D() {
-          clearSlideObjects();
-          const gen = STATE.slideGen;
-          STATE.suppressEarthUpdate = false;
-          const s = getSpacecraftState(0.72);
-
-          // Hide all persistent frames — draw local axes at spacecraft scale
-          setFrameVisibility({});
-
-          // Wide view showing Earth + spacecraft — mirrors the screenshot framing
-          tweenCamera([3.5, 2.5, 5.5], [s.pos.x, s.pos.y, s.pos.z], 0.9);
-
-          const L   = 0.65;
-          const pos = s.pos.clone();
-
-          // ── RST start directions ──────────────────────────────────────────────
-          const startX = s.R_hat.clone();
-          const startY = s.S_hat.clone();
-          const startZ = s.T_hat.clone();
-
-          // ── Phase 1 end: rotate ψ about R̂ (heading azimuth) ─────────────────
-          // R_x₂(ψ): x₂=R̂ fixed; y₂→cos(ψ)Ŝ+sin(ψ)T̂; z₂→−sin(ψ)Ŝ+cos(ψ)T̂
-          const x_v     = s.vel.clone().normalize();
-          const z_v     = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
-          const y_v     = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
-          const psiRad   = Math.atan2(x_v.dot(s.T_hat), x_v.dot(s.S_hat));
-          const gammaRad = Math.asin(Math.max(-1, Math.min(1, x_v.dot(s.R_hat))));
-          const psiDeg   = (psiRad   * 180 / Math.PI).toFixed(1);
-          const gammaDeg = (gammaRad * 180 / Math.PI).toFixed(1);
-
-          const qPsi = new THREE.Quaternion().setFromAxisAngle(s.R_hat, psiRad);
-          const midX = s.R_hat.clone();
-          const midY = s.S_hat.clone().applyQuaternion(qPsi);
-          const midZ = s.T_hat.clone().applyQuaternion(qPsi);
-
-          // ── Phase 2 end: rotate −γ about midZ (flight-path) ─────────────────
-          // endX=x_v, endY=y_v, endZ=midZ (unchanged)
-          const endX = x_v.clone();
-          const endY = y_v.clone();
-          const endZ = midZ.clone();
-
-          // ── Ghost RST — static dim purple reference ───────────────────────────
-          const ghostG = new THREE.Group();
-          ghostG.add(new THREE.ArrowHelper(startX, pos, L * 0.88, 0x330033, 0.055, 0.032));
-          ghostG.add(new THREE.ArrowHelper(startY, pos, L * 0.88, 0x220022, 0.055, 0.032));
-          ghostG.add(new THREE.ArrowHelper(startZ, pos, L * 0.88, 0x220022, 0.055, 0.032));
-          addSlideObj(ghostG);
-          const glbl = new THREE.Group();
-          glbl.add(makeAxisLabel('x₂', pos.clone().addScaledVector(startX, L*0.88+0.07), 0x553355));
-          glbl.add(makeAxisLabel('y₂', pos.clone().addScaledVector(startY, L*0.88+0.07), 0x442244));
-          glbl.add(makeAxisLabel('z₂', pos.clone().addScaledVector(startZ, L*0.88+0.07), 0x442244));
-          addSlideObj(glbl);
-
-          // ── Bright animated axes — start at RST ──────────────────────────────
-          const aX = new THREE.ArrowHelper(startX.clone(), pos, L, COLORS.vrf.x, 0.075, 0.045);
-          const aY = new THREE.ArrowHelper(startY.clone(), pos, L, COLORS.vrf.y, 0.075, 0.045);
-          const aZ = new THREE.ArrowHelper(startZ.clone(), pos, L, COLORS.vrf.z, 0.075, 0.045);
-          const animG = new THREE.Group();
-          animG.add(aX, aY, aZ);
-          addSlideObj(animG);
-
-          // VRF labels at final positions (visible throughout)
-          const vlbl = new THREE.Group();
-          vlbl.add(makeAxisLabel('x̂ᵥ', pos.clone().addScaledVector(endX, L + 0.09), COLORS.vrf.x));
-          vlbl.add(makeAxisLabel('ŷᵥ',  pos.clone().addScaledVector(endY, L + 0.09), COLORS.vrf.y));
-          vlbl.add(makeAxisLabel('ẑᵥ',  pos.clone().addScaledVector(endZ, L + 0.09), COLORS.vrf.z));
-          addSlideObj(vlbl);
-
-          const stepEl = () => document.getElementById('dcm-vrf-step');
-          const angEl  = () => document.getElementById('dcm-vrf-ang');
-
-          // ── Phase 1: heading ψ about R̂ ───────────────────────────────────────
-          const p1 = { t: 0 };
-          gsap.to(p1, {
-            t: 1, duration: 1.8, delay: 0.3, ease: 'power2.inOut',
-            onUpdate() {
-              if (STATE.slideGen !== gen) { this.kill(); return; }
-              aX.setDirection(new THREE.Vector3().lerpVectors(startX, midX, p1.t).normalize());
-              aY.setDirection(new THREE.Vector3().lerpVectors(startY, midY, p1.t).normalize());
-              aZ.setDirection(new THREE.Vector3().lerpVectors(startZ, midZ, p1.t).normalize());
-              const d = (p1.t * parseFloat(psiDeg)).toFixed(1);
-              if (angEl()) angEl().textContent = `ψ = ${d}°`;
-            },
-            onComplete() {
-              if (STATE.slideGen !== gen) return;
-              if (stepEl()) stepEl().textContent = 'Step 2: flight-path  R_z′(−γ)';
-              if (angEl())  angEl().textContent  = 'γ = 0.0°';
-              // ── Phase 2: flight-path −γ about midZ ───────────────────────────
-              const p2 = { t: 0 };
-              gsap.to(p2, {
-                t: 1, duration: 1.8, ease: 'power2.inOut',
-                onUpdate() {
-                  if (STATE.slideGen !== gen) { this.kill(); return; }
-                  aX.setDirection(new THREE.Vector3().lerpVectors(midX, endX, p2.t).normalize());
-                  aY.setDirection(new THREE.Vector3().lerpVectors(midY, endY, p2.t).normalize());
-                  aZ.setDirection(new THREE.Vector3().lerpVectors(midZ, endZ, p2.t).normalize());
-                  const d = (p2.t * parseFloat(gammaDeg)).toFixed(1);
-                  if (angEl()) angEl().textContent = `γ = ${d}°`;
-                },
-              });
-            },
-          });
-
-          const cleanup = () => {
-            if (STATE.slideGen !== gen) { gsap.ticker.remove(cleanup); }
-          };
-          gsap.ticker.add(cleanup);
-
-          setSlidePanel(`
-            <h3>OX₂Y₂Z₂ &rarr; OX″Y″Z″ &mdash; Velocity-Referenced</h3>
-            <p>Camera locked on spacecraft. Dim purple = RST reference. Bright axes rotate in
-            two steps: heading \\(\\textcolor{#FF44CC}{\\psi}\\) about x₂, then flight-path
-            \\(\\textcolor{#FFEE77}{\\gamma}\\) about the new z′.</p>
-            <div class="eq-block">
-              <div class="eq-label">Combined DCM &mdash; Lesson 2</div>
-              \\[[\\hat{e}''] = R_{z'}(-\\textcolor{#FFEE77}{\\gamma})\\,R_{x_2}(\\textcolor{#FF44CC}{\\psi})\\,[\\hat{e}_2]\\]
-              \\[= \\begin{bmatrix}
-                \\cos\\textcolor{#FFEE77}{\\gamma} &
-                {-\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}} &
-                {-\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}} \\\\
-                \\sin\\textcolor{#FFEE77}{\\gamma} &
-                \\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} &
-                \\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} \\\\
-                0 & {-\\sin\\textcolor{#FF44CC}{\\psi}} & \\cos\\textcolor{#FF44CC}{\\psi}
-              \\end{bmatrix}\\]
-            </div>
-            <div style="background:#07121f;border:1px solid #1a4a6a;border-radius:8px;
-                        padding:0.5rem 1rem;margin-top:0.6rem;">
-              <div id="dcm-vrf-step" style="font-size:0.72rem;letter-spacing:.1em;color:#3a6a9a;
-                   text-transform:uppercase;margin-bottom:0.2rem;">Step 1: heading  R_x₂(ψ)</div>
-              <span id="dcm-vrf-ang" style="font-size:1.3rem;font-weight:700;font-family:monospace;color:#FF44CC;">ψ = 0.0°</span>
-            </div>
-            <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.5rem;">
-              ê<sub>y″</sub> (row 2 of DCM) is the velocity axis per Lesson 2, labeled x̂<sub>v</sub> here.</p>
-            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong>
-            for the complete chain.</p>`);
-        },
-      },
-
-      // ── substep 3: Full chain — all frames cascade in ────────────────────
-      {
-        html: '',
-        enter3D() {
-          clearSlideObjects();
-          STATE.suppressEarthUpdate = false;
-          const s = getSpacecraftState(0.72);
-
-          // Restore VRF arrows to their actual built directions
-          const vrfGroup = STATE.persistent.vrfGroup;
-          const arrows   = vrfGroup ? vrfGroup.children.filter(c => c.isArrowHelper) : [];
-          const x_v = s.vel.clone().normalize();
-          const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
-          const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
-          if (arrows[0]) arrows[0].setDirection(x_v);
-          if (arrows[1]) arrows[1].setDirection(y_v);
-          if (arrows[2]) arrows[2].setDirection(z_v);
-
-          setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true });
-          animateGroupIn(STATE.persistent.eciGroup,  0.0);
-          animateGroupIn(STATE.persistent.ecefGroup, 0.3);
-          animateGroupIn(STATE.persistent.rstGroup,  0.6);
-          animateGroupIn(STATE.persistent.vrfGroup,  0.9);
-          tweenCamera([7, 5, 10], [s.pos.x * 0.6, s.pos.y * 0.6, s.pos.z * 0.6], 0.9);
-
-          setSlidePanel(`
-            <h3>Complete Transformation Chain</h3>
-            <div class="eq-block">
-              <div class="eq-label">Full DCM chain &mdash; Lesson 2</div>
-              \\[[\\hat{e}''] =
-                \\underbrace{C_{OX_2\\to OX''}}_{\\textcolor{#44FF44}{\\text{attitude}}}\;
-                \\underbrace{C_{OX_1\\to OX_2}}_{\\textcolor{#CC44FF}{\\text{position}}}\;
-                \\underbrace{C_{OXYZ\\to OX_1}}_{\\textcolor{#FF8800}{\\text{Earth spin}}}\;[\\hat{e}]\\]
-            </div>
-            <div style="display:flex;gap:0.35rem;align-items:center;flex-wrap:wrap;font-size:0.78rem;margin:0.8rem 0;">
-              <span class="chip chip-eci">OXYZ</span>
-              <span style="color:#FF8800;font-size:0.72rem">&rarr;R_z&rarr;</span>
-              <span class="chip chip-ecef">OX₁Y₁Z₁</span>
-              <span style="color:#CC44FF;font-size:0.72rem">&rarr;R_yR_z&rarr;</span>
-              <span class="chip chip-rst">OX₂Y₂Z₂</span>
-              <span style="color:#44FF44;font-size:0.72rem">&rarr;R_zR_x&rarr;</span>
-              <span class="chip chip-vrf">OX″Y″Z″</span>
-            </div>
-            <p style="font-size:0.82rem;color:#6a90b0;">Each frame cascades in as its DCM is applied.
-            To express OX″Y″Z″ forces in OXYZ, transpose each matrix and apply in reverse order.</p>
-            <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.5rem;">
-              <strong style="color:#8ab8d8;">C⁻¹ = Cᵀ</strong> — every DCM is orthonormal.</p>`);
-        },
-      },
-    ],
   },
 
-  // ── 15: Forces in the Inertial Frame ───────────────────────────────────
+  // ── 18: OXYZ → OX₁Y₁Z₁ — Earth Spin ──────────────────────────────────
+  {
+    title: 'OXYZ → OX₁Y₁Z₁: Earth Spin',
+    html: '',
+    camera: { pos: [8, 8, 6], target: [0, 0, 0], dur: 1.0 },
+    enter() {
+      clearSlideObjects();
+      const gen = STATE.slideGen;
+      STATE.suppressEarthUpdate = true;
+      STATE.earthT = 0;
+      setFrameVisibility({ eci: true, ecef: true });
+      setGroupVisible(STATE.persistent.ecefGroup, true);
+      STATE.persistent.ecefGroup.scale.set(1, 1, 1);
+
+      const spinTween = gsap.to(STATE, {
+        earthT: Math.PI / 3, duration: 2.5, ease: 'power2.inOut', repeat: -1, yoyo: true,
+        onUpdate() {
+          if (STATE.slideGen !== gen) { this.kill(); return; }
+          const rd = document.getElementById('dcm-angle-readout');
+          if (rd) rd.textContent = `ω⊕Δt = ${(STATE.earthT * 180 / Math.PI).toFixed(1)}°`;
+        },
+      });
+      const cleanup = () => {
+        if (STATE.slideGen !== gen) {
+          spinTween.kill(); STATE.suppressEarthUpdate = false; gsap.ticker.remove(cleanup);
+        }
+      };
+      gsap.ticker.add(cleanup);
+
+      setSlidePanel(`
+        <h3>OXYZ &rarr; OX₁Y₁Z₁ &mdash; Earth Spin</h3>
+        <p>A single rotation about the polar ẑ-axis by \\(\\omega_\\oplus\\Delta t\\) carries
+        OX₁Y₁Z₁ away from OXYZ. The amber axes spin with Earth.</p>
+        <div class="eq-block">
+          <div class="eq-label">Direction Cosine Matrix</div>
+          \\[[\\hat{e}_1] = R_z(\\omega_\\oplus\\Delta t)\\,[\\hat{e}]\\]
+          \\[= \\begin{bmatrix}
+            \\cos(\\omega_\\oplus\\Delta t) & \\sin(\\omega_\\oplus\\Delta t) & 0 \\\\
+            -\\sin(\\omega_\\oplus\\Delta t) & \\cos(\\omega_\\oplus\\Delta t) & 0 \\\\
+            0 & 0 & 1
+          \\end{bmatrix}\\]
+        </div>
+        <div style="background:#07121f;border:1px solid #1a4a6a;border-radius:8px;
+                    padding:0.5rem 1rem;display:flex;align-items:center;gap:1rem;margin-top:0.7rem;">
+          <span style="font-size:0.7rem;letter-spacing:.12em;color:#3a6a9a;text-transform:uppercase;">Live angle</span>
+          <span id="dcm-angle-readout" style="font-size:1.3rem;font-weight:700;color:#FF8800;font-family:monospace;">ω⊕Δt = 0.0°</span>
+        </div>`);
+    },
+    exit() { STATE.suppressEarthUpdate = false; },
+  },
+
+  // ── 19: OX₁Y₁Z₁ → OX₂Y₂Z₂ — Vehicle-Pointing ─────────────────────────
+  {
+    title: 'OX₁Y₁Z₁ → OX₂Y₂Z₂: Vehicle-Pointing',
+    html: '',
+    camera: { pos: [5, 4, 8], target: [1.17, 0.72, 0.72], dur: 1.0 },
+    enter() {
+      clearSlideObjects();
+      const gen = STATE.slideGen;
+      const s   = getSpacecraftState(0.72);
+
+      STATE.suppressEarthUpdate = true;
+      STATE.earthT = 0;
+
+      setFrameVisibility({ ecef: true });
+      setGroupVisible(STATE.persistent.rstGroup, false);
+
+      const L = 2.1, O = new THREE.Vector3(0, 0, 0);
+      const startX = new THREE.Vector3(1, 0, 0);
+      const startY = new THREE.Vector3(0, 0, 1);
+      const startZ = new THREE.Vector3(0, 1, 0);
+
+      const eqDir = new THREE.Vector3(s.R_hat.x, 0, s.R_hat.z).normalize();
+      const midX  = eqDir.clone();
+      const midY  = new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), eqDir).normalize().negate();
+      const midZ  = new THREE.Vector3(0, 1, 0);
+
+      const endX = s.R_hat.clone();
+      const endY = s.S_hat.clone();
+      const endZ = s.T_hat.clone();
+
+      const lonDeg = (Math.atan2(s.R_hat.z, s.R_hat.x) * 180 / Math.PI).toFixed(1);
+      const latDeg = (Math.asin(s.R_hat.y)              * 180 / Math.PI).toFixed(1);
+
+      const phantomX = new THREE.ArrowHelper(startX.clone(), O, L, COLORS.rst.r, 0.18, 0.09);
+      const phantomY = new THREE.ArrowHelper(startY.clone(), O, L, COLORS.rst.s, 0.18, 0.09);
+      const phantomZ = new THREE.ArrowHelper(startZ.clone(), O, L, COLORS.rst.t, 0.18, 0.09);
+      const phGroup  = new THREE.Group();
+      phGroup.add(phantomX, phantomY, phantomZ);
+      addSlideObj(phGroup);
+
+      const stepEl = () => document.getElementById('dcm-step-readout');
+      const angEl  = () => document.getElementById('dcm-ang-readout');
+
+      const p1 = { t: 0 };
+      gsap.to(p1, {
+        t: 1, duration: 1.8, delay: 0.3, ease: 'power2.inOut',
+        onUpdate() {
+          if (STATE.slideGen !== gen) { this.kill(); return; }
+          phantomX.setDirection(new THREE.Vector3().lerpVectors(startX, midX, p1.t).normalize());
+          phantomY.setDirection(new THREE.Vector3().lerpVectors(startY, midY, p1.t).normalize());
+          phantomZ.setDirection(new THREE.Vector3().lerpVectors(startZ, midZ, p1.t).normalize());
+          const d = (p1.t * parseFloat(lonDeg)).toFixed(1);
+          if (angEl()) angEl().textContent = `θ = ${d}°`;
+        },
+        onComplete() {
+          if (STATE.slideGen !== gen) return;
+          if (stepEl()) stepEl().textContent = 'Step 2: latitude  R_y₂(−φ)';
+          if (angEl())  angEl().textContent  = 'φ = 0.0°';
+          const p2 = { t: 0 };
+          gsap.to(p2, {
+            t: 1, duration: 1.8, ease: 'power2.inOut',
+            onUpdate() {
+              if (STATE.slideGen !== gen) { this.kill(); return; }
+              phantomX.setDirection(new THREE.Vector3().lerpVectors(midX, endX, p2.t).normalize());
+              phantomY.setDirection(new THREE.Vector3().lerpVectors(midY, endY, p2.t).normalize());
+              phantomZ.setDirection(new THREE.Vector3().lerpVectors(midZ, endZ, p2.t).normalize());
+              const d = (p2.t * parseFloat(latDeg)).toFixed(1);
+              if (angEl()) angEl().textContent = `φ = ${d}°`;
+            },
+          });
+        },
+      });
+
+      const cleanup = () => {
+        if (STATE.slideGen !== gen) { STATE.suppressEarthUpdate = false; gsap.ticker.remove(cleanup); }
+      };
+      gsap.ticker.add(cleanup);
+
+      setSlidePanel(`
+        <h3>OX₁Y₁Z₁ &rarr; OX₂Y₂Z₂ &mdash; Vehicle-Pointing</h3>
+        <p>Two rotations swing x₂ onto the position vector: first longitude
+        \\(\\textcolor{#44FFFF}{\\theta}\\) about z₁, then latitude
+        \\(\\textcolor{#AAFF44}{\\phi}\\) about y₂.</p>
+        <div class="eq-block">
+          <div class="eq-label">Combined DCM</div>
+          \\[[\\hat{e}_2] = R_{y_2}(-\\textcolor{#AAFF44}{\\phi})\\,R_{z_1}(\\textcolor{#44FFFF}{\\theta})\\,[\\hat{e}_1]\\]
+          \\[= \\begin{bmatrix}
+            \\cos\\textcolor{#AAFF44}{\\phi}\\cos\\textcolor{#44FFFF}{\\theta} &
+            \\cos\\textcolor{#AAFF44}{\\phi}\\sin\\textcolor{#44FFFF}{\\theta} &
+            \\sin\\textcolor{#AAFF44}{\\phi} \\\\
+            -\\sin\\textcolor{#44FFFF}{\\theta} & \\cos\\textcolor{#44FFFF}{\\theta} & 0 \\\\
+            -\\sin\\textcolor{#AAFF44}{\\phi}\\cos\\textcolor{#44FFFF}{\\theta} &
+            -\\sin\\textcolor{#AAFF44}{\\phi}\\sin\\textcolor{#44FFFF}{\\theta} &
+            \\cos\\textcolor{#AAFF44}{\\phi}
+          \\end{bmatrix}\\]
+        </div>
+        <div style="background:#07121f;border:1px solid #1a4a6a;border-radius:8px;padding:0.5rem 1rem;margin-top:0.6rem;">
+          <div id="dcm-step-readout" style="font-size:0.72rem;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:0.2rem;">Step 1: longitude  R_z₁(θ)</div>
+          <span id="dcm-ang-readout" style="font-size:1.3rem;font-weight:700;font-family:monospace;color:#44FFFF;">θ = 0.0°</span>
+        </div>`);
+    },
+    exit() { STATE.suppressEarthUpdate = false; },
+  },
+
+  // ── 20: OX₂Y₂Z₂ → OX″Y″Z″ — Velocity-Referenced ──────────────────────
+  {
+    title: 'OX₂Y₂Z₂ → OX″Y″Z″: Velocity-Referenced',
+    html: '',
+    camera: { pos: [3.5, 2.5, 5.5], target: [1.17, 0.72, 0.72], dur: 1.0 },
+    enter() {
+      clearSlideObjects();
+      const gen = STATE.slideGen;
+      STATE.suppressEarthUpdate = false;
+      const s = getSpacecraftState(0.72);
+
+      setFrameVisibility({});
+
+      const L   = 0.65;
+      const pos = s.pos.clone();
+
+      const startX = s.R_hat.clone();
+      const startY = s.S_hat.clone();
+      const startZ = s.T_hat.clone();
+
+      const x_v     = s.vel.clone().normalize();
+      const z_v     = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
+      const y_v     = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
+      const psiRad   = Math.atan2(x_v.dot(s.T_hat), x_v.dot(s.S_hat));
+      const gammaRad = Math.asin(Math.max(-1, Math.min(1, x_v.dot(s.R_hat))));
+      const psiDeg   = (psiRad   * 180 / Math.PI).toFixed(1);
+      const gammaDeg = (gammaRad * 180 / Math.PI).toFixed(1);
+
+      const qPsi = new THREE.Quaternion().setFromAxisAngle(s.R_hat, psiRad);
+      const midX = s.R_hat.clone();
+      const midY = s.S_hat.clone().applyQuaternion(qPsi);
+      const midZ = s.T_hat.clone().applyQuaternion(qPsi);
+
+      const endX = x_v.clone();
+      const endY = y_v.clone();
+      const endZ = midZ.clone();
+
+      const ghostG = new THREE.Group();
+      ghostG.add(new THREE.ArrowHelper(startX, pos, L * 0.88, 0x330033, 0.055, 0.032));
+      ghostG.add(new THREE.ArrowHelper(startY, pos, L * 0.88, 0x220022, 0.055, 0.032));
+      ghostG.add(new THREE.ArrowHelper(startZ, pos, L * 0.88, 0x220022, 0.055, 0.032));
+      addSlideObj(ghostG);
+      const glbl = new THREE.Group();
+      glbl.add(makeAxisLabel('x₂', pos.clone().addScaledVector(startX, L*0.88+0.07), 0x553355));
+      glbl.add(makeAxisLabel('y₂', pos.clone().addScaledVector(startY, L*0.88+0.07), 0x442244));
+      glbl.add(makeAxisLabel('z₂', pos.clone().addScaledVector(startZ, L*0.88+0.07), 0x442244));
+      addSlideObj(glbl);
+
+      const aX = new THREE.ArrowHelper(startX.clone(), pos, L, COLORS.vrf.x, 0.075, 0.045);
+      const aY = new THREE.ArrowHelper(startY.clone(), pos, L, COLORS.vrf.y, 0.075, 0.045);
+      const aZ = new THREE.ArrowHelper(startZ.clone(), pos, L, COLORS.vrf.z, 0.075, 0.045);
+      const animG = new THREE.Group();
+      animG.add(aX, aY, aZ);
+      addSlideObj(animG);
+
+      const vlbl = new THREE.Group();
+      vlbl.add(makeAxisLabel('x̂ᵥ', pos.clone().addScaledVector(endX, L + 0.09), COLORS.vrf.x));
+      vlbl.add(makeAxisLabel('ŷᵥ',  pos.clone().addScaledVector(endY, L + 0.09), COLORS.vrf.y));
+      vlbl.add(makeAxisLabel('ẑᵥ',  pos.clone().addScaledVector(endZ, L + 0.09), COLORS.vrf.z));
+      addSlideObj(vlbl);
+
+      const stepEl = () => document.getElementById('dcm-vrf-step');
+      const angEl  = () => document.getElementById('dcm-vrf-ang');
+
+      const p1 = { t: 0 };
+      gsap.to(p1, {
+        t: 1, duration: 1.8, delay: 0.3, ease: 'power2.inOut',
+        onUpdate() {
+          if (STATE.slideGen !== gen) { this.kill(); return; }
+          aX.setDirection(new THREE.Vector3().lerpVectors(startX, midX, p1.t).normalize());
+          aY.setDirection(new THREE.Vector3().lerpVectors(startY, midY, p1.t).normalize());
+          aZ.setDirection(new THREE.Vector3().lerpVectors(startZ, midZ, p1.t).normalize());
+          const d = (p1.t * parseFloat(psiDeg)).toFixed(1);
+          if (angEl()) angEl().textContent = `ψ = ${d}°`;
+        },
+        onComplete() {
+          if (STATE.slideGen !== gen) return;
+          if (stepEl()) stepEl().textContent = 'Step 2: flight-path  R_z′(−γ)';
+          if (angEl())  angEl().textContent  = 'γ = 0.0°';
+          const p2 = { t: 0 };
+          gsap.to(p2, {
+            t: 1, duration: 1.8, ease: 'power2.inOut',
+            onUpdate() {
+              if (STATE.slideGen !== gen) { this.kill(); return; }
+              aX.setDirection(new THREE.Vector3().lerpVectors(midX, endX, p2.t).normalize());
+              aY.setDirection(new THREE.Vector3().lerpVectors(midY, endY, p2.t).normalize());
+              aZ.setDirection(new THREE.Vector3().lerpVectors(midZ, endZ, p2.t).normalize());
+              const d = (p2.t * parseFloat(gammaDeg)).toFixed(1);
+              if (angEl()) angEl().textContent = `γ = ${d}°`;
+            },
+          });
+        },
+      });
+      const cleanup = () => { if (STATE.slideGen !== gen) gsap.ticker.remove(cleanup); };
+      gsap.ticker.add(cleanup);
+
+      setSlidePanel(`
+        <h3>OX₂Y₂Z₂ &rarr; OX″Y″Z″ &mdash; Velocity-Referenced</h3>
+        <p>Dim purple = RST reference. Bright axes rotate in two steps: heading
+        \\(\\textcolor{#FF44CC}{\\psi}\\) about x₂, then flight-path
+        \\(\\textcolor{#FFEE77}{\\gamma}\\) about the new z′.</p>
+        <div class="eq-block">
+          <div class="eq-label">Combined DCM</div>
+          \\[[\\hat{e}''] = R_{z'}(-\\textcolor{#FFEE77}{\\gamma})\\,R_{x_2}(\\textcolor{#FF44CC}{\\psi})\\,[\\hat{e}_2]\\]
+          \\[= \\begin{bmatrix}
+            \\cos\\textcolor{#FFEE77}{\\gamma} &
+            {-\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}} &
+            {-\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}} \\\\
+            \\sin\\textcolor{#FFEE77}{\\gamma} &
+            \\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} &
+            \\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} \\\\
+            0 & {-\\sin\\textcolor{#FF44CC}{\\psi}} & \\cos\\textcolor{#FF44CC}{\\psi}
+          \\end{bmatrix}\\]
+        </div>
+        <div style="background:#07121f;border:1px solid #1a4a6a;border-radius:8px;padding:0.5rem 1rem;margin-top:0.6rem;">
+          <div id="dcm-vrf-step" style="font-size:0.72rem;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:0.2rem;">Step 1: heading  R_x₂(ψ)</div>
+          <span id="dcm-vrf-ang" style="font-size:1.3rem;font-weight:700;font-family:monospace;color:#FF44CC;">ψ = 0.0°</span>
+        </div>
+        <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.5rem;">
+          ê<sub>y″</sub> corresponds to x̂<sub>v</sub> in this presentation.</p>`);
+    },
+    exit() {},
+  },
+
+  // ── 21: Complete Transformation Chain ──────────────────────────────────
+  {
+    title: 'Complete Transformation Chain',
+    html: '',
+    camera: { pos: [7, 5, 10], target: [0.7, 0.43, 0.43], dur: 1.0 },
+    enter() {
+      clearSlideObjects();
+      STATE.suppressEarthUpdate = false;
+      const s = getSpacecraftState(0.72);
+
+      const vrfGroup = STATE.persistent.vrfGroup;
+      const arrows   = vrfGroup ? vrfGroup.children.filter(c => c.isArrowHelper) : [];
+      const x_v = s.vel.clone().normalize();
+      const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
+      const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
+      if (arrows[0]) arrows[0].setDirection(x_v);
+      if (arrows[1]) arrows[1].setDirection(y_v);
+      if (arrows[2]) arrows[2].setDirection(z_v);
+
+      setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true });
+      animateGroupIn(STATE.persistent.eciGroup,  0.0);
+      animateGroupIn(STATE.persistent.ecefGroup, 0.3);
+      animateGroupIn(STATE.persistent.rstGroup,  0.6);
+      animateGroupIn(STATE.persistent.vrfGroup,  0.9);
+
+      setSlidePanel(`
+        <h3>Complete Transformation Chain</h3>
+        <div class="eq-block">
+          <div class="eq-label">Full DCM chain</div>
+          \\[[\\hat{e}''] =
+            \\underbrace{C_{OX_2\\to OX''}}_{\\textcolor{#44FF44}{\\text{attitude}}}\;
+            \\underbrace{C_{OX_1\\to OX_2}}_{\\textcolor{#CC44FF}{\\text{position}}}\;
+            \\underbrace{C_{OXYZ\\to OX_1}}_{\\textcolor{#FF8800}{\\text{Earth spin}}}\;[\\hat{e}]\\]
+        </div>
+        <div style="display:flex;gap:0.35rem;align-items:center;flex-wrap:wrap;font-size:0.78rem;margin:0.8rem 0;">
+          <span class="chip chip-eci">OXYZ</span>
+          <span style="color:#FF8800;font-size:0.72rem">&rarr;R_z&rarr;</span>
+          <span class="chip chip-ecef">OX₁Y₁Z₁</span>
+          <span style="color:#CC44FF;font-size:0.72rem">&rarr;R_yR_z&rarr;</span>
+          <span class="chip chip-rst">OX₂Y₂Z₂</span>
+          <span style="color:#44FF44;font-size:0.72rem">&rarr;R_zR_x&rarr;</span>
+          <span class="chip chip-vrf">OX″Y″Z″</span>
+        </div>
+        <p style="font-size:0.82rem;color:#6a90b0;">Each frame cascades in as its DCM is applied.
+        To express OX″Y″Z″ forces in OXYZ, transpose each matrix and apply in reverse order.</p>
+        <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.5rem;">
+          <strong style="color:#8ab8d8;">C⁻¹ = Cᵀ</strong> — every DCM is orthonormal.</p>`);
+    },
+    exit() {},
+  },
+
+  // ── 32: Forces in the Inertial Frame ───────────────────────────────────
   {
     title: 'Forces in the Inertial Frame',
     html: `
@@ -2365,404 +2299,423 @@ const SLIDES = [
       setFrameVisibility({});
       _forceFrameArrows = [];
     },
-    substeps: [
-      // ── substep 0: Gravity — natural frame ───────────────────────────
-      {
-        html: '',
-        enter3D() {
-          clearSlideObjects();
-          const s = getSpacecraftState(0.72);
+  },
 
-          setGroupVisible(STATE.persistent.eciGroup, false);
-          setGroupVisible(STATE.persistent.vrfGroup, false);
-          setGroupVisible(STATE.persistent.rstGroup, true);
-          animateGroupIn(STATE.persistent.rstGroup, 0.1);
-          if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
-
-          const gArr = STATE.persistent.gravArrow;
-          if (gArr) {
-            gArr.scale.set(1, 1, 1);
-            gArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-          }
-          setForceVisibility({ grav: true });
-          restoreAllArrowMaterials();
-          highlightArrow(STATE.persistent.gravArrow, COLORS.grav);
-
-          setSlidePanel(`
-            <h3>Gravity &mdash; in <span class="chip chip-rst">RST</span></h3>
-            <p>Gravity acts purely along &minus;R&#x302; (nadir, towards Earth&apos;s centre).
-            In RST it has one non-zero component:</p>
-            <div class="eq-block">
-              <div class="eq-label">Gravity in RST frame</div>
-              \\[\\vec{F}_g = \\begin{bmatrix}\\textcolor{#6699FF}{-\\mu m/r^2}\\\\0\\\\0\\end{bmatrix}_{RST}\\]
-            </div>
-            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> to decompose into ECI.</p>`);
-        },
-      },
-      // ── substep 1: Gravity — ECI breakdown ───────────────────────────
-      {
-        html: '',
-        enter3D() {
-          const gen = STATE.slideGen;
-          const s   = getSpacecraftState(0.72);
-          const gDir = s.R_hat.clone().negate();
-
-          setGroupVisible(STATE.persistent.rstGroup, false);
-          setGroupVisible(STATE.persistent.eciGroup, true);
-          animateGroupIn(STATE.persistent.eciGroup, 0.0);
-          // Force arrow stays visible at scale 1 — no re-animation
-
-          setSlidePanel(`
-            <h3>Gravity &mdash; in <span class="chip chip-eci">ECI</span></h3>
-            <div class="eq-block">
-              <div class="eq-label">Rotation chain</div>
-              \\[\\vec{F}_g = C_{E\\leftarrow R}\\begin{bmatrix}\\textcolor{#6699FF}{-\\mu m/r^2}\\\\0\\\\0\\end{bmatrix}_{RST}
-                = \\textcolor{#6699FF}{-\\frac{\\mu m}{r^2}}\\hat{R}\\]
-            </div>
-            ${eciEqBlock(`\\vec{F}_g = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#6699FF}{-\\mu m/r^2}\\\\0\\\\0\\end{bmatrix}_{RST} = \\textcolor{#6699FF}{-\\frac{\\mu m}{r^3}}\\begin{bmatrix}X\\\\Y\\\\Z\\end{bmatrix}_{ECI}`)}
-            <p style="font-size:0.8rem;color:#6a8aaa;">
-              <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
-              <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
-              <span style="color:#3399FF">&#9632;</span> Ẑ
-            </p>
-            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> for Drag.</p>`);
-
-          buildECIChain(gDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
-        },
-      },
-      // ── substep 2: Drag — natural frame ───────────────────────────────
-      {
-        html: '',
-        enter3D() {
-          clearSlideObjects();
-          const s    = getSpacecraftState(0.72);
-
-          setGroupVisible(STATE.persistent.eciGroup, false);
-          setGroupVisible(STATE.persistent.rstGroup, false);
-          setGroupVisible(STATE.persistent.vrfGroup, true);
-          animateGroupIn(STATE.persistent.vrfGroup, 0.1);
-          if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
-
-          const dArr = STATE.persistent.dragArrow;
-          if (dArr) {
-            dArr.scale.set(1, 1, 1);
-            dArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-          }
-          setForceVisibility({ drag: true });
-          restoreAllArrowMaterials();
-          highlightArrow(STATE.persistent.dragArrow, COLORS.drag);
-
-          setSlidePanel(`
-            <h3>Drag &mdash; in <span class="chip chip-vrf">VRF</span></h3>
-            <p>Drag opposes the velocity vector, pointing along &minus;x&#x302;<sub>v</sub>
-            (first VRF axis). In VRF it is diagonal:</p>
-            <div class="eq-block">
-              <div class="eq-label">Drag in VRF frame</div>
-              \\[\\vec{F}_D = \\begin{bmatrix}\\textcolor{#FF9944}{-D}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
-            </div>
-            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> to decompose into ECI.</p>`);
-        },
-      },
-      // ── substep 3: Drag — ECI breakdown ──────────────────────────────
-      {
-        html: '',
-        enter3D() {
-          const gen  = STATE.slideGen;
-          const s    = getSpacecraftState(0.72);
-          const dDir = s.vel.clone().normalize().negate();
-
-          setGroupVisible(STATE.persistent.vrfGroup, false);
-          setGroupVisible(STATE.persistent.eciGroup, true);
-          animateGroupIn(STATE.persistent.eciGroup, 0.0);
-
-          setSlidePanel(`
-            <h3>Drag &mdash; in <span class="chip chip-eci">ECI</span></h3>
-            <div class="eq-block">
-              <div class="eq-label">Full rotation chain</div>
-              \\[\\vec{F}_D = C_{E\\leftarrow R}\\,
-              \\underbrace{\\begin{bmatrix}
-                \\sin\\textcolor{#FFEE77}{\\gamma} & \\cos\\textcolor{#FFEE77}{\\gamma} & 0 \\\\
-                \\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} & -\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} & \\sin\\textcolor{#FF44CC}{\\psi} \\\\
-                \\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} & -\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} & -\\cos\\textcolor{#FF44CC}{\\psi}
-              \\end{bmatrix}}_{C_{R\\leftarrow V}}
-              \\begin{bmatrix}\\textcolor{#FF9944}{-D}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
-            </div>
-            ${eciEqBlock(`\\vec{F}_D = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#FF9944}{-D}\\sin\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}\\\\\\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}\\end{bmatrix}_{RST}`)}
-            <p style="font-size:0.8rem;color:#6a8aaa;">
-              <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
-              <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
-              <span style="color:#3399FF">&#9632;</span> Ẑ
-            </p>
-            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> for Lift.</p>`);
-
-          buildECIChain(dDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
-        },
-      },
-      // ── substep 4: Lift — natural frame ───────────────────────────────
-      {
-        html: '',
-        enter3D() {
-          clearSlideObjects();
-          const s    = getSpacecraftState(0.72);
-
-          setGroupVisible(STATE.persistent.eciGroup, false);
-          setGroupVisible(STATE.persistent.rstGroup, false);
-          setGroupVisible(STATE.persistent.vrfGroup, true);
-          animateGroupIn(STATE.persistent.vrfGroup, 0.1);
-          if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
-
-          const lArr = STATE.persistent.liftArrow;
-          if (lArr) {
-            lArr.scale.set(1, 1, 1);
-            lArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-          }
-          setForceVisibility({ lift: true });
-          restoreAllArrowMaterials();
-          highlightArrow(STATE.persistent.liftArrow, COLORS.lift);
-
-          setSlidePanel(`
-            <h3>Lift &mdash; in <span class="chip chip-vrf">VRF</span></h3>
-            <p>Lift acts perpendicular to velocity. With bank angle \\(\\theta\\)
-            it spans VRF &#x177;<sub>v</sub> and &#x17C;<sub>v</sub>:</p>
-            <div class="eq-block">
-              <div class="eq-label">Lift in VRF frame</div>
-              \\[\\vec{F}_L = \\begin{bmatrix}0\\\\\\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\\\\\textcolor{#FF6699}{-L}\\sin\\textcolor{#44FFFF}{\\theta}\\end{bmatrix}_{VRF}\\]
-            </div>
-            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> to decompose into ECI.</p>`);
-        },
-      },
-      // ── substep 5: Lift — ECI breakdown ──────────────────────────────
-      {
-        html: '',
-        enter3D() {
-          const gen     = STATE.slideGen;
-          const s       = getSpacecraftState(0.72);
-          const vHat    = s.vel.clone().normalize();
-          const liftDir = s.R_hat.clone().addScaledVector(vHat, -s.R_hat.dot(vHat)).normalize();
-
-          setGroupVisible(STATE.persistent.vrfGroup, false);
-          setGroupVisible(STATE.persistent.eciGroup, true);
-          animateGroupIn(STATE.persistent.eciGroup, 0.0);
-
-          setSlidePanel(`
-            <h3>Lift &mdash; in <span class="chip chip-eci">ECI</span></h3>
-            <div class="eq-block">
-              <div class="eq-label">Full rotation chain</div>
-              \\[\\vec{F}_L = C_{E\\leftarrow R}\\,
-              \\underbrace{\\begin{bmatrix}
-                \\sin\\textcolor{#FFEE77}{\\gamma} & \\cos\\textcolor{#FFEE77}{\\gamma} & 0 \\\\
-                \\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} & -\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} & \\sin\\textcolor{#FF44CC}{\\psi} \\\\
-                \\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} & -\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} & -\\cos\\textcolor{#FF44CC}{\\psi}
-              \\end{bmatrix}}_{C_{R\\leftarrow V}}
-              \\begin{bmatrix}0\\\\\\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\\\\\textcolor{#FF6699}{-L}\\sin\\textcolor{#44FFFF}{\\theta}\\end{bmatrix}_{VRF}\\]
-            </div>
-            ${eciEqBlock(`\\vec{F}_L = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#FF6699}{-L}\\cos\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF6699}{L}(\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}+\\sin\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FF44CC}{\\psi})\\\\\\textcolor{#FF6699}{L}(\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}-\\sin\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FF44CC}{\\psi})\\end{bmatrix}_{RST}`)}
-            <p style="font-size:0.8rem;color:#6a8aaa;">
-              <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
-              <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
-              <span style="color:#3399FF">&#9632;</span> Ẑ
-            </p>
-            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> for Thrust.</p>`);
-
-          buildECIChain(liftDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
-        },
-      },
-      // ── substep 6: Thrust — natural frame ─────────────────────────────
-      {
-        html: '',
-        enter3D() {
-          clearSlideObjects();
-          const s = getSpacecraftState(0.72);
-
-          setGroupVisible(STATE.persistent.eciGroup, false);
-          setGroupVisible(STATE.persistent.rstGroup, false);
-          setGroupVisible(STATE.persistent.vrfGroup, true);
-          animateGroupIn(STATE.persistent.vrfGroup, 0.1);
-          if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
-
-          const tArr = STATE.persistent.thrustArrow;
-          if (tArr) {
-            tArr.scale.set(1, 1, 1);
-            tArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-          }
-          setForceVisibility({ thrust: true });
-          restoreAllArrowMaterials();
-          highlightArrow(STATE.persistent.thrustArrow, COLORS.thrust);
-
-          setSlidePanel(`
-            <h3>Thrust &mdash; in <span class="chip chip-vrf">VRF</span></h3>
-            <p>For zero thrust-pointing offset (\\(\\alpha_T = \\beta_T = 0\\)) thrust is
-            aligned with the velocity vector, along +x&#x302;<sub>v</sub>:</p>
-            <div class="eq-block">
-              <div class="eq-label">Thrust in VRF frame</div>
-              \\[\\vec{F}_T = \\begin{bmatrix}\\textcolor{#FF4444}{T}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
-            </div>
-            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> to decompose into ECI.</p>`);
-        },
-      },
-      // ── substep 7: Thrust — ECI breakdown ────────────────────────────
-      {
-        html: '',
-        enter3D() {
-          const gen  = STATE.slideGen;
-          const s    = getSpacecraftState(0.72);
-          const tDir = s.vel.clone().normalize();
-
-          setGroupVisible(STATE.persistent.vrfGroup, false);
-          setGroupVisible(STATE.persistent.eciGroup, true);
-          animateGroupIn(STATE.persistent.eciGroup, 0.0);
-
-          setSlidePanel(`
-            <h3>Thrust &mdash; in <span class="chip chip-eci">ECI</span></h3>
-            <div class="eq-block">
-              <div class="eq-label">Full rotation chain</div>
-              \\[\\vec{F}_T = C_{E\\leftarrow R}\\,
-              \\underbrace{\\begin{bmatrix}
-                \\sin\\textcolor{#FFEE77}{\\gamma} & \\cos\\textcolor{#FFEE77}{\\gamma} & 0 \\\\
-                \\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} & -\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} & \\sin\\textcolor{#FF44CC}{\\psi} \\\\
-                \\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} & -\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} & -\\cos\\textcolor{#FF44CC}{\\psi}
-              \\end{bmatrix}}_{C_{R\\leftarrow V}}
-              \\begin{bmatrix}\\textcolor{#FF4444}{T}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
-            </div>
-            ${eciEqBlock(`\\vec{F}_T = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#FF4444}{T}\\sin\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF4444}{T}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}\\\\\\textcolor{#FF4444}{T}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}\\end{bmatrix}_{RST}`)}
-            <p style="font-size:0.8rem;color:#6a8aaa;">
-              <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
-              <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
-              <span style="color:#3399FF">&#9632;</span> Ẑ
-            </p>
-            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> to assemble Newton&apos;s law.</p>`);
-
-          buildECIChain(tDir.clone().multiplyScalar(0.48), s.pos, gen, 0.45);
-        },
-      },
-      // ── substep 8: Newton's law ───────────────────────────────────────
-      {
-        html: '',
-        enter3D() {
-          clearSlideObjects();
-          const gen = STATE.slideGen;
-
-          setFrameVisibility({ eci: true });
-
-          const forces = [
-            STATE.persistent.gravArrow, STATE.persistent.dragArrow,
-            STATE.persistent.liftArrow, STATE.persistent.thrustArrow,
-          ];
-          forces.forEach(a => {
-            if (!a) return;
-            a.scale.set(1, 1, 1);
-            a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-          });
-          setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
-          restoreAllArrowMaterials();
-          highlightArrow(STATE.persistent.gravArrow,   COLORS.grav);
-          highlightArrow(STATE.persistent.dragArrow,   COLORS.drag);
-          highlightArrow(STATE.persistent.liftArrow,   COLORS.lift);
-          highlightArrow(STATE.persistent.thrustArrow, COLORS.thrust);
-
-          setSlidePanel(`
-            <h3>Newton&apos;s Law &mdash; assembled in <span class="chip chip-eci">ECI</span></h3>
-            <p>All four forces share the same coordinate system and can be summed directly:</p>
-            <div class="eq-block">
-              \\[m\\ddot{\\vec{r}}_I = \\vec{F}_g + \\vec{F}_{aero} + \\vec{F}_T\\]
-            </div>
-            <p>The cream arrow <strong>F<sub>net</sub></strong> is their vector sum &mdash;
-            ready to integrate for \\(r(t),\\,v(t),\\,\\gamma(t),\\,\\psi(t)\\).</p>
-            <p style="font-size:0.81rem;color:#3a6a9a;">Press <strong>Next&nbsp;&rarr;</strong> to decompose F<sub>net</sub> into ECI components.</p>`);
-
-          const s        = getSpacecraftState(0.72);
-          const v_hat    = s.vel.clone().normalize();
-          const lift_hat = s.R_hat.clone().addScaledVector(v_hat, -s.R_hat.dot(v_hat)).normalize();
-          const net = new THREE.Vector3()
-            .addScaledVector(s.R_hat.clone().negate(), 0.44)
-            .addScaledVector(v_hat.clone().negate(),   0.20)
-            .addScaledVector(lift_hat,                 0.20)
-            .normalize();
-          const netArrow = makeArrow(net, s.pos, 0.68, 0xFFFFCC, 'F_net', 0.22, 0.10);
-          netArrow.scale.set(0, 0, 0);
-          netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
-          addSlideObj(netArrow);
-          gsap.to(netArrow.scale, {
-            x: 1, y: 1, z: 1, duration: 0.6, delay: 0.4, ease: 'back.out(1.4)',
-            onComplete() {
-              if (STATE.slideGen !== gen) return;
-              netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-            }
-          });
-        },
-      },
-      // ── substep 9: F_net — ECI breakdown ─────────────────────────────
-      {
-        html: '',
-        enter3D() {
-          clearSlideObjects();
-          const gen      = STATE.slideGen;
-          const s        = getSpacecraftState(0.72);
-          const v_hat    = s.vel.clone().normalize();
-          const lift_hat = s.R_hat.clone().addScaledVector(v_hat, -s.R_hat.dot(v_hat)).normalize();
-
-          const netDir = new THREE.Vector3()
-            .addScaledVector(s.R_hat.clone().negate(), 0.44)
-            .addScaledVector(v_hat.clone().negate(),   0.20)
-            .addScaledVector(lift_hat,                 0.20)
-            .normalize();
-          const netLen = 0.68;
-
-          // Isolated: ECI frame + F_net only
-          setFrameVisibility({ eci: true });
-          setForceVisibility({});
-
-          const netArrow = makeArrow(netDir, s.pos, netLen, 0xFFFFCC, 'F_net', 0.22, 0.10);
-          netArrow.scale.set(1, 1, 1);
-          netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
-          addSlideObj(netArrow);
-
-          setSlidePanel(`
-            <h3>F<sub>net</sub> &mdash; ECI components</h3>
-            <p>The net force is the vector sum of all four forces. Its three ECI
-            components drive acceleration along X&#x302;, &#x176;, &#x17C;:</p>
-            <div class="eq-block">
-              \\[\\vec{F}_{net} = F_{X}\\hat{X} + F_{Y}\\hat{Y} + F_{Z}\\hat{Z}\\]
-            </div>
-            ${eciEqBlock(`\\vec{F}_{net} = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#6699FF}{-\\tfrac{\\mu m}{r^2}}+(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\sin\\textcolor{#FFEE77}{\\gamma} - \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FFEE77}{\\gamma}\\\\(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} + \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} + \\textcolor{#FF6699}{L}\\sin\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FF44CC}{\\psi}\\\\(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} + \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} - \\textcolor{#FF6699}{L}\\sin\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FF44CC}{\\psi}\\end{bmatrix}_{RST}`)}
-            <p style="font-size:0.8rem;color:#6a8aaa;">
-              <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
-              <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
-              <span style="color:#3399FF">&#9632;</span> Ẑ &ensp; (unit direction)
-            </p>`);
-
-          buildECIChain(netDir.clone().multiplyScalar(netLen), s.pos, gen, 0.35);
-        },
-      },
-    ],
-    exit() {
+  // ── 22: Gravity — Natural Frame ────────────────────────────────────────
+  {
+    title: 'Gravity — Natural Frame (RST)',
+    html: '',
+    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+    enter() {
+      clearSlideObjects();
+      const s = getSpacecraftState(0.72);
+      setGroupVisible(STATE.persistent.eciGroup, false);
+      setGroupVisible(STATE.persistent.vrfGroup, false);
+      setGroupVisible(STATE.persistent.rstGroup, true);
+      animateGroupIn(STATE.persistent.rstGroup, 0.1);
+      if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
+      const gArr = STATE.persistent.gravArrow;
+      if (gArr) {
+        gArr.scale.set(1, 1, 1);
+        gArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+      }
+      setForceVisibility({ grav: true });
+      restoreAllArrowMaterials();
+      highlightArrow(STATE.persistent.gravArrow, COLORS.grav);
+      setSlidePanel(`
+        <h3>Gravity &mdash; in <span class="chip chip-rst">RST</span></h3>
+        <p>Gravity acts purely along &minus;R&#x302; (nadir, towards Earth&apos;s centre).
+        In RST it has one non-zero component:</p>
+        <div class="eq-block">
+          <div class="eq-label">Gravity in RST frame</div>
+          \\[\\vec{F}_g = \\begin{bmatrix}\\textcolor{#6699FF}{-\\mu m/r^2}\\\\0\\\\0\\end{bmatrix}_{RST}\\]
+        </div>`);
+    },
+        exit() {
       setForceVisibility({});
-      _forceFrameArrows = [];
       restoreAllArrowMaterials();
     },
   },
 
-  // ── 16: Complete 3-DOF EOM ─────────────────────────────────────────────
+  // ── 23: Gravity — ECI Decomposition ────────────────────────────────────
+  {
+    title: 'Gravity — ECI Decomposition',
+    html: '',
+    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+    enter() {
+      const gen = STATE.slideGen;
+      const s   = getSpacecraftState(0.72);
+      const gDir = s.R_hat.clone().negate();
+      setGroupVisible(STATE.persistent.rstGroup, false);
+      setGroupVisible(STATE.persistent.eciGroup, true);
+      animateGroupIn(STATE.persistent.eciGroup, 0.0);
+      setSlidePanel(`
+        <h3>Gravity &mdash; in <span class="chip chip-eci">ECI</span></h3>
+        <div class="eq-block">
+          <div class="eq-label">Rotation chain: RST → ECI</div>
+          \\[\\vec{F}_g = C_{E\\leftarrow R}\\begin{bmatrix}\\textcolor{#6699FF}{-\\mu m/r^2}\\\\0\\\\0\\end{bmatrix}_{RST}
+            = \\textcolor{#6699FF}{-\\frac{\\mu m}{r^2}}\\hat{R}\\]
+        </div>
+        ${eciEqBlock(`\\vec{F}_g = \\textcolor{#6699FF}{-\\frac{\\mu m}{r^3}}\\begin{bmatrix}X\\\\Y\\\\Z\\end{bmatrix}_{ECI}`)}
+        <p style="font-size:0.8rem;color:#6a8aaa;">
+          <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
+          <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
+          <span style="color:#3399FF">&#9632;</span> Ẑ
+        </p>`);
+      buildECIChain(gDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
+    },
+        exit() {
+      setForceVisibility({});
+      restoreAllArrowMaterials();
+    },
+  },
+
+  // ── 24: Drag — Natural Frame ────────────────────────────────────────────
+  {
+    title: 'Drag — Natural Frame (VRF)',
+    html: '',
+    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+    enter() {
+      clearSlideObjects();
+      const s = getSpacecraftState(0.72);
+      setGroupVisible(STATE.persistent.eciGroup, false);
+      setGroupVisible(STATE.persistent.rstGroup, false);
+      setGroupVisible(STATE.persistent.vrfGroup, true);
+      animateGroupIn(STATE.persistent.vrfGroup, 0.1);
+      if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
+      const dArr = STATE.persistent.dragArrow;
+      if (dArr) {
+        dArr.scale.set(1, 1, 1);
+        dArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+      }
+      setForceVisibility({ drag: true });
+      restoreAllArrowMaterials();
+      highlightArrow(STATE.persistent.dragArrow, COLORS.drag);
+      setSlidePanel(`
+        <h3>Drag &mdash; in <span class="chip chip-vrf">VRF</span></h3>
+        <p>Drag opposes the velocity vector, pointing along &minus;x&#x302;<sub>v</sub>
+        (first VRF axis). In VRF it is diagonal:</p>
+        <div class="eq-block">
+          <div class="eq-label">Drag in VRF frame</div>
+          \\[\\vec{F}_D = \\begin{bmatrix}\\textcolor{#FF9944}{-D}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
+        </div>`);
+    },
+        exit() {
+      setForceVisibility({});
+      restoreAllArrowMaterials();
+    },
+  },
+
+  // ── 25: Drag — ECI Decomposition ───────────────────────────────────────
+  {
+    title: 'Drag — ECI Decomposition',
+    html: '',
+    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+    enter() {
+      const gen  = STATE.slideGen;
+      const s    = getSpacecraftState(0.72);
+      const dDir = s.vel.clone().normalize().negate();
+      setGroupVisible(STATE.persistent.vrfGroup, false);
+      setGroupVisible(STATE.persistent.eciGroup, true);
+      animateGroupIn(STATE.persistent.eciGroup, 0.0);
+      setSlidePanel(`
+        <h3>Drag &mdash; in <span class="chip chip-eci">ECI</span></h3>
+        <div class="eq-block">
+          <div class="eq-label">Full DCM chain: VRF → RST → ECI</div>
+          \\[\\vec{F}_D = C_{E\\leftarrow R}\\,
+          \\underbrace{\\begin{bmatrix}
+            \\sin\\textcolor{#FFEE77}{\\gamma} & \\cos\\textcolor{#FFEE77}{\\gamma} & 0 \\\\
+            \\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} & -\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} & \\sin\\textcolor{#FF44CC}{\\psi} \\\\
+            \\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} & -\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} & -\\cos\\textcolor{#FF44CC}{\\psi}
+          \\end{bmatrix}}_{C_{R\\leftarrow V}}
+          \\begin{bmatrix}\\textcolor{#FF9944}{-D}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
+        </div>
+        ${eciEqBlock(`\\vec{F}_D = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#FF9944}{-D}\\sin\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}\\\\\\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}\\end{bmatrix}_{ECI}`)}
+        <p style="font-size:0.8rem;color:#6a8aaa;">
+          <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
+          <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
+          <span style="color:#3399FF">&#9632;</span> Ẑ
+        </p>`);
+      buildECIChain(dDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
+    },
+        exit() {
+      setForceVisibility({});
+      restoreAllArrowMaterials();
+    },
+  },
+
+  // ── 26: Lift — Natural Frame ────────────────────────────────────────────
+  {
+    title: 'Lift — Natural Frame (VRF)',
+    html: '',
+    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+    enter() {
+      clearSlideObjects();
+      const s = getSpacecraftState(0.72);
+      setGroupVisible(STATE.persistent.eciGroup, false);
+      setGroupVisible(STATE.persistent.rstGroup, false);
+      setGroupVisible(STATE.persistent.vrfGroup, true);
+      animateGroupIn(STATE.persistent.vrfGroup, 0.1);
+      if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
+      const lArr = STATE.persistent.liftArrow;
+      if (lArr) {
+        lArr.scale.set(1, 1, 1);
+        lArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+      }
+      setForceVisibility({ lift: true });
+      restoreAllArrowMaterials();
+      highlightArrow(STATE.persistent.liftArrow, COLORS.lift);
+      setSlidePanel(`
+        <h3>Lift &mdash; in <span class="chip chip-vrf">VRF</span></h3>
+        <p>Lift acts perpendicular to velocity. With bank angle \\(\\theta\\)
+        it spans VRF &#x177;<sub>v</sub> and &#x17C;<sub>v</sub>:</p>
+        <div class="eq-block">
+          <div class="eq-label">Lift in VRF frame</div>
+          \\[\\vec{F}_L = \\begin{bmatrix}0\\\\\\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\\\\\textcolor{#FF6699}{-L}\\sin\\textcolor{#44FFFF}{\\theta}\\end{bmatrix}_{VRF}\\]
+        </div>`);
+    },
+        exit() {
+      setForceVisibility({});
+      restoreAllArrowMaterials();
+    },
+  },
+
+  // ── 27: Lift — ECI Decomposition ───────────────────────────────────────
+  {
+    title: 'Lift — ECI Decomposition',
+    html: '',
+    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+    enter() {
+      const gen     = STATE.slideGen;
+      const s       = getSpacecraftState(0.72);
+      const vHat    = s.vel.clone().normalize();
+      const liftDir = s.R_hat.clone().addScaledVector(vHat, -s.R_hat.dot(vHat)).normalize();
+      setGroupVisible(STATE.persistent.vrfGroup, false);
+      setGroupVisible(STATE.persistent.eciGroup, true);
+      animateGroupIn(STATE.persistent.eciGroup, 0.0);
+      setSlidePanel(`
+        <h3>Lift &mdash; in <span class="chip chip-eci">ECI</span></h3>
+        <div class="eq-block">
+          <div class="eq-label">Full DCM chain: VRF → RST → ECI</div>
+          \\[\\vec{F}_L = C_{E\\leftarrow R}\\,
+          \\underbrace{\\begin{bmatrix}
+            \\sin\\textcolor{#FFEE77}{\\gamma} & \\cos\\textcolor{#FFEE77}{\\gamma} & 0 \\\\
+            \\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} & -\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} & \\sin\\textcolor{#FF44CC}{\\psi} \\\\
+            \\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} & -\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} & -\\cos\\textcolor{#FF44CC}{\\psi}
+          \\end{bmatrix}}_{C_{R\\leftarrow V}}
+          \\begin{bmatrix}0\\\\\\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\\\\\textcolor{#FF6699}{-L}\\sin\\textcolor{#44FFFF}{\\theta}\\end{bmatrix}_{VRF}\\]
+        </div>
+        ${eciEqBlock(`\\vec{F}_L = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#FF6699}{-L}\\cos\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF6699}{L}(\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}+\\sin\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FF44CC}{\\psi})\\\\\\textcolor{#FF6699}{L}(\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}-\\sin\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FF44CC}{\\psi})\\end{bmatrix}_{ECI}`)}
+        <p style="font-size:0.8rem;color:#6a8aaa;">
+          <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
+          <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
+          <span style="color:#3399FF">&#9632;</span> Ẑ
+        </p>`);
+      buildECIChain(liftDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
+    },
+        exit() {
+      setForceVisibility({});
+      restoreAllArrowMaterials();
+    },
+  },
+
+  // ── 28: Thrust — Natural Frame ──────────────────────────────────────────
+  {
+    title: 'Thrust — Natural Frame (VRF)',
+    html: '',
+    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+    enter() {
+      clearSlideObjects();
+      const s = getSpacecraftState(0.72);
+      setGroupVisible(STATE.persistent.eciGroup, false);
+      setGroupVisible(STATE.persistent.rstGroup, false);
+      setGroupVisible(STATE.persistent.vrfGroup, true);
+      animateGroupIn(STATE.persistent.vrfGroup, 0.1);
+      if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = true;
+      const tArr = STATE.persistent.thrustArrow;
+      if (tArr) {
+        tArr.scale.set(1, 1, 1);
+        tArr.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+      }
+      setForceVisibility({ thrust: true });
+      restoreAllArrowMaterials();
+      highlightArrow(STATE.persistent.thrustArrow, COLORS.thrust);
+      setSlidePanel(`
+        <h3>Thrust &mdash; in <span class="chip chip-vrf">VRF</span></h3>
+        <p>For zero thrust-pointing offset (\\(\\alpha_T = \\beta_T = 0\\)) thrust is
+        aligned with the velocity vector, along +x&#x302;<sub>v</sub>:</p>
+        <div class="eq-block">
+          <div class="eq-label">Thrust in VRF frame</div>
+          \\[\\vec{F}_T = \\begin{bmatrix}\\textcolor{#FF4444}{T}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
+        </div>`);
+    },
+        exit() {
+      setForceVisibility({});
+      restoreAllArrowMaterials();
+    },
+  },
+
+  // ── 29: Thrust — ECI Decomposition ─────────────────────────────────────
+  {
+    title: 'Thrust — ECI Decomposition',
+    html: '',
+    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+    enter() {
+      const gen  = STATE.slideGen;
+      const s    = getSpacecraftState(0.72);
+      const tDir = s.vel.clone().normalize();
+      setGroupVisible(STATE.persistent.vrfGroup, false);
+      setGroupVisible(STATE.persistent.eciGroup, true);
+      animateGroupIn(STATE.persistent.eciGroup, 0.0);
+      setSlidePanel(`
+        <h3>Thrust &mdash; in <span class="chip chip-eci">ECI</span></h3>
+        <div class="eq-block">
+          <div class="eq-label">Full DCM chain: VRF → RST → ECI</div>
+          \\[\\vec{F}_T = C_{E\\leftarrow R}\\,
+          \\underbrace{\\begin{bmatrix}
+            \\sin\\textcolor{#FFEE77}{\\gamma} & \\cos\\textcolor{#FFEE77}{\\gamma} & 0 \\\\
+            \\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} & -\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} & \\sin\\textcolor{#FF44CC}{\\psi} \\\\
+            \\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} & -\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} & -\\cos\\textcolor{#FF44CC}{\\psi}
+          \\end{bmatrix}}_{C_{R\\leftarrow V}}
+          \\begin{bmatrix}\\textcolor{#FF4444}{T}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
+        </div>
+        ${eciEqBlock(`\\vec{F}_T = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#FF4444}{T}\\sin\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF4444}{T}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}\\\\\\textcolor{#FF4444}{T}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}\\end{bmatrix}_{ECI}`)}
+        <p style="font-size:0.8rem;color:#6a8aaa;">
+          <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
+          <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
+          <span style="color:#3399FF">&#9632;</span> Ẑ
+        </p>`);
+      buildECIChain(tDir.clone().multiplyScalar(0.48), s.pos, gen, 0.45);
+    },
+        exit() {
+      setForceVisibility({});
+      restoreAllArrowMaterials();
+    },
+  },
+
+  // ── 30: Newton's Law — All Forces in ECI ───────────────────────────────
+  {
+    title: 'Newton\'s Law — All Forces in ECI',
+    html: '',
+    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+    enter() {
+      clearSlideObjects();
+      const gen = STATE.slideGen;
+      setFrameVisibility({ eci: true });
+      const forces = [STATE.persistent.gravArrow, STATE.persistent.dragArrow,
+                      STATE.persistent.liftArrow, STATE.persistent.thrustArrow];
+      forces.forEach(a => {
+        if (!a) return;
+        a.scale.set(1, 1, 1);
+        a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+      });
+      setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+      restoreAllArrowMaterials();
+      highlightArrow(STATE.persistent.gravArrow,   COLORS.grav);
+      highlightArrow(STATE.persistent.dragArrow,   COLORS.drag);
+      highlightArrow(STATE.persistent.liftArrow,   COLORS.lift);
+      highlightArrow(STATE.persistent.thrustArrow, COLORS.thrust);
+
+      setSlidePanel(`
+        <h3>Newton&apos;s Law &mdash; assembled in <span class="chip chip-eci">ECI</span></h3>
+        <p>All four forces share the same coordinate system and can be summed directly:</p>
+        <div class="eq-block">
+          \\[m\\ddot{\\vec{r}}_I = \\vec{F}_g + \\vec{F}_{aero} + \\vec{F}_T\\]
+        </div>
+        <p>The cream arrow <strong>F<sub>net</sub></strong> is their vector sum &mdash;
+        ready to integrate for \\(r(t),\\,v(t),\\,\\gamma(t),\\,\\psi(t)\\).</p>`);
+
+      const s        = getSpacecraftState(0.72);
+      const v_hat    = s.vel.clone().normalize();
+      const lift_hat = s.R_hat.clone().addScaledVector(v_hat, -s.R_hat.dot(v_hat)).normalize();
+      const net = new THREE.Vector3()
+        .addScaledVector(s.R_hat.clone().negate(), 0.44)
+        .addScaledVector(v_hat.clone().negate(),   0.20)
+        .addScaledVector(lift_hat,                 0.20)
+        .normalize();
+      const netArrow = makeArrow(net, s.pos, 0.68, 0xFFFFCC, 'F_net', 0.22, 0.10);
+      netArrow.scale.set(0, 0, 0);
+      netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = false; o.element.style.display = 'none'; } });
+      addSlideObj(netArrow);
+      gsap.to(netArrow.scale, {
+        x: 1, y: 1, z: 1, duration: 0.6, delay: 0.4, ease: 'back.out(1.4)',
+        onComplete() {
+          if (STATE.slideGen !== gen) return;
+          netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+        }
+      });
+    },
+        exit() {
+      setForceVisibility({});
+      restoreAllArrowMaterials();
+    },
+  },
+
+  // ── 31: F_net — ECI Components ──────────────────────────────────────────
+  {
+    title: 'F_net — ECI Components',
+    html: '',
+    camera: { pos: [2.2, 1.4, 3.2], target: [1.16, 0.72, 0.72], dur: 1.2 },
+    enter() {
+      clearSlideObjects();
+      const gen      = STATE.slideGen;
+      const s        = getSpacecraftState(0.72);
+      const v_hat    = s.vel.clone().normalize();
+      const lift_hat = s.R_hat.clone().addScaledVector(v_hat, -s.R_hat.dot(v_hat)).normalize();
+      const netDir = new THREE.Vector3()
+        .addScaledVector(s.R_hat.clone().negate(), 0.44)
+        .addScaledVector(v_hat.clone().negate(),   0.20)
+        .addScaledVector(lift_hat,                 0.20)
+        .normalize();
+      const netLen = 0.68;
+      setFrameVisibility({ eci: true });
+      setForceVisibility({});
+      const netArrow = makeArrow(netDir, s.pos, netLen, 0xFFFFCC, 'F_net', 0.22, 0.10);
+      netArrow.scale.set(1, 1, 1);
+      netArrow.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
+      addSlideObj(netArrow);
+      setSlidePanel(`
+        <h3>F<sub>net</sub> &mdash; ECI components</h3>
+        <p>The net force drives acceleration along X&#x302;, &#x176;, &#x17C;:</p>
+        <div class="eq-block">
+          \\[\\vec{F}_{net} = F_{X}\\hat{X} + F_{Y}\\hat{Y} + F_{Z}\\hat{Z}\\]
+        </div>
+        ${eciEqBlock(`\\vec{F}_{net} = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#6699FF}{-\\tfrac{\\mu m}{r^2}}+(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\sin\\textcolor{#FFEE77}{\\gamma} - \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FFEE77}{\\gamma}\\\\(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} + \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} + \\textcolor{#FF6699}{L}\\sin\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FF44CC}{\\psi}\\\\(\\textcolor{#FF4444}{T}\\!-\\!\\textcolor{#FF9944}{D})\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} + \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi} - \\textcolor{#FF6699}{L}\\sin\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FF44CC}{\\psi}\\end{bmatrix}_{ECI}`)}
+        <p style="font-size:0.8rem;color:#6a8aaa;">
+          <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
+          <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
+          <span style="color:#3399FF">&#9632;</span> Ẑ
+        </p>`);
+      buildECIChain(netDir.clone().multiplyScalar(netLen), s.pos, gen, 0.35);
+    },
+        exit() {
+      setForceVisibility({});
+      restoreAllArrowMaterials();
+    },
+  },
+
+  // ── 33: Complete 3-DOF EOM ─────────────────────────────────────────────
   {
     title: 'Complete 3-DOF Equations of Motion',
     html: `
-      <p>Assembling all forces and frames yields six coupled scalar ODEs — the
-      complete <strong>3-DOF point-mass</strong> trajectory model
-      (3 translational states, no attitude dynamics).</p>
-      <div class="eq-block">
-        <div class="eq-label">3 Kinematic equations</div>
-        \\[\\dot{r} = v\\sin\\gamma\\]
-        \\[\\dot{\\lambda} = \\frac{v\\cos\\gamma\\cos\\psi}{r\\cos\\phi}\\]
-        \\[\\dot{\\phi} = \\frac{v\\cos\\gamma\\sin\\psi}{r}\\]
+      <p style="font-size:0.82rem;margin-bottom:0.5rem;">Six coupled scalar ODEs —
+      complete <strong>3-DOF point-mass</strong> model.</p>
+      <div style="font-size:0.72rem;">
+        <div class="eq-block" style="margin-bottom:0.4rem;padding:0.5rem 0.8rem;">
+          <div class="eq-label" style="margin-bottom:0.2rem;">Kinematics</div>
+          \\[\\dot{r} = v\\sin\\gamma\\]
+          \\[\\dot{\\lambda} = \\tfrac{v\\cos\\gamma\\cos\\psi}{r\\cos\\phi}\\]
+          \\[\\dot{\\phi} = \\tfrac{v\\cos\\gamma\\sin\\psi}{r}\\]
+        </div>
+        <div class="eq-block" style="margin-bottom:0.4rem;padding:0.5rem 0.8rem;">
+          <div class="eq-label" style="margin-bottom:0.2rem;">Forces</div>
+          \\[\\dot{v} = \\tfrac{T\\cos\\alpha_T - D}{m} - g\\sin\\gamma + \\omega_\\oplus^2 r\\cos\\phi(\\sin\\gamma\\cos\\phi - \\cos\\gamma\\sin\\phi\\cos\\psi)\\]
+          \\[\\dot{\\gamma} = \\tfrac{1}{v}\\!\\left[\\tfrac{L\\cos\\theta}{m} - \\left(g - \\tfrac{v^2}{r}\\right)\\cos\\gamma + 2\\omega_\\oplus v\\cos\\phi\\cos\\psi + \\omega_\\oplus^2 r\\cos\\phi(\\cos\\gamma\\cos\\phi + \\sin\\gamma\\sin\\phi\\cos\\psi)\\right]\\]
+          \\[\\dot{\\psi} = \\tfrac{1}{v\\cos\\gamma}\\!\\left[\\tfrac{L\\sin\\theta}{m\\cos\\gamma} + \\tfrac{v^2\\cos^2\\!\\gamma\\sin\\psi\\tan\\phi}{r} - 2\\omega_\\oplus v(\\tan\\gamma\\cos\\phi\\cos\\psi - \\sin\\phi) + \\tfrac{\\omega_\\oplus^2 r\\sin\\phi\\cos\\phi\\sin\\psi}{\\cos\\gamma}\\right]\\]
+        </div>
       </div>
-      <div class="eq-block">
-        <div class="eq-label">3 Force equations</div>
-        \\[\\dot{v} = \\frac{T\\cos\\alpha_T}{m} - \\frac{D}{m} - g\\sin\\gamma + \\omega_\\oplus^2 r\\cos\\phi(\\sin\\gamma\\cos\\phi - \\cos\\gamma\\sin\\phi\\cos\\psi)\\]
-        \\[\\dot{\\gamma} = \\frac{1}{v}\\left[\\frac{L\\cos\\theta}{m} - \\left(g - \\frac{v^2}{r}\\right)\\cos\\gamma + 2\\omega_\\oplus v\\cos\\phi\\cos\\psi + \\omega_\\oplus^2 r\\cos\\phi(\\cos\\gamma\\cos\\phi + \\sin\\gamma\\sin\\phi\\cos\\psi)\\right]\\]
-        \\[\\dot{\\psi} = \\frac{1}{v\\cos\\gamma}\\left[\\frac{L\\sin\\theta}{m\\cos\\gamma} + \\frac{v^2\\cos^2\\gamma\\sin\\psi\\tan\\phi}{r} - 2\\omega_\\oplus v(\\tan\\gamma\\cos\\phi\\cos\\psi - \\sin\\phi) + \\frac{\\omega_\\oplus^2 r\\sin\\phi\\cos\\phi\\sin\\psi}{\\cos\\gamma}\\right]\\]
-      </div>
-      <p>State vector: \\(\\mathbf{x} = (r,\\,v,\\,\\gamma,\\,\\psi,\\,\\lambda,\\,\\phi)^T\\)</p>
-      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.7rem;">
+      <p style="font-size:0.78rem;margin:0.3rem 0;">\\(\\mathbf{x} = (r,\\,v,\\,\\gamma,\\,\\psi,\\,\\lambda,\\,\\phi)^T\\)</p>
+      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">
         <span class="chip chip-grav"   data-force-hover="grav">Gravity</span>
         <span class="chip chip-drag"   data-force-hover="drag">Drag</span>
         <span class="chip chip-lift"   data-force-hover="lift">Lift</span>
@@ -2790,7 +2743,7 @@ const SLIDES = [
     },
   },
 
-  // ── 17: Summary ────────────────────────────────────────────────────────
+  // ── 34: Summary ────────────────────────────────────────────────────────
   {
     title: 'Summary & Assumptions',
     html: `
