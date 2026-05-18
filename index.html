@@ -2805,6 +2805,7 @@ const SLIDES = [
           new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
         );
       }
+      updateLiveVectors();   // snap RST/VRF back to nominal position before next slide
       setForceVisibility({});
     },
   },
@@ -2833,6 +2834,8 @@ const SLIDES = [
       </p>`,
     camera: { pos: [0, 12, 20], target: [0, 0, 0], dur: 2.0 },
     enter() {
+      STATE.orbitT = 0.72;
+      updateLiveVectors();
       STATE.persistent.orbitLine.visible = true;
       if (STATE.persistent.orbitLine) {
         STATE.persistent.orbitLine.material.color.setHex(0x2a88cc);
@@ -2845,6 +2848,19 @@ const SLIDES = [
     },
     exit() {
       controls.autoRotate = false;
+      STATE.orbitT = 0.72;
+      if (STATE.spacecraft) {
+        const s0 = getSpacecraftState(0.72);
+        STATE.spacecraft.position.copy(s0.pos);
+        const v0  = s0.vel.clone().normalize();
+        const lh  = s0.R_hat.clone().addScaledVector(v0, -s0.R_hat.dot(v0)).normalize();
+        const mat = new THREE.Matrix4().lookAt(s0.pos, s0.pos.clone().add(s0.vel), lh);
+        STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
+        STATE.spacecraft.quaternion.multiply(
+          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
+        );
+      }
+      updateLiveVectors();
       if (STATE.persistent.orbitLine) {
         STATE.persistent.orbitLine.material.color.setHex(0x4499bb);
         STATE.persistent.orbitLine.material.opacity = 0.65;
@@ -2956,19 +2972,21 @@ function updateLiveVectors() {
   const va = STATE.persistent.velArrow;
   if (va?.visible) { va.position.copy(s.pos); va.setDirection(v_hat); }
 
-  // RST group — group moves to spacecraft; arrows at local origin, labels at local offset
+  // RST group — anchored at Earth center so R̂ extends from Earth THROUGH the spacecraft.
+  // L_build must match the length used in buildRSTAxes (2.1). Labels at arrow tips.
   const rstG = STATE.persistent.rstGroup;
   if (rstG?.visible) {
-    const L = 0.9;
-    rstG.position.copy(s.pos);
+    const L_build = 2.1;
+    rstG.position.set(0, 0, 0);   // stay at planetary center, not spacecraft
     const ra = rstG.children.filter(c => c.isArrowHelper);
     const rl = rstG.children.filter(c => c.isCSS2DObject);
     if (ra[0]) ra[0].setDirection(s.R_hat);
     if (ra[1]) ra[1].setDirection(s.S_hat);
     if (ra[2]) ra[2].setDirection(s.T_hat);
-    if (rl[0]) rl[0].position.copy(s.R_hat.clone().multiplyScalar(L + 0.14));
-    if (rl[1]) rl[1].position.copy(s.S_hat.clone().multiplyScalar(L + 0.14));
-    if (rl[2]) rl[2].position.copy(s.T_hat.clone().multiplyScalar(L + 0.14));
+    // Axis labels: local to group (which is at origin), so positions are world positions
+    if (rl[0]) rl[0].position.copy(s.R_hat.clone().multiplyScalar(L_build + 0.14));
+    if (rl[1]) rl[1].position.copy(s.S_hat.clone().multiplyScalar(L_build + 0.14));
+    if (rl[2]) rl[2].position.copy(s.T_hat.clone().multiplyScalar(L_build + 0.14));
   }
 
   // VRF group — arrows and labels are at world-space positions (group at origin)
@@ -3030,8 +3048,8 @@ function animate() {
   if (STATE.persistent.earthMesh) STATE.persistent.earthMesh.rotation.y = STATE.earthT;
   if (STATE.persistent.ecefGroup) STATE.persistent.ecefGroup.rotation.y = STATE.earthT;
 
-  // Live orbit on slide 18 (index 17) and slide 29 (index 28)
-  if (STATE.currentSlide === 17 || STATE.currentSlide === 28) {
+  // Live orbit on Rotating Frame (17), Complete EOMs (28), and Summary (29)
+  if (STATE.currentSlide === 17 || STATE.currentSlide === 28 || STATE.currentSlide === 29) {
     STATE.orbitT += delta * ORBIT_SPD;
     updateLiveVectors();
   }
