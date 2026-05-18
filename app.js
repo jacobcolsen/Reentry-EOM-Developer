@@ -2648,6 +2648,7 @@ const SLIDES = [
           <button id="eom-lift"   style="padding:.28rem .65rem;background:#1a0a10;border:1px solid #FF6699;border-radius:5px;color:#FFAABB;font-size:.75rem;cursor:pointer;transition:opacity .15s">● Lift</button>
           <button id="eom-thrust" style="padding:.28rem .65rem;background:#1a0a0a;border:1px solid #FF4444;border-radius:5px;color:#FF9999;font-size:.75rem;cursor:pointer;transition:opacity .15s">● Thrust</button>
         </div>
+        <button id="eom-all-off" style="margin-top:0.45rem;width:100%;padding:.32rem 0;background:#0a0a0a;border:1px solid #3a3a3a;border-radius:5px;color:#666;font-size:.75rem;cursor:pointer;letter-spacing:.06em;transition:opacity .15s">ALL OFF</button>
       </div>`,
     camera: { pos: [6, 5, 10], target: [0, 0, 0], dur: 1.5 },
     enter() {
@@ -2686,6 +2687,19 @@ const SLIDES = [
       wireBtn('eom-drag',   () => STATE.persistent.dragArrow);
       wireBtn('eom-lift',   () => STATE.persistent.liftArrow);
       wireBtn('eom-thrust', () => STATE.persistent.thrustArrow);
+
+      const allOffBtn = document.getElementById('eom-all-off');
+      if (allOffBtn) {
+        allOffBtn.addEventListener('click', () => {
+          setGroupVisible(STATE.persistent.eciGroup,    false);
+          setGroupVisible(STATE.persistent.rstGroup,    false);
+          setGroupVisible(STATE.persistent.vrfGroup,    false);
+          if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = false;
+          setForceVisibility({});
+          ['eom-eci','eom-rst','eom-vrf','eom-vel','eom-grav','eom-drag','eom-lift','eom-thrust']
+            .forEach(id => { const b = document.getElementById(id); if (b) b.style.opacity = '0.35'; });
+        });
+      }
     },
     exit() {
       if (STATE.persistent.orbitLine) {
@@ -2731,7 +2745,25 @@ const SLIDES = [
       </div>
       <p style="color:#3a6a9a;font-size:0.8rem;margin-top:1rem;">
         Source: Hicks, K. D. <em>Introduction to Astrodynamic Reentry, 2nd ed.</em> 2014.
-      </p>`,
+      </p>
+      <div style="margin-top:0.75rem;border-top:1px solid #0e2035;padding-top:0.55rem;">
+        <div style="font-size:0.68rem;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:0.35rem;">Reference Frames</div>
+        <div style="display:flex;gap:0.3rem;flex-wrap:wrap;margin-bottom:0.45rem;">
+          <button id="sum-eci"  style="padding:.28rem .65rem;background:#07121f;border:1px solid #4466AA;border-radius:5px;color:#8899CC;font-size:.75rem;cursor:pointer;transition:opacity .15s">● ECI</button>
+          <button id="sum-ecef" style="padding:.28rem .65rem;background:#071207;border:1px solid #FF8800;border-radius:5px;color:#FFBB66;font-size:.75rem;cursor:pointer;transition:opacity .15s">● ECEF</button>
+          <button id="sum-rst"  style="padding:.28rem .65rem;background:#160a2a;border:1px solid #CC44FF;border-radius:5px;color:#DD88FF;font-size:.75rem;cursor:pointer;transition:opacity .15s">● RST</button>
+          <button id="sum-vrf"  style="padding:.28rem .65rem;background:#0a1a0a;border:1px solid #44FF44;border-radius:5px;color:#88FF88;font-size:.75rem;cursor:pointer;transition:opacity .15s">● VRF</button>
+        </div>
+        <div style="font-size:0.68rem;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:0.35rem;">Vectors</div>
+        <div style="display:flex;gap:0.3rem;flex-wrap:wrap;">
+          <button id="sum-vel"    style="padding:.28rem .65rem;background:#1a1200;border:1px solid #FFD700;border-radius:5px;color:#FFD700;font-size:.75rem;cursor:pointer;transition:opacity .15s">● Velocity</button>
+          <button id="sum-grav"   style="padding:.28rem .65rem;background:#0a0a1a;border:1px solid #6699FF;border-radius:5px;color:#99BBFF;font-size:.75rem;cursor:pointer;transition:opacity .15s">● Gravity</button>
+          <button id="sum-drag"   style="padding:.28rem .65rem;background:#1a0e00;border:1px solid #FF9944;border-radius:5px;color:#FFBB88;font-size:.75rem;cursor:pointer;transition:opacity .15s">● Drag</button>
+          <button id="sum-lift"   style="padding:.28rem .65rem;background:#1a0a10;border:1px solid #FF6699;border-radius:5px;color:#FFAABB;font-size:.75rem;cursor:pointer;transition:opacity .15s">● Lift</button>
+          <button id="sum-thrust" style="padding:.28rem .65rem;background:#1a0a0a;border:1px solid #FF4444;border-radius:5px;color:#FF9999;font-size:.75rem;cursor:pointer;transition:opacity .15s">● Thrust</button>
+        </div>
+        <button id="sum-all-off" style="margin-top:0.45rem;width:100%;padding:.32rem 0;background:#0a0a0a;border:1px solid #3a3a3a;border-radius:5px;color:#666;font-size:.75rem;cursor:pointer;letter-spacing:.06em;transition:opacity .15s">ALL OFF</button>
+      </div>`,
     camera: { pos: [0, 12, 20], target: [0, 0, 0], dur: 2.0 },
     enter() {
       STATE.orbitT = 0.72;
@@ -2745,6 +2777,43 @@ const SLIDES = [
       updateLiveVectors();
       controls.autoRotate      = true;
       controls.autoRotateSpeed = 0.4;
+
+      // Wire toggle buttons — all start ON (opacity 1)
+      function wireBtn(id, getGroup, isArrow) {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.style.opacity = '1';
+        btn.addEventListener('click', () => {
+          const g = getGroup();
+          if (!g) return;
+          const show = !g.visible;
+          if (isArrow) { g.visible = show; } else { setGroupVisible(g, show); }
+          btn.style.opacity = show ? '1' : '0.35';
+        });
+      }
+      wireBtn('sum-eci',    () => STATE.persistent.eciGroup);
+      wireBtn('sum-ecef',   () => STATE.persistent.ecefGroup);
+      wireBtn('sum-rst',    () => STATE.persistent.rstGroup);
+      wireBtn('sum-vrf',    () => STATE.persistent.vrfGroup);
+      wireBtn('sum-vel',    () => STATE.persistent.velArrow,    true);
+      wireBtn('sum-grav',   () => STATE.persistent.gravArrow);
+      wireBtn('sum-drag',   () => STATE.persistent.dragArrow);
+      wireBtn('sum-lift',   () => STATE.persistent.liftArrow);
+      wireBtn('sum-thrust', () => STATE.persistent.thrustArrow);
+
+      const allOffBtn = document.getElementById('sum-all-off');
+      if (allOffBtn) {
+        allOffBtn.addEventListener('click', () => {
+          setGroupVisible(STATE.persistent.eciGroup,    false);
+          setGroupVisible(STATE.persistent.ecefGroup,   false);
+          setGroupVisible(STATE.persistent.rstGroup,    false);
+          setGroupVisible(STATE.persistent.vrfGroup,    false);
+          if (STATE.persistent.velArrow) STATE.persistent.velArrow.visible = false;
+          setForceVisibility({});
+          ['sum-eci','sum-ecef','sum-rst','sum-vrf','sum-vel','sum-grav','sum-drag','sum-lift','sum-thrust']
+            .forEach(id => { const b = document.getElementById(id); if (b) b.style.opacity = '0.35'; });
+        });
+      }
     },
     exit() {
       controls.autoRotate = false;
