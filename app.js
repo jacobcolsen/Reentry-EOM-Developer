@@ -2861,9 +2861,14 @@ function restoreRSTToEarthCenter() {
   rstG.position.set(0, 0, 0);
   const ra = rstG.children.filter(c => c.type === 'ArrowHelper');
   const rl = rstG.children.filter(c => c.isCSS2DObject);
-  if (ra[0]) { ra[0].setDirection(s0.R_hat); ra[0].setLength(L, L * 0.12, L * 0.055); }
-  if (ra[1]) { ra[1].setDirection(s0.S_hat); ra[1].setLength(L, L * 0.12, L * 0.055); }
-  if (ra[2]) { ra[2].setDirection(s0.T_hat); ra[2].setLength(L, L * 0.12, L * 0.055); }
+  const dirs3 = [s0.R_hat, s0.S_hat, s0.T_hat];
+  ra.forEach((arrow, i) => {
+    if (!dirs3[i]) return;
+    arrow.setDirection(dirs3[i]);
+    arrow.setLength(L, L * 0.12, L * 0.055);
+    const inlineLbl = arrow.children.find(c => c.isCSS2DObject);
+    if (inlineLbl) inlineLbl.position.set(0, L + 0.05, 0);
+  });
   if (rl[0]) rl[0].position.copy(s0.R_hat.clone().multiplyScalar(L + 0.14));
   if (rl[1]) rl[1].position.copy(s0.S_hat.clone().multiplyScalar(L + 0.14));
   if (rl[2]) rl[2].position.copy(s0.T_hat.clone().multiplyScalar(L + 0.14));
@@ -2898,9 +2903,15 @@ function updateLiveVectors() {
     rstG.position.copy(s.pos);   // move to spacecraft
     const ra = rstG.children.filter(c => c.type === 'ArrowHelper');
     const rl = rstG.children.filter(c => c.isCSS2DObject);
-    if (ra[0]) { ra[0].setDirection(s.R_hat); ra[0].setLength(L, L * 0.12, L * 0.055); }
-    if (ra[1]) { ra[1].setDirection(s.S_hat); ra[1].setLength(L, L * 0.12, L * 0.055); }
-    if (ra[2]) { ra[2].setDirection(s.T_hat); ra[2].setLength(L, L * 0.12, L * 0.055); }
+    const dirs3 = [s.R_hat, s.S_hat, s.T_hat];
+    ra.forEach((arrow, i) => {
+      if (!dirs3[i]) return;
+      arrow.setDirection(dirs3[i]);
+      arrow.setLength(L, L * 0.12, L * 0.055);
+      // Update the short inline label (child CSS2DObject on the arrow) to match new length
+      const inlineLbl = arrow.children.find(c => c.isCSS2DObject);
+      if (inlineLbl) inlineLbl.position.set(0, L + 0.05, 0);
+    });
     // Axis labels: local to group (now at spacecraft), so offset from local origin
     if (rl[0]) rl[0].position.copy(s.R_hat.clone().multiplyScalar(L + 0.10));
     if (rl[1]) rl[1].position.copy(s.S_hat.clone().multiplyScalar(L + 0.10));
