@@ -413,7 +413,7 @@ function setForceVisibility({ grav=false, drag=false, lift=false, thrust=false, 
 // Grow arrows in with a stagger spring; labels appear only after all arrows land
 function animateGroupIn(group, baseDelay = 0) {
   // Labels are already visible via setGroupVisible — only animate arrow scales
-  const arrows = group.children.filter(c => c.isArrowHelper);
+  const arrows = group.children.filter(c => c.type === 'ArrowHelper');
   arrows.forEach((arrow, i) => {
     arrow.scale.set(0.001, 0.001, 0.001);
     gsap.to(arrow.scale, {
@@ -1563,7 +1563,7 @@ const SLIDES = [
       const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
 
       const vrfGroup = STATE.persistent.vrfGroup;
-      const arrows   = vrfGroup.children.filter(c => c.isArrowHelper);
+      const arrows   = vrfGroup.children.filter(c => c.type === 'ArrowHelper');
 
       const startDirs = [s.R_hat.clone(), s.S_hat.clone(), s.T_hat.clone()];
       const endDirs   = [x_v.clone(),    y_v.clone(),    z_v.clone()];
@@ -1617,7 +1617,7 @@ const SLIDES = [
       const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
       const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
       const arrows = STATE.persistent.vrfGroup
-        ? STATE.persistent.vrfGroup.children.filter(c => c.isArrowHelper)
+        ? STATE.persistent.vrfGroup.children.filter(c => c.type === 'ArrowHelper')
         : [];
       if (arrows[0]) arrows[0].setDirection(x_v);
       if (arrows[1]) arrows[1].setDirection(y_v);
@@ -1954,7 +1954,7 @@ const SLIDES = [
       const s = getSpacecraftState(0.72);
 
       const vrfGroup = STATE.persistent.vrfGroup;
-      const arrows   = vrfGroup ? vrfGroup.children.filter(c => c.isArrowHelper) : [];
+      const arrows   = vrfGroup ? vrfGroup.children.filter(c => c.type === 'ArrowHelper') : [];
       const x_v = s.vel.clone().normalize();
       const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
       const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
@@ -2652,7 +2652,6 @@ const SLIDES = [
     camera: { pos: [6, 5, 10], target: [0, 0, 0], dur: 1.5 },
     enter() {
       STATE.orbitT = 0.72;
-      updateLiveVectors();
       STATE.persistent.orbitLine.visible = true;
       if (STATE.persistent.orbitLine) {
         STATE.persistent.orbitLine.material.color.setHex(0x2a88cc);
@@ -2660,6 +2659,7 @@ const SLIDES = [
       }
       setFrameVisibility({ eci: true, rst: true, vrf: true, vel: true });
       setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+      updateLiveVectors();
 
       // Wire toggle buttons — all start ON (opacity 1)
       function wireBtn(id, getGroup, isArrow) {
@@ -2705,6 +2705,7 @@ const SLIDES = [
         );
       }
       updateLiveVectors();   // snap RST/VRF back to nominal position before next slide
+      restoreRSTToEarthCenter();
       setForceVisibility({});
     },
   },
@@ -2734,7 +2735,6 @@ const SLIDES = [
     camera: { pos: [0, 12, 20], target: [0, 0, 0], dur: 2.0 },
     enter() {
       STATE.orbitT = 0.72;
-      updateLiveVectors();
       STATE.persistent.orbitLine.visible = true;
       if (STATE.persistent.orbitLine) {
         STATE.persistent.orbitLine.material.color.setHex(0x2a88cc);
@@ -2742,6 +2742,7 @@ const SLIDES = [
       }
       setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true });
       setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+      updateLiveVectors();
       controls.autoRotate      = true;
       controls.autoRotateSpeed = 0.4;
     },
@@ -2760,6 +2761,7 @@ const SLIDES = [
         );
       }
       updateLiveVectors();
+      restoreRSTToEarthCenter();
       if (STATE.persistent.orbitLine) {
         STATE.persistent.orbitLine.material.color.setHex(0x4499bb);
         STATE.persistent.orbitLine.material.opacity = 0.65;
@@ -2849,6 +2851,24 @@ function goToSlide(idx) {
   if (slide.enter) slide.enter();
 }
 
+// Restore RST to Earth-center build position (L=2.1) for static slides.
+// Called in exit() of animated slides 28/29 so earlier RST slides remain correct.
+function restoreRSTToEarthCenter() {
+  const rstG = STATE.persistent.rstGroup;
+  if (!rstG) return;
+  const s0 = getSpacecraftState(0.72);
+  const L = 2.1;
+  rstG.position.set(0, 0, 0);
+  const ra = rstG.children.filter(c => c.type === 'ArrowHelper');
+  const rl = rstG.children.filter(c => c.isCSS2DObject);
+  if (ra[0]) { ra[0].setDirection(s0.R_hat); ra[0].setLength(L, L * 0.12, L * 0.055); }
+  if (ra[1]) { ra[1].setDirection(s0.S_hat); ra[1].setLength(L, L * 0.12, L * 0.055); }
+  if (ra[2]) { ra[2].setDirection(s0.T_hat); ra[2].setLength(L, L * 0.12, L * 0.055); }
+  if (rl[0]) rl[0].position.copy(s0.R_hat.clone().multiplyScalar(L + 0.14));
+  if (rl[1]) rl[1].position.copy(s0.S_hat.clone().multiplyScalar(L + 0.14));
+  if (rl[2]) rl[2].position.copy(s0.T_hat.clone().multiplyScalar(L + 0.14));
+}
+
 // ── Live vector update — called every frame to keep spacecraft + vectors on orbit ─
 function updateLiveVectors() {
   const s = getSpacecraftState(STATE.orbitT);
@@ -2871,21 +2891,20 @@ function updateLiveVectors() {
   const va = STATE.persistent.velArrow;
   if (va?.visible) { va.position.copy(s.pos); va.setDirection(v_hat); }
 
-  // RST group — anchored at Earth center so R̂ extends from Earth THROUGH the spacecraft.
-  // L_build must match the length used in buildRSTAxes (2.1). Labels at arrow tips.
+  // RST group — centered at spacecraft; R̂ points away from Earth (= Earth→spacecraft direction)
   const rstG = STATE.persistent.rstGroup;
   if (rstG?.visible) {
-    const L_build = 2.1;
-    rstG.position.set(0, 0, 0);   // stay at planetary center, not spacecraft
-    const ra = rstG.children.filter(c => c.isArrowHelper);
+    const L = 0.75;
+    rstG.position.copy(s.pos);   // move to spacecraft
+    const ra = rstG.children.filter(c => c.type === 'ArrowHelper');
     const rl = rstG.children.filter(c => c.isCSS2DObject);
-    if (ra[0]) ra[0].setDirection(s.R_hat);
-    if (ra[1]) ra[1].setDirection(s.S_hat);
-    if (ra[2]) ra[2].setDirection(s.T_hat);
-    // Axis labels: local to group (which is at origin), so positions are world positions
-    if (rl[0]) rl[0].position.copy(s.R_hat.clone().multiplyScalar(L_build + 0.14));
-    if (rl[1]) rl[1].position.copy(s.S_hat.clone().multiplyScalar(L_build + 0.14));
-    if (rl[2]) rl[2].position.copy(s.T_hat.clone().multiplyScalar(L_build + 0.14));
+    if (ra[0]) { ra[0].setDirection(s.R_hat); ra[0].setLength(L, L * 0.12, L * 0.055); }
+    if (ra[1]) { ra[1].setDirection(s.S_hat); ra[1].setLength(L, L * 0.12, L * 0.055); }
+    if (ra[2]) { ra[2].setDirection(s.T_hat); ra[2].setLength(L, L * 0.12, L * 0.055); }
+    // Axis labels: local to group (now at spacecraft), so offset from local origin
+    if (rl[0]) rl[0].position.copy(s.R_hat.clone().multiplyScalar(L + 0.10));
+    if (rl[1]) rl[1].position.copy(s.S_hat.clone().multiplyScalar(L + 0.10));
+    if (rl[2]) rl[2].position.copy(s.T_hat.clone().multiplyScalar(L + 0.10));
   }
 
   // VRF group — arrows and labels are at world-space positions (group at origin)
@@ -2895,7 +2914,7 @@ function updateLiveVectors() {
     const z_v  = new THREE.Vector3().crossVectors(s.R_hat, v_hat).normalize();
     const y_v  = new THREE.Vector3().crossVectors(z_v, v_hat).normalize();
     const dirs    = [v_hat, y_v, z_v];
-    const vArrows = vrfG.children.filter(c => c.isArrowHelper);
+    const vArrows = vrfG.children.filter(c => c.type === 'ArrowHelper');
     const vLabels = vrfG.children.filter(c => c.isCSS2DObject);
     const vSphere = vrfG.children.find(c => c.isMesh);
     if (vSphere) vSphere.position.copy(s.pos);
