@@ -1999,7 +1999,39 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 15: Newton's 2nd Law ────────────────────────────────────────────────
+  // ── 15: Kinematic Equations (ṙ, φ̇, λ̇) ────────────────────────────────
+  {
+    title: 'Kinematic Equations — ṙ, φ̇, λ̇',
+    html: `
+      <p>The velocity vector projected onto the <span class="chip chip-rst">OX₂Y₂Z₂</span>
+      axes links the six state variables: three from kinematics (position rates) and three
+      from Newton&rsquo;s law (velocity rates).</p>
+      <div class="eq-block">
+        <div class="eq-label">Altitude rate — x₂ (radial) component</div>
+        \\[\\dot{r} = v\\sin\\textcolor{#FFEE77}{\\gamma}\\]
+      </div>
+      <div class="eq-block">
+        <div class="eq-label">Latitude rate — y₂ component</div>
+        \\[\\dot{\\textcolor{#44FFEE}{\\phi}} = \\frac{v\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}}{r}\\]
+      </div>
+      <div class="eq-block">
+        <div class="eq-label">Longitude rate — z₂ component</div>
+        \\[\\dot{\\textcolor{#FF44CC}{\\lambda}} = \\frac{v\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}}{r\\cos\\textcolor{#44FFEE}{\\phi}}\\]
+      </div>
+      <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.4rem;">
+        These three equations complete the six-state system once Newton&rsquo;s law supplies
+        v̇, γ̇, ψ̇. The <em>r</em>cosφ denominator in λ̇ accounts for meridian convergence
+        — longitude circles shrink toward the poles.</p>`,
+    camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 1.0 },
+    enter() {
+      clearSlideObjects();
+      STATE.orbitT = 0.72;
+      setFrameVisibility({ rst: true, vel: true });
+    },
+    exit() {},
+  },
+
+  // ── 16: Newton's 2nd Law ────────────────────────────────────────────────
   {
     title: "Newton's Second Law",
     html: `
@@ -2039,7 +2071,7 @@ const SLIDES = [
     exit() { setForceVisibility({}); },
   },
 
-  // ── 16: Rotating Frame Conversion ───────────────────────────────────────
+  // ── 17: Rotating Frame Conversion ───────────────────────────────────────
   {
     title: 'Rotating Frame Conversion',
     html: `
@@ -2092,7 +2124,7 @@ const SLIDES = [
     },
   },
 
-  // ── 17: Gravitational Force ────────────────────────────────────────────
+  // ── 18: Gravitational Force ────────────────────────────────────────────
   {
     title: 'Gravitational Force',
     html: `
@@ -2123,7 +2155,7 @@ const SLIDES = [
     exit() { setForceVisibility({}); },
   },
 
-  // ── 18: Gravity — ECI Decomposition ────────────────────────────────────
+  // ── 19: Gravity — ECI Decomposition ────────────────────────────────────
   {
     title: 'Gravity — ECI Decomposition',
     html: '',
@@ -2164,7 +2196,7 @@ const SLIDES = [
     },
   },
 
-  // ── 19: Drag Force ─────────────────────────────────────────────────────
+  // ── 20: Drag Force ─────────────────────────────────────────────────────
   {
     title: 'Drag Force',
     html: `
@@ -2199,7 +2231,7 @@ const SLIDES = [
     },
   },
 
-  // ── 20: Drag — ECI Decomposition ───────────────────────────────────────
+  // ── 21: Drag — ECI Decomposition ───────────────────────────────────────
   {
     title: 'Drag — ECI Decomposition',
     html: '',
@@ -2245,7 +2277,7 @@ const SLIDES = [
     },
   },
 
-  // ── 21: Lift Force & Bank Angle ────────────────────────────────────────
+  // ── 22: Lift Force & Bank Angle ────────────────────────────────────────
   {
     title: 'Lift Force & Bank Angle θ',
     html: `
@@ -2348,7 +2380,7 @@ const SLIDES = [
     },
   },
 
-  // ── 22: Lift — ECI Decomposition ───────────────────────────────────────
+  // ── 23: Lift — ECI Decomposition ───────────────────────────────────────
   {
     title: 'Lift — ECI Decomposition',
     html: '',
@@ -2395,7 +2427,7 @@ const SLIDES = [
     },
   },
 
-  // ── 23: Thrust Force ───────────────────────────────────────────────────
+  // ── 24: Thrust Force ───────────────────────────────────────────────────
   {
     title: 'Thrust Force',
     html: `
@@ -2443,7 +2475,7 @@ const SLIDES = [
     exit() { setForceVisibility({}); },
   },
 
-  // ── 24: Thrust — ECI Decomposition ─────────────────────────────────────
+  // ── 25: Thrust — ECI Decomposition ─────────────────────────────────────
   {
     title: 'Thrust — ECI Decomposition',
     html: '',
@@ -2489,7 +2521,7 @@ const SLIDES = [
     },
   },
 
-  // ── 25: Newton's Law — All Forces in ECI ───────────────────────────────
+  // ── 26: Newton's Law — All Forces in ECI ───────────────────────────────
   {
     title: 'Newton\'s Law — All Forces in ECI',
     html: '',
@@ -2547,7 +2579,7 @@ const SLIDES = [
     },
   },
 
-  // ── 26: F_net — ECI Components ──────────────────────────────────────────
+  // ── 27: F_net — ECI Components ──────────────────────────────────────────
   {
     title: 'F_net — ECI Components',
     html: '',
@@ -2601,7 +2633,7 @@ const SLIDES = [
     },
   },
 
-  // ── 27: Force Assembly in OX₂Y₂Z₂ ─────────────────────────────────────
+  // ── 28: Force Assembly in OX₂Y₂Z₂ ─────────────────────────────────────
   {
     title: 'Force Assembly in OX₂Y₂Z₂',
     html: `
@@ -2643,7 +2675,7 @@ const SLIDES = [
     },
   },
 
-  // ── 28: RST Projection → v̇, γ̇, ψ̇ ──────────────────────────────────────
+  // ── 29: RST Projection → v̇, γ̇, ψ̇ ──────────────────────────────────────
   {
     title: 'RST Projection → v̇, γ̇, ψ̇',
     html: `
@@ -2687,7 +2719,7 @@ const SLIDES = [
     },
   },
 
-  // ── 29: Complete 3-DOF EOM ─────────────────────────────────────────────
+  // ── 30: Complete 3-DOF EOM ─────────────────────────────────────────────
   {
     title: 'Complete 3-DOF Equations of Motion',
     html: `
@@ -2815,7 +2847,7 @@ const SLIDES = [
     },
   },
 
-  // ── 30: Summary ────────────────────────────────────────────────────────
+  // ── 31: Summary ────────────────────────────────────────────────────────
   {
     title: 'Summary & Assumptions',
     html: `
@@ -3135,7 +3167,7 @@ function animate() {
   if (STATE.persistent.ecefGroup) STATE.persistent.ecefGroup.rotation.y = STATE.earthT;
 
   // Live orbit on Rotating Frame (16), Complete EOMs (27), and Summary (28)
-  if (STATE.currentSlide === 16 || STATE.currentSlide === 29 || STATE.currentSlide === 30) {
+  if (STATE.currentSlide === 17 || STATE.currentSlide === 30 || STATE.currentSlide === 31) {
     STATE.orbitT += delta * ORBIT_SPD;
     updateLiveVectors();
   }
