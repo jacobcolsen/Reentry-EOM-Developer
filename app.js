@@ -1956,19 +1956,45 @@ const SLIDES = [
             \\underbrace{C_{OX_1\\to OX_2}}_{\\textcolor{#CC44FF}{\\text{position}}}\;
             \\underbrace{C_{OXYZ\\to OX_1}}_{\\textcolor{#FF8800}{\\text{Earth spin}}}\;[\\hat{e}]\\]
         </div>
-        <div style="display:flex;gap:0.35rem;align-items:center;flex-wrap:wrap;font-size:0.78rem;margin:0.8rem 0;">
-          <span class="chip chip-eci">OXYZ</span>
-          <span style="color:#FF8800;font-size:0.72rem">&rarr;R_z&rarr;</span>
-          <span class="chip chip-ecef">OX₁Y₁Z₁</span>
-          <span style="color:#CC44FF;font-size:0.72rem">&rarr;R_yR_z&rarr;</span>
-          <span class="chip chip-rst">OX₂Y₂Z₂</span>
-          <span style="color:#44FF44;font-size:0.72rem">&rarr;R_zR_x&rarr;</span>
-          <span class="chip chip-vrf">OX″Y″Z″</span>
+
+        <div class="eq-block" style="border-left-color:#FF8800;">
+          <div class="eq-label" style="color:#FF8800;">Earth Spin — C<sub>OXYZ→OX₁</sub></div>
+          \\[\\textcolor{#FF8800}{R_z(\\theta_E)} = \\begin{bmatrix}
+            \\cos\\theta_E & \\sin\\theta_E & 0 \\\\
+            -\\sin\\theta_E & \\cos\\theta_E & 0 \\\\
+            0 & 0 & 1
+          \\end{bmatrix}\\]
         </div>
-        <p style="font-size:0.82rem;color:#6a90b0;">Each frame cascades in as its DCM is applied.
-        To express OX″Y″Z″ forces in OXYZ, transpose each matrix and apply in reverse order.</p>
-        <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.5rem;">
-          <strong style="color:#8ab8d8;">C⁻¹ = Cᵀ</strong> — every DCM is orthonormal.</p>`);
+
+        <div class="eq-block" style="border-left-color:#CC44FF;">
+          <div class="eq-label" style="color:#CC44FF;">Position — C<sub>OX₁→OX₂</sub></div>
+          \\[\\textcolor{#CC44FF}{R_{y_2}(-\\phi)\\,R_{z_1}(\\theta)} = \\begin{bmatrix}
+            \\textcolor{#AAFF44}{\\cos\\phi}\\textcolor{#44FFFF}{\\cos\\theta} &
+            \\textcolor{#AAFF44}{\\cos\\phi}\\textcolor{#44FFFF}{\\sin\\theta} &
+            \\textcolor{#AAFF44}{\\sin\\phi} \\\\
+            -\\textcolor{#44FFFF}{\\sin\\theta} & \\textcolor{#44FFFF}{\\cos\\theta} & 0 \\\\
+            -\\textcolor{#AAFF44}{\\sin\\phi}\\textcolor{#44FFFF}{\\cos\\theta} &
+            -\\textcolor{#AAFF44}{\\sin\\phi}\\textcolor{#44FFFF}{\\sin\\theta} &
+            \\textcolor{#AAFF44}{\\cos\\phi}
+          \\end{bmatrix}\\]
+        </div>
+
+        <div class="eq-block" style="border-left-color:#44FF44;">
+          <div class="eq-label" style="color:#44FF44;">Attitude — C<sub>OX₂→OX″</sub></div>
+          \\[\\textcolor{#44FF44}{R_{z'}(-\\gamma)\\,R_{x_2}(\\psi)} = \\begin{bmatrix}
+            \\textcolor{#FFEE77}{\\cos\\gamma} &
+            -\\textcolor{#FFEE77}{\\sin\\gamma}\\textcolor{#FF44CC}{\\cos\\psi} &
+            -\\textcolor{#FFEE77}{\\sin\\gamma}\\textcolor{#FF44CC}{\\sin\\psi} \\\\
+            \\textcolor{#FFEE77}{\\sin\\gamma} &
+            \\textcolor{#FFEE77}{\\cos\\gamma}\\textcolor{#FF44CC}{\\cos\\psi} &
+            \\textcolor{#FFEE77}{\\cos\\gamma}\\textcolor{#FF44CC}{\\sin\\psi} \\\\
+            0 & -\\textcolor{#FF44CC}{\\sin\\psi} & \\textcolor{#FF44CC}{\\cos\\psi}
+          \\end{bmatrix}\\]
+        </div>
+
+        <p style="font-size:0.8rem;color:#6a90b0;margin-top:0.4rem;">
+          <strong style="color:#8ab8d8;">C⁻¹ = Cᵀ</strong> — every DCM is orthonormal.
+          To go OX″→OXYZ, transpose each matrix and multiply in reverse.</p>`);
     },
     exit() {},
   },
