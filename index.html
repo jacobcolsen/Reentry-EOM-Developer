@@ -2332,7 +2332,7 @@ const SLIDES = [
           \\end{bmatrix}}_{C_{R\\leftarrow V}}
           \\begin{bmatrix}\\textcolor{#FF9944}{-D}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
         </div>
-        ${eciEqBlock(`\\vec{F}_D = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#FF9944}{-D}\\sin\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}\\\\\\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}\\end{bmatrix}_{RST}`)}
+        ${eciEqBlock(`\\vec{F}_D = \\underbrace{C_{E\\leftarrow R}(\\phi,\\theta)}_{\\text{RST}\\to\\text{ECI}}\\!\\begin{bmatrix}\\textcolor{#FF9944}{-D}\\sin\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}\\\\\\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}\\end{bmatrix}_{RST} = \\begin{bmatrix}F_{D,x}\\\\F_{D,y}\\\\F_{D,z}\\end{bmatrix}_{ECI}`)}
         <p style="font-size:0.8rem;color:#6a8aaa;">
           <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
           <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
@@ -2482,7 +2482,7 @@ const SLIDES = [
           \\end{bmatrix}}_{C_{R\\leftarrow V}}
           \\begin{bmatrix}0\\\\\\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\\\\\textcolor{#FF6699}{-L}\\sin\\textcolor{#44FFFF}{\\theta}\\end{bmatrix}_{VRF}\\]
         </div>
-        ${eciEqBlock(`\\vec{F}_L = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#FF6699}{-L}\\cos\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF6699}{L}(\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}+\\sin\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FF44CC}{\\psi})\\\\\\textcolor{#FF6699}{L}(\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}-\\sin\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FF44CC}{\\psi})\\end{bmatrix}_{RST}`)}
+        ${eciEqBlock(`\\vec{F}_L = \\underbrace{C_{E\\leftarrow R}(\\phi,\\theta)}_{\\text{RST}\\to\\text{ECI}}\\!\\begin{bmatrix}\\textcolor{#FF6699}{-L}\\cos\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF6699}{L}(\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}+\\sin\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FF44CC}{\\psi})\\\\\\textcolor{#FF6699}{L}(\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}-\\sin\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FF44CC}{\\psi})\\end{bmatrix}_{RST} = \\begin{bmatrix}F_{L,x}\\\\F_{L,y}\\\\F_{L,z}\\end{bmatrix}_{ECI}`)}
         <p style="font-size:0.8rem;color:#6a8aaa;">
           <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
           <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
@@ -2576,7 +2576,7 @@ const SLIDES = [
           \\end{bmatrix}}_{C_{R\\leftarrow V}}
           \\begin{bmatrix}\\textcolor{#FF4444}{T}\\\\0\\\\0\\end{bmatrix}_{VRF}\\]
         </div>
-        ${eciEqBlock(`\\vec{F}_T = C_{E\\leftarrow R}\\!\\begin{bmatrix}\\textcolor{#FF4444}{T}\\sin\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF4444}{T}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}\\\\\\textcolor{#FF4444}{T}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}\\end{bmatrix}_{RST}`)}
+        ${eciEqBlock(`\\vec{F}_T = \\underbrace{C_{E\\leftarrow R}(\\phi,\\theta)}_{\\text{RST}\\to\\text{ECI}}\\!\\begin{bmatrix}\\textcolor{#FF4444}{T}\\sin\\textcolor{#FFEE77}{\\gamma}\\\\\\textcolor{#FF4444}{T}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}\\\\\\textcolor{#FF4444}{T}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}\\end{bmatrix}_{RST} = \\begin{bmatrix}F_{T,x}\\\\F_{T,y}\\\\F_{T,z}\\end{bmatrix}_{ECI}`)}
         <p style="font-size:0.8rem;color:#6a8aaa;">
           <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
           <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
