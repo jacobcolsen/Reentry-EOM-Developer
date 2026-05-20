@@ -917,7 +917,7 @@ const SLIDES = [
 
   // ── 4: Longitude & Latitude ────────────────────────────────────────────
   {
-    title: 'Longitude λ and Latitude ϕ',
+    title: 'Geocentric Longitude λ & Latitude ϕ',
     html: `
       <p>The vehicle's position on the rotating planet is described by
       <strong>geocentric longitude</strong>
@@ -1137,7 +1137,18 @@ const SLIDES = [
         \\[v_{\\text{east}} = \\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}
           \\qquad
           v_{\\text{north}} = \\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}\\]
-      </div>`,
+      </div>
+      <div class="eq-block">
+        <div class="eq-label">Step 3 — Convert speed to angular rate</div>
+        \\[\\textcolor{#44FFEE}{\\dot{\\phi}} = \\frac{v_{\\text{north}}}{r} = \\frac{\\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}}{r}\\]
+        \\[\\textcolor{#FF44CC}{\\dot{\\lambda}} = \\frac{v_{\\text{east}}}{r\\cos\\textcolor{#44FFEE}{\\phi}} = \\frac{\\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}}{r\\cos\\textcolor{#44FFEE}{\\phi}}\\]
+      </div>
+      <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.4rem;">
+        The extra \\(\\cos\\textcolor{#44FFEE}{\\phi}\\) in
+        \\(\\textcolor{#FF44CC}{\\dot\\lambda}\\):
+        a latitude circle at \\(\\textcolor{#44FFEE}{\\phi}\\) has radius
+        \\(r\\cos\\textcolor{#44FFEE}{\\phi}\\) — same eastward speed covers more
+        \\(\\textcolor{#FF44CC}{\\lambda}\\) degrees near the equator than near the poles.</p>`,
     camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 0 },
     enter() {
       clearSlideObjects();
@@ -1246,39 +1257,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 7: Angular Rate Equations ───────────────────────────────────────────
-  {
-    title: 'Angular Rate Equations',
-    html: `
-      <div class="eq-block">
-        <div class="eq-label">Step 3 — Convert speed to angular rate</div>
-        \\[\\textcolor{#44FFEE}{\\dot{\\phi}} = \\frac{v_{\\text{north}}}{r} = \\frac{\\textcolor{#44FF88}{v\\cos\\gamma\\sin\\psi}}{r}\\]
-        \\[\\textcolor{#FF44CC}{\\dot{\\lambda}} = \\frac{v_{\\text{east}}}{r\\cos\\textcolor{#44FFEE}{\\phi}} = \\frac{\\textcolor{#FF44CC}{v\\cos\\gamma\\cos\\psi}}{r\\cos\\textcolor{#44FFEE}{\\phi}}\\]
-      </div>
-      <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.4rem;">
-        The extra \\(\\cos\\textcolor{#44FFEE}{\\phi}\\) in
-        \\(\\textcolor{#FF44CC}{\\dot\\lambda}\\):
-        a latitude circle at \\(\\textcolor{#44FFEE}{\\phi}\\) has radius
-        \\(r\\cos\\textcolor{#44FFEE}{\\phi}\\) — same eastward speed covers more
-        \\(\\textcolor{#FF44CC}{\\lambda}\\) degrees near the equator than near the poles.</p>`,
-    camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 0 },
-    enter() {
-      clearSlideObjects();
-      STATE.persistent.orbitLine.visible = true;
-      const s = getSpacecraftState(0.72);
-      if (STATE.spacecraft) {
-        STATE.spacecraft.position.copy(s.pos);
-        const mat = new THREE.Matrix4().lookAt(s.pos, s.pos.clone().add(s.vel), s.R_hat);
-        STATE.spacecraft.quaternion.setFromRotationMatrix(mat);
-        STATE.spacecraft.quaternion.multiply(
-          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI / 2)
-        );
-      }
-    },
-    exit() {},
-  },
-
-  // ── 8: Flight-Path Angle γ ─────────────────────────────────────────────
+  // ── 7: Flight-Path Angle γ ─────────────────────────────────────────────
   {
     title: 'Flight-Path Angle γ',
     html: `
@@ -1403,7 +1382,7 @@ const SLIDES = [
     },
   },
 
-  // ── 9: Heading Angle ψ ─────────────────────────────────────────────────
+  // ── 8: Heading Angle ψ ─────────────────────────────────────────────────
   {
     title: 'Heading Angle ψ',
     html: `
@@ -1519,7 +1498,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 10: Velocity-Referenced Frame ───────────────────────────────────────
+  // ── 9: Velocity-Referenced Frame ───────────────────────────────────────
   {
     title: 'Velocity-Referenced Frame (VRF)',
     html: `
@@ -1625,7 +1604,7 @@ const SLIDES = [
     },
   },
 
-  // ── 11: Frame Rotation Matrices ────────────────────────────────────────
+  // ── 10: Frame Rotation Matrices ────────────────────────────────────────
   {
     title: 'Coordinate Frame Transformations',
     html: `
@@ -1664,7 +1643,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 12: OXYZ → OX₁Y₁Z₁ — Earth Spin ──────────────────────────────────
+  // ── 11: OXYZ → OX₁Y₁Z₁ — Earth Spin ──────────────────────────────────
   {
     title: 'OXYZ → OX₁Y₁Z₁: Earth Spin',
     html: '',
@@ -1715,7 +1694,7 @@ const SLIDES = [
     exit() { STATE.suppressEarthUpdate = false; },
   },
 
-  // ── 13: OX₁Y₁Z₁ → OX₂Y₂Z₂ — Vehicle-Pointing ─────────────────────────
+  // ── 12: OX₁Y₁Z₁ → OX₂Y₂Z₂ — Vehicle-Pointing ─────────────────────────
   {
     title: 'OX₁Y₁Z₁ → OX₂Y₂Z₂: Vehicle-Pointing',
     html: '',
@@ -1819,7 +1798,7 @@ const SLIDES = [
     exit() { STATE.suppressEarthUpdate = false; },
   },
 
-  // ── 14: OX₂Y₂Z₂ → OX″Y″Z″ — Velocity-Referenced ──────────────────────
+  // ── 13: OX₂Y₂Z₂ → OX″Y″Z″ — Velocity-Referenced ──────────────────────
   {
     title: 'OX₂Y₂Z₂ → OX″Y″Z″: Velocity-Referenced',
     html: '',
@@ -1943,7 +1922,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 15: Complete Transformation Chain ──────────────────────────────────
+  // ── 14: Complete Transformation Chain ──────────────────────────────────
   {
     title: 'Complete Transformation Chain',
     html: '',
@@ -1994,7 +1973,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 16: Newton's 2nd Law ────────────────────────────────────────────────
+  // ── 15: Newton's 2nd Law ────────────────────────────────────────────────
   {
     title: "Newton's Second Law",
     html: `
@@ -2034,7 +2013,7 @@ const SLIDES = [
     exit() { setForceVisibility({}); },
   },
 
-  // ── 17: Rotating Frame Conversion ───────────────────────────────────────
+  // ── 16: Rotating Frame Conversion ───────────────────────────────────────
   {
     title: 'Rotating Frame Conversion',
     html: `
@@ -2087,7 +2066,7 @@ const SLIDES = [
     },
   },
 
-  // ── 18: Gravitational Force ────────────────────────────────────────────
+  // ── 17: Gravitational Force ────────────────────────────────────────────
   {
     title: 'Gravitational Force',
     html: `
@@ -2118,7 +2097,7 @@ const SLIDES = [
     exit() { setForceVisibility({}); },
   },
 
-  // ── 19: Gravity — ECI Decomposition ────────────────────────────────────
+  // ── 18: Gravity — ECI Decomposition ────────────────────────────────────
   {
     title: 'Gravity — ECI Decomposition',
     html: '',
@@ -2159,7 +2138,7 @@ const SLIDES = [
     },
   },
 
-  // ── 20: Drag Force ─────────────────────────────────────────────────────
+  // ── 19: Drag Force ─────────────────────────────────────────────────────
   {
     title: 'Drag Force',
     html: `
@@ -2178,7 +2157,7 @@ const SLIDES = [
       <div class="eq-block">
         <div class="eq-label">In vehicle-pointing frame</div>
         \\[\\vec{F}_D = \\begin{bmatrix}
-          \\textcolor{#FF9944}{D}\\sin\\textcolor{#FFEE77}{\\gamma} \\\\ \\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} \\\\ \\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}
+          \\textcolor{#FF9944}{-D}\\sin\\textcolor{#FFEE77}{\\gamma} \\\\ \\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} \\\\ \\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}
         \\end{bmatrix}_{\\text{RST}}\\]
       </div>`,
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
@@ -2194,7 +2173,7 @@ const SLIDES = [
     },
   },
 
-  // ── 21: Drag — ECI Decomposition ───────────────────────────────────────
+  // ── 20: Drag — ECI Decomposition ───────────────────────────────────────
   {
     title: 'Drag — ECI Decomposition',
     html: '',
@@ -2240,7 +2219,7 @@ const SLIDES = [
     },
   },
 
-  // ── 22: Lift Force & Bank Angle ────────────────────────────────────────
+  // ── 21: Lift Force & Bank Angle ────────────────────────────────────────
   {
     title: 'Lift Force & Bank Angle θ',
     html: `
@@ -2343,7 +2322,7 @@ const SLIDES = [
     },
   },
 
-  // ── 23: Lift — ECI Decomposition ───────────────────────────────────────
+  // ── 22: Lift — ECI Decomposition ───────────────────────────────────────
   {
     title: 'Lift — ECI Decomposition',
     html: '',
@@ -2390,7 +2369,7 @@ const SLIDES = [
     },
   },
 
-  // ── 24: Thrust Force ───────────────────────────────────────────────────
+  // ── 23: Thrust Force ───────────────────────────────────────────────────
   {
     title: 'Thrust Force',
     html: `
@@ -2438,7 +2417,7 @@ const SLIDES = [
     exit() { setForceVisibility({}); },
   },
 
-  // ── 25: Thrust — ECI Decomposition ─────────────────────────────────────
+  // ── 24: Thrust — ECI Decomposition ─────────────────────────────────────
   {
     title: 'Thrust — ECI Decomposition',
     html: '',
@@ -2484,7 +2463,7 @@ const SLIDES = [
     },
   },
 
-  // ── 26: Newton's Law — All Forces in ECI ───────────────────────────────
+  // ── 25: Newton's Law — All Forces in ECI ───────────────────────────────
   {
     title: 'Newton\'s Law — All Forces in ECI',
     html: '',
@@ -2542,7 +2521,7 @@ const SLIDES = [
     },
   },
 
-  // ── 27: F_net — ECI Components ──────────────────────────────────────────
+  // ── 26: F_net — ECI Components ──────────────────────────────────────────
   {
     title: 'F_net — ECI Components',
     html: '',
@@ -2596,7 +2575,7 @@ const SLIDES = [
     },
   },
 
-  // ── 28: Complete 3-DOF EOM ─────────────────────────────────────────────
+  // ── 27: Complete 3-DOF EOM ─────────────────────────────────────────────
   {
     title: 'Complete 3-DOF Equations of Motion',
     html: `
@@ -2724,7 +2703,7 @@ const SLIDES = [
     },
   },
 
-  // ── 29: Summary ────────────────────────────────────────────────────────
+  // ── 28: Summary ────────────────────────────────────────────────────────
   {
     title: 'Summary & Assumptions',
     html: `
@@ -3046,8 +3025,8 @@ function animate() {
   if (STATE.persistent.earthMesh) STATE.persistent.earthMesh.rotation.y = STATE.earthT;
   if (STATE.persistent.ecefGroup) STATE.persistent.ecefGroup.rotation.y = STATE.earthT;
 
-  // Live orbit on Rotating Frame (17), Complete EOMs (28), and Summary (29)
-  if (STATE.currentSlide === 17 || STATE.currentSlide === 28 || STATE.currentSlide === 29) {
+  // Live orbit on Rotating Frame (16), Complete EOMs (27), and Summary (28)
+  if (STATE.currentSlide === 16 || STATE.currentSlide === 27 || STATE.currentSlide === 28) {
     STATE.orbitT += delta * ORBIT_SPD;
     updateLiveVectors();
   }
