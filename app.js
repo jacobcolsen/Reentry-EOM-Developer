@@ -2780,8 +2780,6 @@ const SLIDES = [
       setFrameVisibility({ eci: true, ecef: true, rst: true, vrf: true, vel: true });
       setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
       updateLiveVectors();
-      controls.autoRotate      = true;
-      controls.autoRotateSpeed = 0.4;
 
       // Wire toggle buttons — all start ON (opacity 1)
       function wireBtn(id, getGroup, isArrow) {
@@ -2821,7 +2819,6 @@ const SLIDES = [
       }
     },
     exit() {
-      controls.autoRotate = false;
       STATE.orbitT = 0.72;
       if (STATE.spacecraft) {
         const s0 = getSpacecraftState(0.72);
