@@ -2702,7 +2702,93 @@ const SLIDES = [
     },
   },
 
-  // ── 27: Complete 3-DOF EOM ─────────────────────────────────────────────
+  // ── 27: Force Assembly in OX₂Y₂Z₂ ─────────────────────────────────────
+  {
+    title: 'Force Assembly in OX₂Y₂Z₂',
+    html: `
+      <p>All forces are expressed in <span class="chip chip-rst">OX₂Y₂Z₂</span> so their
+      components can be summed axis-by-axis. Each RST component will produce one scalar ODE.</p>
+      <div class="eq-block">
+        <div class="eq-label">Radial x₂ — inward gravity + drag/thrust + lift</div>
+        \\[F_{x_2} = \\textcolor{#6699FF}{-\\tfrac{\\mu m}{r^2}}
+          + (\\textcolor{#FF4444}{T}-\\textcolor{#FF9944}{D})\\sin\\textcolor{#FFEE77}{\\gamma}
+          - \\textcolor{#FF6699}{L}\\cos\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FFEE77}{\\gamma}\\]
+      </div>
+      <div class="eq-block">
+        <div class="eq-label">South y₂ — drag/thrust + lift meridional</div>
+        \\[F_{y_2} = (\\textcolor{#FF4444}{T}-\\textcolor{#FF9944}{D})\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}
+          + \\textcolor{#FF6699}{L}(\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi}
+          + \\sin\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FF44CC}{\\psi})\\]
+      </div>
+      <div class="eq-block">
+        <div class="eq-label">East z₂ — drag/thrust + lift lateral</div>
+        \\[F_{z_2} = (\\textcolor{#FF4444}{T}-\\textcolor{#FF9944}{D})\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}
+          + \\textcolor{#FF6699}{L}(\\cos\\textcolor{#44FFFF}{\\theta}\\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}
+          - \\sin\\textcolor{#44FFFF}{\\theta}\\cos\\textcolor{#FF44CC}{\\psi})\\]
+      </div>
+      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.5rem;">
+        <span class="chip chip-grav">Gravity</span>
+        <span class="chip chip-drag">Drag</span>
+        <span class="chip chip-lift">Lift</span>
+        <span class="chip chip-thrust">Thrust</span>
+      </div>`,
+    camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
+    enter() {
+      clearSlideObjects();
+      STATE.orbitT = 0.72;
+      setFrameVisibility({ rst: true, vel: true });
+      setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+    },
+    exit() {
+      setForceVisibility({});
+    },
+  },
+
+  // ── 28: RST Projection → v̇, γ̇, ψ̇ ──────────────────────────────────────
+  {
+    title: 'RST Projection → v̇, γ̇, ψ̇',
+    html: `
+      <p>From slide 17: \\(m\\ddot{\\vec{r}}_I = m\\ddot{\\vec{r}}_{\\text{rot}} +
+      2m\\vec{\\omega}_\\oplus\\times\\dot{\\vec{r}}_{\\text{rot}} +
+      m\\vec{\\omega}_\\oplus\\times(\\vec{\\omega}_\\oplus\\times\\vec{r})\\).
+      Rearranging and projecting onto each RST axis:</p>
+      <div class="eq-block">
+        <div class="eq-label">x₂ (radial) → v̇</div>
+        \\[m\\dot{v} = F_{x_2} + m\\omega_\\oplus^2 r\\cos\\phi
+          (\\sin\\textcolor{#FFEE77}{\\gamma}\\cos\\phi - \\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\phi\\cos\\textcolor{#FF44CC}{\\psi})\\]
+      </div>
+      <div class="eq-block">
+        <div class="eq-label">y₂ (south) → γ̇</div>
+        \\[mv\\dot{\\textcolor{#FFEE77}{\\gamma}} = F_{y_2}
+          - m\\!\\left(g - \\tfrac{v^2}{r}\\right)\\!\\cos\\textcolor{#FFEE77}{\\gamma}
+          + 2m\\omega_\\oplus v\\cos\\phi\\cos\\textcolor{#FF44CC}{\\psi}
+          + m\\omega_\\oplus^2 r\\cos\\phi(\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\phi
+          + \\sin\\textcolor{#FFEE77}{\\gamma}\\sin\\phi\\cos\\textcolor{#FF44CC}{\\psi})\\]
+      </div>
+      <div class="eq-block">
+        <div class="eq-label">z₂ (east) → ψ̇</div>
+        \\[mv\\cos\\textcolor{#FFEE77}{\\gamma}\\,\\dot{\\textcolor{#FF44CC}{\\psi}} = F_{z_2}
+          + \\tfrac{mv^2\\cos^2\\!\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}\\tan\\phi}{r}
+          - 2m\\omega_\\oplus v(\\tan\\textcolor{#FFEE77}{\\gamma}\\cos\\phi\\cos\\textcolor{#FF44CC}{\\psi}-\\sin\\phi)
+          + \\tfrac{m\\omega_\\oplus^2 r\\sin\\phi\\cos\\phi\\sin\\textcolor{#FF44CC}{\\psi}}{\\cos\\textcolor{#FFEE77}{\\gamma}}\\]
+      </div>
+      <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.4rem;">
+        Dividing through by <em>m</em> and <em>mv</em>, <em>mv</em>cosγ respectively gives
+        v̇, γ̇, ψ̇. Adding the three kinematic equations (ṙ, λ̇, φ̇) completes the
+        six-state system on the next slide.</p>`,
+    camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.0 },
+    enter() {
+      clearSlideObjects();
+      STATE.orbitT = 0.72;
+      setFrameVisibility({ rst: true, vel: true });
+      setForceVisibility({ grav: true, drag: true, lift: true, thrust: true });
+    },
+    exit() {
+      setForceVisibility({});
+    },
+  },
+
+  // ── 29: Complete 3-DOF EOM ─────────────────────────────────────────────
   {
     title: 'Complete 3-DOF Equations of Motion',
     html: `
@@ -2830,7 +2916,7 @@ const SLIDES = [
     },
   },
 
-  // ── 28: Summary ────────────────────────────────────────────────────────
+  // ── 30: Summary ────────────────────────────────────────────────────────
   {
     title: 'Summary & Assumptions',
     html: `
@@ -3150,7 +3236,7 @@ function animate() {
   if (STATE.persistent.ecefGroup) STATE.persistent.ecefGroup.rotation.y = STATE.earthT;
 
   // Live orbit on Rotating Frame (16), Complete EOMs (27), and Summary (28)
-  if (STATE.currentSlide === 16 || STATE.currentSlide === 27 || STATE.currentSlide === 28) {
+  if (STATE.currentSlide === 16 || STATE.currentSlide === 29 || STATE.currentSlide === 30) {
     STATE.orbitT += delta * ORBIT_SPD;
     updateLiveVectors();
   }
