@@ -2417,10 +2417,9 @@ const SLIDES = [
       const lift_hat = R.clone().addScaledVector(v_h, -R.dot(v_h)).normalize();
       const lat_hat  = new THREE.Vector3().crossVectors(v_h, lift_hat).normalize();
 
-      // VRF perpendicular axes — ŷᵥ (away from Earth ⊥ velocity) and ẑᵥ (lateral)
+      // ŷᵥ shows where lift points at θ=0 (away from Earth, ⊥ velocity)
       const lvnGroup = new THREE.Group();
       lvnGroup.add(makeArrow(lift_hat, s.pos, 0.38, 0x88FF88, 'ŷᵥ'));
-      lvnGroup.add(makeArrow(lat_hat,  s.pos, 0.38, 0xFF88AA, 'ẑᵥ'));
       addSlideObj(lvnGroup);
 
       // θ arc (0° → 60°) in the perpendicular plane
