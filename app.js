@@ -2388,6 +2388,7 @@ const SLIDES = [
     enter() {
       const gen     = STATE.slideGen;
       const s       = getSpacecraftState(0.72);
+      tweenCamera([2.2, 1.4, 3.2], s.pos.toArray(), 1.2);
       const vHat    = s.vel.clone().normalize();
       const liftDir = s.R_hat.clone().addScaledVector(vHat, -s.R_hat.dot(vHat)).normalize();
       setGroupVisible(STATE.persistent.vrfGroup, false);
