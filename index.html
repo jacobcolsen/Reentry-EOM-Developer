@@ -413,7 +413,7 @@ function buildVRFAxes() {
 
   // Small sphere marks the VRF origin at the spacecraft
   const originMark = new THREE.Mesh(
-    new THREE.SphereGeometry(0.032, 14, 14),
+    new THREE.SphereGeometry(0.008, 8, 8),
     new THREE.MeshBasicMaterial({ color: COLORS.vrf.x })
   );
   originMark.position.copy(pos);
@@ -2401,15 +2401,19 @@ const SLIDES = [
       <p style="margin-top:0.7rem;font-size:0.82rem;color:#6a90b0;">Varying \\(\\textcolor{#44FFFF}{\\theta}\\) is the primary guidance mechanism for
       lifting entry — it modulates both downrange and cross-range acceleration without
       changing lift magnitude.</p>`,
-    camera: { pos: [3, 4, 6], target: [0, 0, 0], dur: 1.0 },
+    camera: { pos: [1.83, 0.19, 0.19], target: [1.165, 0.722, 0.722], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
       setFrameVisibility({ vrf: true, vel: true });
       setForceVisibility({ lift: true });
 
-      const s = getSpacecraftState(0.72);
+      const s   = getSpacecraftState(0.72);
       const v_h = s.vel.clone().normalize();
       const R   = s.R_hat;
+
+      // Camera: 1 unit aft of spacecraft along velocity, Earth below (R_hat = up)
+      camera.up.copy(R);
+      tweenCamera(s.pos.clone().addScaledVector(v_h, -1.0).toArray(), s.pos.toArray(), 1.0);
       const lift_hat = R.clone().addScaledVector(v_h, -R.dot(v_h)).normalize();
       const lat_hat  = new THREE.Vector3().crossVectors(v_h, lift_hat).normalize();
 
@@ -2466,6 +2470,8 @@ const SLIDES = [
       });
     },
     exit() {
+      camera.up.set(0, 1, 0);
+      controls.update();
       if (STATE.bankAnim) { STATE.bankAnim.kill(); STATE.bankAnim = null; }
       const s  = getSpacecraftState(0.72);
       const vh = s.vel.clone().normalize();
