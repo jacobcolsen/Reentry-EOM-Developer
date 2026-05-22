@@ -51,7 +51,6 @@ const STATE = {
     coriolisArrow: null,
     centripArrow: null,
     lvnGroup:     null,
-    busModel:     null,
   },
 };
 
@@ -147,7 +146,7 @@ function onResize() {
 function loadAssets() {
   return new Promise((resolve) => {
     let loaded = 0;
-    const done = () => { if (++loaded === 3) resolve(); };
+    const done = () => { if (++loaded === 2) resolve(); };
 
     new THREE.TextureLoader().load(window._EARTH_SRC, (tex) => {
       // Guard against texture size exceeding GPU max
@@ -184,25 +183,6 @@ function loadAssets() {
       const geo = new THREE.ConeGeometry(0.06, 0.18, 4);
       const mat = new THREE.MeshPhongMaterial({ color: 0x88aacc });
       placeSpacecraft(new THREE.Mesh(geo, mat));
-      done();
-    });
-
-    new GLTFLoader().load(window.SCHOOLBUS_DATA_URL || '', (gltf) => {
-      const bus = gltf.scene;
-      const box3 = new THREE.Box3().setFromObject(bus);
-      const sz = box3.getSize(new THREE.Vector3());
-      bus.scale.setScalar(0.45 / Math.max(sz.x, sz.y, sz.z));
-      bus.visible = false;
-      scene.add(bus);
-      STATE.persistent.busModel = bus;
-      done();
-    }, undefined, () => {
-      const geo = new THREE.BoxGeometry(0.4, 0.16, 0.12);
-      const mat = new THREE.MeshPhongMaterial({ color: 0xffcc00 });
-      const fb = new THREE.Mesh(geo, mat);
-      fb.visible = false;
-      scene.add(fb);
-      STATE.persistent.busModel = fb;
       done();
     });
   });
@@ -830,78 +810,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 1: The Smoothie Test ──────────────────────────────────────────────
-  {
-    title: 'The Smoothie Test',
-    html: `
-      <p>Place a smoothie on a tray in a bus cruising at steady speed — it
-      sits still. No force needed. Now the driver <em>brakes hard</em>.
-      The smoothie slides forward — even though nothing pushed it.</p>
-      <p>That phantom push is a <strong style="color:#FF9944">fictitious force</strong>.
-      It only appears because you are measuring motion from inside an
-      <em>accelerating</em> reference frame (the bus). Step onto the sidewalk
-      and the smoothie simply keeps going in a straight line — exactly what
-      Newton's First Law predicts.</p>
-      <h3>Two kinds of frames</h3>
-      <ul>
-        <li><strong style="color:#44FF88">Inertial frame</strong> — fixed or constant-velocity
-          observer. F = ma holds exactly. No hidden terms.</li>
-        <li><strong style="color:#FF9944">Non-inertial frame</strong> — accelerating or rotating
-          observer. Fictitious forces appear (Coriolis, centrifugal, Euler).</li>
-      </ul>
-      <p style="font-size:0.82rem;color:#6a90b0">The 3-DOF equations of motion
-      in this lesson are derived in an inertial frame first — then
-      Earth-rotation corrections are added explicitly, so nothing is hidden.</p>`,
-    camera: { pos: [0, 0.6, 1.8], target: [0, 0.1, 0], dur: 1.2 },
-    enter() {
-      clearSlideObjects();
-      STATE.persistent.orbitLine.visible = false;
-      setFrameVisibility({});
-      if (STATE.persistent.busModel) {
-        STATE.persistent.busModel.visible = true;
-        STATE.persistent.busModel.position.set(0, 0, 0);
-        STATE.persistent.busModel.rotation.set(0, -Math.PI / 2, 0);
-      }
-    },
-    exit() {
-      if (STATE.persistent.busModel) STATE.persistent.busModel.visible = false;
-      STATE.persistent.orbitLine.visible = true;
-    },
-  },
-
-  // ── 2: ECI — The Sidewalk for Spacecraft ──────────────────────────────
-  {
-    title: 'ECI — The Sidewalk for Spacecraft',
-    html: `
-      <p>Earth's surface is the bus. It spins at
-      <span class="chip chip-ecef">ω⊕ ≈ 7.27 × 10⁻⁵ rad/s</span> — slow but
-      non-zero. Write F = ma from the surface and Coriolis and centrifugal
-      terms appear in every equation, uninvited.</p>
-      <p>The <span class="chip chip-eci">ECI Frame</span> is the sidewalk: origin
-      at Earth's center, axes fixed to distant stars. In ECI, Newton's Second
-      Law holds cleanly:</p>
-      <div class="eq-block">
-        <div class="eq-label">Newton in ECI — no fictitious terms</div>
-        \\[m\\ddot{\\vec{r}}_I = \\vec{F}_{\\text{grav}} + \\vec{F}_{\\text{drag}}
-          + \\vec{F}_{\\text{lift}} + \\vec{F}_{\\text{thrust}}\\]
-      </div>
-      <p>When we need positions on Earth's surface we <em>then</em> transform to
-      ECEF — but the dynamics are derived in ECI first, where the physics is
-      clean and complete.</p>
-      <p style="font-size:0.82rem;color:#6a90b0">The rotating-frame correction
-      terms on later slides are <em>explicitly added</em> — not hidden
-      artifacts. That transparency is why engineers choose this approach.</p>`,
-    camera: { pos: [8, 6, 8], target: [0, 0, 0], dur: 1.2 },
-    enter() {
-      clearSlideObjects();
-      STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ eci: true });
-      animateGroupIn(STATE.persistent.eciGroup);
-    },
-    exit() {},
-  },
-
-  // ── 3: ECI Frame ───────────────────────────────────────────────────────
+  // ── 1: ECI Frame ───────────────────────────────────────────────────────
   {
     title: 'Geocentric-Equatorial Frame (ECI)',
     html: `
@@ -928,7 +837,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 4: ECEF Frame ──────────────────────────────────────────────────────
+  // ── 2: ECEF Frame ──────────────────────────────────────────────────────
   {
     title: 'Planet-Fixed Frame (OX₁Y₁Z₁)',
     html: `
@@ -961,7 +870,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 5: Vehicle-Pointing Frame ──────────────────────────────────────────
+  // ── 3: Vehicle-Pointing Frame ──────────────────────────────────────────
   {
     title: 'Vehicle-Pointing Frame (OX₂Y₂Z₂)',
     html: `
@@ -1006,7 +915,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 6: Longitude & Latitude ────────────────────────────────────────────
+  // ── 4: Longitude & Latitude ────────────────────────────────────────────
   {
     title: 'Geocentric Longitude λ & Latitude ϕ',
     html: `
@@ -1119,7 +1028,7 @@ const SLIDES = [
     },
   },
 
-  // ── 7: Velocity Decomposition — Radial & Horizontal ────────────────────
+  // ── 5: Velocity Decomposition — Radial & Horizontal ────────────────────
   {
     title: 'Velocity Decomposition — Radial & Horizontal',
     html: `
@@ -1219,7 +1128,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 8: Velocity Decomposition — Heading Split ──────────────────────────
+  // ── 6: Velocity Decomposition — Heading Split ──────────────────────────
   {
     title: 'Velocity Decomposition — Heading Split',
     html: `
@@ -1348,7 +1257,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 9: Flight-Path Angle γ ─────────────────────────────────────────────
+  // ── 7: Flight-Path Angle γ ─────────────────────────────────────────────
   {
     title: 'Flight-Path Angle γ',
     html: `
@@ -1473,7 +1382,7 @@ const SLIDES = [
     },
   },
 
-  // ── 10: Heading Angle ψ ─────────────────────────────────────────────────
+  // ── 8: Heading Angle ψ ─────────────────────────────────────────────────
   {
     title: 'Heading Angle ψ',
     html: `
@@ -1589,7 +1498,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 11: Velocity-Referenced Frame ───────────────────────────────────────
+  // ── 9: Velocity-Referenced Frame ───────────────────────────────────────
   {
     title: 'Velocity-Referenced Frame (VRF)',
     html: `
@@ -1695,7 +1604,7 @@ const SLIDES = [
     },
   },
 
-  // ── 12: Frame Rotation Matrices ────────────────────────────────────────
+  // ── 10: Frame Rotation Matrices ────────────────────────────────────────
   {
     title: 'Coordinate Frame Transformations',
     html: `
@@ -1734,7 +1643,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 13: OXYZ → OX₁Y₁Z₁ — Earth Spin ──────────────────────────────────
+  // ── 11: OXYZ → OX₁Y₁Z₁ — Earth Spin ──────────────────────────────────
   {
     title: 'OXYZ → OX₁Y₁Z₁: Earth Spin',
     html: '',
@@ -1785,7 +1694,7 @@ const SLIDES = [
     exit() { STATE.suppressEarthUpdate = false; },
   },
 
-  // ── 14: OX₁Y₁Z₁ → OX₂Y₂Z₂ — Vehicle-Pointing ─────────────────────────
+  // ── 12: OX₁Y₁Z₁ → OX₂Y₂Z₂ — Vehicle-Pointing ─────────────────────────
   {
     title: 'OX₁Y₁Z₁ → OX₂Y₂Z₂: Vehicle-Pointing',
     html: '',
@@ -1889,7 +1798,7 @@ const SLIDES = [
     exit() { STATE.suppressEarthUpdate = false; },
   },
 
-  // ── 15: OX₂Y₂Z₂ → OX″Y″Z″ — Velocity-Referenced ──────────────────────
+  // ── 13: OX₂Y₂Z₂ → OX″Y″Z″ — Velocity-Referenced ──────────────────────
   {
     title: 'OX₂Y₂Z₂ → OX″Y″Z″: Velocity-Referenced',
     html: '',
@@ -2013,7 +1922,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 16: Complete Transformation Chain ──────────────────────────────────
+  // ── 14: Complete Transformation Chain ──────────────────────────────────
   {
     title: 'Complete Transformation Chain',
     html: '',
@@ -2090,7 +1999,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 17: Kinematic Equations (ṙ, φ̇, λ̇) ────────────────────────────────
+  // ── 15: Kinematic Equations (ṙ, φ̇, λ̇) ────────────────────────────────
   {
     title: 'Kinematic Equations — ṙ, φ̇, λ̇',
     html: `
@@ -2122,7 +2031,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 18: Newton's 2nd Law ────────────────────────────────────────────────
+  // ── 16: Newton's 2nd Law ────────────────────────────────────────────────
   {
     title: "Newton's Second Law",
     html: `
@@ -2162,7 +2071,7 @@ const SLIDES = [
     exit() { setForceVisibility({}); },
   },
 
-  // ── 19: Rotating Frame Conversion ───────────────────────────────────────
+  // ── 17: Rotating Frame Conversion ───────────────────────────────────────
   {
     title: 'Rotating Frame Conversion',
     html: `
@@ -2219,7 +2128,7 @@ const SLIDES = [
     },
   },
 
-  // ── 20: Gravitational Force ────────────────────────────────────────────
+  // ── 18: Gravitational Force ────────────────────────────────────────────
   {
     title: 'Gravitational Force',
     html: `
@@ -2250,7 +2159,7 @@ const SLIDES = [
     exit() { setForceVisibility({}); },
   },
 
-  // ── 21: Gravity — ECI Decomposition ────────────────────────────────────
+  // ── 19: Gravity — ECI Decomposition ────────────────────────────────────
   {
     title: 'Gravity — ECI Decomposition',
     html: '',
@@ -2291,7 +2200,7 @@ const SLIDES = [
     },
   },
 
-  // ── 22: Drag Force ─────────────────────────────────────────────────────
+  // ── 20: Drag Force ─────────────────────────────────────────────────────
   {
     title: 'Drag Force',
     html: `
@@ -2326,7 +2235,7 @@ const SLIDES = [
     },
   },
 
-  // ── 23: Drag — ECI Decomposition ───────────────────────────────────────
+  // ── 21: Drag — ECI Decomposition ───────────────────────────────────────
   {
     title: 'Drag — ECI Decomposition',
     html: '',
@@ -2372,7 +2281,7 @@ const SLIDES = [
     },
   },
 
-  // ── 24: Lift Force & Bank Angle ────────────────────────────────────────
+  // ── 22: Lift Force & Bank Angle ────────────────────────────────────────
   {
     title: 'Lift Force & Bank Angle θ',
     html: `
@@ -2480,7 +2389,7 @@ const SLIDES = [
     },
   },
 
-  // ── 25: Lift — ECI Decomposition ───────────────────────────────────────
+  // ── 23: Lift — ECI Decomposition ───────────────────────────────────────
   {
     title: 'Lift — ECI Decomposition',
     html: '',
@@ -2528,7 +2437,7 @@ const SLIDES = [
     },
   },
 
-  // ── 26: Thrust Force ───────────────────────────────────────────────────
+  // ── 24: Thrust Force ───────────────────────────────────────────────────
   {
     title: 'Thrust Force',
     html: `
@@ -2576,7 +2485,7 @@ const SLIDES = [
     exit() { setForceVisibility({}); },
   },
 
-  // ── 27: Thrust — ECI Decomposition ─────────────────────────────────────
+  // ── 25: Thrust — ECI Decomposition ─────────────────────────────────────
   {
     title: 'Thrust — ECI Decomposition',
     html: '',
@@ -2622,7 +2531,7 @@ const SLIDES = [
     },
   },
 
-  // ── 28: Newton's Law — All Forces in ECI ───────────────────────────────
+  // ── 26: Newton's Law — All Forces in ECI ───────────────────────────────
   {
     title: 'Newton\'s Law — All Forces in ECI',
     html: '',
@@ -2680,7 +2589,7 @@ const SLIDES = [
     },
   },
 
-  // ── 29: F_net — ECI Components ──────────────────────────────────────────
+  // ── 27: F_net — ECI Components ──────────────────────────────────────────
   {
     title: 'F_net — ECI Components',
     html: '',
@@ -2734,7 +2643,7 @@ const SLIDES = [
     },
   },
 
-  // ── 30: Force Assembly in OX₂Y₂Z₂ ─────────────────────────────────────
+  // ── 28: Force Assembly in OX₂Y₂Z₂ ─────────────────────────────────────
   {
     title: 'Force Assembly in OX₂Y₂Z₂',
     html: `
@@ -2776,7 +2685,7 @@ const SLIDES = [
     },
   },
 
-  // ── 31: RST Projection → v̇, γ̇, ψ̇ ──────────────────────────────────────
+  // ── 29: RST Projection → v̇, γ̇, ψ̇ ──────────────────────────────────────
   {
     title: 'RST Projection → v̇, γ̇, ψ̇',
     html: `
@@ -2820,7 +2729,7 @@ const SLIDES = [
     },
   },
 
-  // ── 32: Complete 3-DOF EOM ─────────────────────────────────────────────
+  // ── 30: Complete 3-DOF EOM ─────────────────────────────────────────────
   {
     title: 'Complete 3-DOF Equations of Motion',
     html: `
@@ -2948,7 +2857,7 @@ const SLIDES = [
     },
   },
 
-  // ── 33: Summary ────────────────────────────────────────────────────────
+  // ── 31: Summary ────────────────────────────────────────────────────────
   {
     title: 'Summary & Assumptions',
     html: `
@@ -3267,8 +3176,8 @@ function animate() {
   if (STATE.persistent.earthMesh) STATE.persistent.earthMesh.rotation.y = STATE.earthT;
   if (STATE.persistent.ecefGroup) STATE.persistent.ecefGroup.rotation.y = STATE.earthT;
 
-  // Live orbit on Rotating Frame (19), Complete EOMs (32), and Summary (33)
-  if (STATE.currentSlide === 19 || STATE.currentSlide === 32 || STATE.currentSlide === 33) {
+  // Live orbit on Rotating Frame (16), Complete EOMs (27), and Summary (28)
+  if (STATE.currentSlide === 17 || STATE.currentSlide === 30 || STATE.currentSlide === 31) {
     STATE.orbitT += delta * ORBIT_SPD;
     updateLiveVectors();
   }
