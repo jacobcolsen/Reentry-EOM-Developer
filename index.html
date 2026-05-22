@@ -155,8 +155,22 @@ const STATE = {
   },
 };
 
+// ── Annotation state ───────────────────────────────────────────────────────
+const ANNOT_COLORS = ['#FF4444', '#44FF88', '#4499FF', '#FFEE44', '#FF88FF'];
+const ANNOT = {
+  mode:     'off',  // 'off' | 'laser' | 'pen'
+  colorIdx: 0,
+  drawing:  false,
+  lastX:    0,
+  lastY:    0,
+  strokes:  [],     // persistent: [{color, points:[{x,y}]}]
+  laser:    [],     // [{x0,y0,x1,y1,t,color}] — auto-fades
+  rafId:    null,
+};
+
 // ── Three.js globals ───────────────────────────────────────────────────────
 let renderer, camera, scene, controls, css2d, clock;
+let annotCanvas, annotCtx, annotToolbar, ANNOT_API;
 // Frame-colored "pre-rotation" arrows for slide 15 substep animation
 let _forceFrameArrows = [];
 
@@ -176,6 +190,28 @@ function initScene() {
   css2d.setSize(container.clientWidth, container.clientHeight);
   css2d.domElement.classList.add('css2d-layer');
   container.appendChild(css2d.domElement);
+
+  // Annotation canvas — drawing surface, pointer-events:none always
+  annotCanvas = document.createElement('canvas');
+  annotCanvas.id = 'annot-canvas';
+  annotCanvas.width  = container.clientWidth;
+  annotCanvas.height = container.clientHeight;
+  container.appendChild(annotCanvas);
+  annotCtx = annotCanvas.getContext('2d');
+
+  // Annotation toolbar
+  annotToolbar = document.createElement('div');
+  annotToolbar.id = 'annot-toolbar';
+  annotToolbar.innerHTML =
+    `<button class="annot-btn" id="annot-laser" title="Laser — fading trail (L)">Laser</button>` +
+    `<button class="annot-btn" id="annot-pen"   title="Pen — stays until cleared (P)">Pen</button>` +
+    `<div style="width:1px;height:16px;background:#1a3555;margin:0 0.2rem"></div>` +
+    ANNOT_COLORS.map((c, i) =>
+      `<div class="annot-swatch${i === 0 ? ' annot-active' : ''}" data-idx="${i}" style="background:${c}" title="Color ${i + 1}"></div>`
+    ).join('') +
+    `<div style="width:1px;height:16px;background:#1a3555;margin:0 0.2rem"></div>` +
+    `<button class="annot-btn" id="annot-clear" title="Clear all (C)">Clear</button>`;
+  container.appendChild(annotToolbar);
 
   // Scene
   scene = new THREE.Scene();
@@ -241,6 +277,11 @@ function onResize() {
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
   css2d.setSize(w, h);
+  if (annotCanvas) {
+    annotCanvas.width  = w;
+    annotCanvas.height = h;
+    if (ANNOT_API) ANNOT_API.redraw();
+  }
 }
 
 // ── Asset loading ──────────────────────────────────────────────────────────
@@ -3391,6 +3432,142 @@ function initSetupOverlay(onReady) {
   }
 }
 
+// ── Annotation overlay ─────────────────────────────────────────────────────
+function initAnnotation() {
+  const canvas = annotCanvas;
+  const ctx    = annotCtx;
+
+  function currentColor() { return ANNOT_COLORS[ANNOT.colorIdx]; }
+
+  function setMode(m) {
+    ANNOT.mode = m;
+    controls.enabled = (m === 'off');
+    renderer.domElement.style.cursor = m !== 'off' ? 'crosshair' : '';
+    document.getElementById('annot-laser').classList.toggle('annot-on', m === 'laser');
+    document.getElementById('annot-pen').classList.toggle('annot-on',   m === 'pen');
+  }
+
+  function getPos(e) {
+    const r = renderer.domElement.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  function drawGlowSeg(x0, y0, x1, y1, col, isLaser) {
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (isLaser) {
+      ctx.shadowBlur = 14; ctx.shadowColor = col;
+      ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.globalAlpha = 0.6;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.shadowBlur = 0; ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5; ctx.globalAlpha = 0.9;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    } else {
+      ctx.shadowBlur = 8; ctx.shadowColor = col;
+      ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function redraw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (const s of ANNOT.strokes) {
+      for (let i = 1; i < s.points.length; i++) {
+        const a = s.points[i - 1], b = s.points[i];
+        drawGlowSeg(a.x, a.y, b.x, b.y, s.color, false);
+      }
+    }
+
+    const now  = performance.now();
+    const FADE = 1400;
+    ANNOT.laser = ANNOT.laser.filter(seg => now - seg.t < FADE);
+    for (const seg of ANNOT.laser) {
+      const age = (now - seg.t) / FADE;
+      ctx.save();
+      ctx.shadowBlur = 14; ctx.shadowColor = seg.color;
+      ctx.strokeStyle = seg.color; ctx.lineWidth = 3;
+      ctx.lineCap = 'round'; ctx.globalAlpha = (1 - age) * 0.9;
+      ctx.beginPath(); ctx.moveTo(seg.x0, seg.y0); ctx.lineTo(seg.x1, seg.y1); ctx.stroke();
+      ctx.shadowBlur = 0; ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5; ctx.globalAlpha = (1 - age) * 0.85;
+      ctx.beginPath(); ctx.moveTo(seg.x0, seg.y0); ctx.lineTo(seg.x1, seg.y1); ctx.stroke();
+      ctx.restore();
+    }
+
+    if (ANNOT.laser.length > 0)
+      ANNOT.rafId = requestAnimationFrame(redraw);
+    else
+      ANNOT.rafId = null;
+  }
+
+  function scheduleRedraw() {
+    if (!ANNOT.rafId) ANNOT.rafId = requestAnimationFrame(redraw);
+  }
+
+  function clearAll() {
+    ANNOT.strokes = []; ANNOT.laser = [];
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (ANNOT.rafId) { cancelAnimationFrame(ANNOT.rafId); ANNOT.rafId = null; }
+  }
+
+  // ── Pointer handlers on WebGL canvas, capture phase ────────────────────
+  function onDown(e) {
+    if (e.pointerType === 'touch') return;
+    const isPen = e.pointerType === 'pen';
+    if (!isPen && ANNOT.mode === 'off') return;
+    if (isPen && ANNOT.mode === 'off') setMode('pen');
+    e.stopImmediatePropagation();
+    ANNOT.drawing = true;
+    const p = getPos(e);
+    ANNOT.lastX = p.x; ANNOT.lastY = p.y;
+    if (ANNOT.mode === 'pen') ANNOT.strokes.push({ color: currentColor(), points: [p] });
+  }
+
+  function onMove(e) {
+    if (!ANNOT.drawing || e.pointerType === 'touch') return;
+    e.stopImmediatePropagation();
+    const p = getPos(e);
+    if (ANNOT.mode === 'pen') {
+      const s = ANNOT.strokes[ANNOT.strokes.length - 1];
+      s.points.push(p);
+      drawGlowSeg(ANNOT.lastX, ANNOT.lastY, p.x, p.y, s.color, false);
+    } else if (ANNOT.mode === 'laser') {
+      ANNOT.laser.push({ x0: ANNOT.lastX, y0: ANNOT.lastY, x1: p.x, y1: p.y,
+                         t: performance.now(), color: currentColor() });
+      scheduleRedraw();
+    }
+    ANNOT.lastX = p.x; ANNOT.lastY = p.y;
+  }
+
+  function onUp(e) {
+    if (!ANNOT.drawing || e.pointerType === 'touch') return;
+    e.stopImmediatePropagation();
+    ANNOT.drawing = false;
+  }
+
+  renderer.domElement.addEventListener('pointerdown', onDown, { capture: true });
+  renderer.domElement.addEventListener('pointermove', onMove, { capture: true });
+  renderer.domElement.addEventListener('pointerup',   onUp,   { capture: true });
+
+  // ── Toolbar ────────────────────────────────────────────────────────────
+  document.getElementById('annot-laser').addEventListener('click', () =>
+    setMode(ANNOT.mode === 'laser' ? 'off' : 'laser'));
+  document.getElementById('annot-pen').addEventListener('click', () =>
+    setMode(ANNOT.mode === 'pen' ? 'off' : 'pen'));
+  document.getElementById('annot-clear').addEventListener('click', clearAll);
+  document.querySelectorAll('.annot-swatch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      ANNOT.colorIdx = +sw.dataset.idx;
+      document.querySelectorAll('.annot-swatch').forEach((s, i) =>
+        s.classList.toggle('annot-active', i === ANNOT.colorIdx));
+    });
+  });
+
+  return { redraw, setMode, clearAll };
+}
+
 // ── Bootstrap ──────────────────────────────────────────────────────────────
 async function main() {
   const stored = getStoredAssets();
@@ -3417,6 +3594,7 @@ async function main() {
 async function boot() {
   initScene();
   await loadAssets();
+  ANNOT_API = initAnnotation();
 
   // Build persistent 3D elements
   buildOrbitTrail();
@@ -3440,6 +3618,19 @@ async function boot() {
   window.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight' || e.key === ' ')  advanceNext();
     if (e.key === 'ArrowLeft')                     goToSlide(STATE.currentSlide - 1);
+    if (e.key === 'l' || e.key === 'L')
+      ANNOT_API.setMode(ANNOT.mode === 'laser' ? 'off' : 'laser');
+    if (e.key === 'p' || e.key === 'P')
+      ANNOT_API.setMode(ANNOT.mode === 'pen' ? 'off' : 'pen');
+    if (e.key === 'Escape' && ANNOT.mode !== 'off')
+      ANNOT_API.setMode('off');
+    if ((e.key === 'c' || e.key === 'C') && ANNOT.mode !== 'off')
+      ANNOT_API.clearAll();
+    if (e.key >= '1' && e.key <= '5' && ANNOT.mode !== 'off') {
+      ANNOT.colorIdx = +e.key - 1;
+      document.querySelectorAll('.annot-swatch').forEach((s, i) =>
+        s.classList.toggle('annot-active', i === ANNOT.colorIdx));
+    }
   });
   document.getElementById('btn-next').addEventListener('click', advanceNext);
   document.getElementById('btn-prev').addEventListener('click', () => goToSlide(STATE.currentSlide - 1));
