@@ -3233,10 +3233,15 @@ const STORAGE_EARTH = 'eom_earth_v1';
 const STORAGE_GLB   = 'eom_glb_v1';
 
 function getStoredAssets() {
-  // Priority: pre-embedded (assets.js) > localStorage cache
+  // Priority: pre-embedded (assets.js) > localStorage cache > relative URL (HTTP server)
   const earth = window.EARTH_DATA_URL || localStorage.getItem(STORAGE_EARTH);
   const glb   = window.GLB_DATA_URL   || localStorage.getItem(STORAGE_GLB);
-  return (earth && glb) ? { earth, glb } : null;
+  if (earth && glb) return { earth, glb };
+  // On a proper web server (GitHub Pages, local dev server) load assets by relative URL
+  if (location.protocol === 'http:' || location.protocol === 'https:') {
+    return { earth: 'Earth_Blue_Marble.jpg', glb: 'x-37b.glb' };
+  }
+  return null;
 }
 
 function readFileAsDataURL(file) {
