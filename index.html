@@ -1072,7 +1072,7 @@ const SLIDES = [
       This is Kepler&rsquo;s second law in action.</p>
       <p style="font-size:0.82rem;color:#6a90b0;">Press <strong>Next →</strong>
       to decompose <em>v</em> into its \\(\\lambda\\) and \\(\\phi\\) rate components.</p>`,
-    camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 1.0 },
+    camera: { pos: [0, -4.5, 4.5], target: [0, 0, 0], dur: 0 },
     enter() {
       // Hide the circular persistent orbit; this slide uses its own eccentric orbit
       STATE.persistent.orbitLine.visible = false;
@@ -1154,7 +1154,7 @@ const SLIDES = [
         velLabelGrp.position.copy(lblPos);
       }
       gsap.ticker.add(tick);
-      tweenCamera([4, 4, 8], [0, 0, 0], 1.0);
+      tweenCamera([0, -4.5, 4.5], [0, 0, 0], 1.0);
     },
     exit() {
       const s = getSpacecraftState(0.72);
@@ -3446,7 +3446,6 @@ function initAnnotation() {
 
   function setMode(m) {
     ANNOT.mode = m;
-    controls.enabled = (m === 'off');
     renderer.domElement.style.cursor = m !== 'off' ? 'crosshair' : '';
     document.getElementById('annot-laser').classList.toggle('annot-on', m === 'laser');
     document.getElementById('annot-pen').classList.toggle('annot-on',   m === 'pen');
