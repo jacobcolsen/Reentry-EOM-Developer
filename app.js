@@ -2094,6 +2094,7 @@ const SLIDES = [
       STATE.persistent.orbitLine.visible = true;
       setFrameVisibility({ eci: true, ecef: true });
       setForceVisibility({ coriolis: true, centrip: true });
+      const gen = STATE.slideGen;
       [STATE.persistent.coriolisArrow, STATE.persistent.centripArrow].forEach((a, i) => {
         if (!a) return;
         a.scale.set(0, 0, 0);
@@ -2101,12 +2102,15 @@ const SLIDES = [
         gsap.to(a.scale, {
           x: 1, y: 1, z: 1, duration: 0.5, delay: 0.3 + i * 0.22, ease: 'back.out(1.4)',
           onComplete() {
+            if (STATE.slideGen !== gen) return;
             a.traverse(o => { if (o.isCSS2DObject) { o.visible = true; o.element.style.display = ''; } });
           }
         });
       });
     },
     exit() {
+      gsap.killTweensOf(STATE.persistent.coriolisArrow?.scale);
+      gsap.killTweensOf(STATE.persistent.centripArrow?.scale);
       setForceVisibility({});
       // Reset orbit back to frozen position so other slides are unaffected
       STATE.orbitT = 0.72;
