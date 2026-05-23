@@ -90,12 +90,12 @@ function initScene() {
   css2d.domElement.classList.add('css2d-layer');
   container.appendChild(css2d.domElement);
 
-  // Annotation canvas — drawing surface, pointer-events:none always
+  // Annotation canvas — fixed overlay covering full viewport, pointer-events:none always
   annotCanvas = document.createElement('canvas');
   annotCanvas.id = 'annot-canvas';
-  annotCanvas.width  = container.clientWidth;
-  annotCanvas.height = container.clientHeight;
-  container.appendChild(annotCanvas);
+  annotCanvas.width  = window.innerWidth;
+  annotCanvas.height = window.innerHeight;
+  document.body.appendChild(annotCanvas);
   annotCtx = annotCanvas.getContext('2d');
 
   // Annotation toolbar
@@ -177,8 +177,8 @@ function onResize() {
   renderer.setSize(w, h);
   css2d.setSize(w, h);
   if (annotCanvas) {
-    annotCanvas.width  = w;
-    annotCanvas.height = h;
+    annotCanvas.width  = window.innerWidth;
+    annotCanvas.height = window.innerHeight;
     if (ANNOT_API) ANNOT_API.redraw();
   }
 }
@@ -3351,8 +3351,8 @@ function initAnnotation() {
   }
 
   function getPos(e) {
-    const r = renderer.domElement.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+    // canvas is fixed to viewport, so clientX/Y are the canvas coordinates directly
+    return { x: e.clientX, y: e.clientY };
   }
 
   function drawGlowSeg(x0, y0, x1, y1, col, isLaser) {
@@ -3415,11 +3415,12 @@ function initAnnotation() {
     if (ANNOT.rafId) { cancelAnimationFrame(ANNOT.rafId); ANNOT.rafId = null; }
   }
 
-  // ── Pointer handlers on WebGL canvas, capture phase ────────────────────
+  // ── Pointer handlers on document, capture phase ───────────────────────
   function onDown(e) {
     if (e.pointerType === 'touch') return;
     const isPen = e.pointerType === 'pen';
     if (!isPen && ANNOT.mode === 'off') return;
+    if (e.target.closest('button, input, a, select, [data-force-hover]')) return;
     if (isPen && ANNOT.mode === 'off') setMode('pen');
     e.stopImmediatePropagation();
     ANNOT.drawing = true;
@@ -3450,9 +3451,9 @@ function initAnnotation() {
     ANNOT.drawing = false;
   }
 
-  renderer.domElement.addEventListener('pointerdown', onDown, { capture: true });
-  renderer.domElement.addEventListener('pointermove', onMove, { capture: true });
-  renderer.domElement.addEventListener('pointerup',   onUp,   { capture: true });
+  document.addEventListener('pointerdown', onDown, { capture: true });
+  document.addEventListener('pointermove', onMove, { capture: true });
+  document.addEventListener('pointerup',   onUp,   { capture: true });
 
   // ── Toolbar ────────────────────────────────────────────────────────────
   document.getElementById('annot-laser').addEventListener('click', () =>
