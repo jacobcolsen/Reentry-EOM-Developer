@@ -437,3 +437,12 @@ input[type="file"] { display: none; }
 }
 .annot-swatch:hover { transform: scale(1.2); }
 .annot-swatch.annot-active { border-color: #fff; transform: scale(1.25); }
+
+#annot-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+#annot-toolbar.minimized #annot-tools { display: none; }
+#annot-toolbar.minimized { padding: 0.3rem 0.5rem; }
+#annot-toggle { font-size: 1rem; line-height: 1; padding: 0.2rem 0.5rem; }

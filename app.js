@@ -102,6 +102,7 @@ function initScene() {
   annotToolbar = document.createElement('div');
   annotToolbar.id = 'annot-toolbar';
   annotToolbar.innerHTML =
+    `<div id="annot-tools">` +
     `<button class="annot-btn" id="annot-laser" title="Laser — fading trail (L)">Laser</button>` +
     `<button class="annot-btn" id="annot-pen"   title="Pen — stays until cleared (P)">Pen</button>` +
     `<div style="width:1px;height:16px;background:#1a3555;margin:0 0.2rem"></div>` +
@@ -109,7 +110,9 @@ function initScene() {
       `<div class="annot-swatch${i === 0 ? ' annot-active' : ''}" data-idx="${i}" style="background:${c}" title="Color ${i + 1}"></div>`
     ).join('') +
     `<div style="width:1px;height:16px;background:#1a3555;margin:0 0.2rem"></div>` +
-    `<button class="annot-btn" id="annot-clear" title="Clear all (C)">Clear</button>`;
+    `<button class="annot-btn" id="annot-clear" title="Clear all (C)">Clear</button>` +
+    `</div>` +
+    `<button class="annot-btn" id="annot-toggle" title="Hide toolbar (H)">─</button>`;
   container.appendChild(annotToolbar);
 
   // Scene
@@ -3469,7 +3472,13 @@ function initAnnotation() {
     });
   });
 
-  return { redraw, setMode, clearAll };
+  function toggleToolbar() {
+    const minimized = toolbar.classList.toggle('minimized');
+    document.getElementById('annot-toggle').textContent = minimized ? '✏' : '─';
+  }
+  document.getElementById('annot-toggle').addEventListener('click', toggleToolbar);
+
+  return { redraw, setMode, clearAll, toggleToolbar };
 }
 
 // ── Bootstrap ──────────────────────────────────────────────────────────────
@@ -3530,6 +3539,8 @@ async function boot() {
       ANNOT_API.setMode('off');
     if ((e.key === 'c' || e.key === 'C') && ANNOT.mode !== 'off')
       ANNOT_API.clearAll();
+    if (e.key === 'h' || e.key === 'H')
+      ANNOT_API.toggleToolbar();
     if (e.key >= '1' && e.key <= '5' && ANNOT.mode !== 'off') {
       ANNOT.colorIdx = +e.key - 1;
       document.querySelectorAll('.annot-swatch').forEach((s, i) =>
