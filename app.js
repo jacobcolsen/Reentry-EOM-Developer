@@ -3473,7 +3473,7 @@ function initAnnotation() {
   });
 
   function toggleToolbar() {
-    const minimized = toolbar.classList.toggle('minimized');
+    const minimized = annotToolbar.classList.toggle('minimized');
     document.getElementById('annot-toggle').textContent = minimized ? '✏' : '─';
   }
   document.getElementById('annot-toggle').addEventListener('click', toggleToolbar);
