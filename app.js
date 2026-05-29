@@ -205,7 +205,13 @@ function loadAssets() {
       }
       buildEarth(tex);
       done();
-    }, undefined, () => { buildEarth(null); done(); });
+    }, undefined, () => {
+      const CDN_EARTH = 'https://cdn.jsdelivr.net/npm/three@0.164.1/examples/textures/planets/earth_atmos_2048.jpg';
+      new THREE.TextureLoader().load(CDN_EARTH, (tex) => {
+        buildEarth(tex);
+        done();
+      }, undefined, () => { buildEarth(null); done(); });
+    });
 
     new GLTFLoader().load(window._GLB_SRC, (gltf) => {
       const ship = gltf.scene;
