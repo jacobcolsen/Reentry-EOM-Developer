@@ -309,7 +309,7 @@ function loadAssets() {
       buildEarth(tex);
       done();
     }, undefined, () => {
-      const CDN_EARTH = 'https://cdn.jsdelivr.net/npm/three@0.164.1/examples/textures/planets/earth_atmos_2048.jpg';
+      const CDN_EARTH = 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r164/examples/textures/planets/earth_atmos_2048.jpg';
       new THREE.TextureLoader().load(CDN_EARTH, (tex) => {
         buildEarth(tex);
         done();
