@@ -3660,6 +3660,12 @@ async function boot() {
   document.getElementById('btn-prev').addEventListener('click', () => goToSlide(STATE.currentSlide - 1));
 }
 
+// Expose navigation API so automation tools can drive the presentation
+window.goToSlide  = goToSlide;
+window.advanceNext = advanceNext;
+window.STATE  = STATE;
+window.SLIDES = SLIDES;
+
 main();
 
   </script>
