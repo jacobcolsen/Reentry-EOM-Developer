@@ -108,10 +108,10 @@ input[type="file"] { display: none; }
 
 .setup-tps-logo {
   display: block;
-  margin: 0 auto 0.8rem;
-  height: 72px;
-  opacity: 0.85;
-  filter: drop-shadow(0 0 8px #1a4a8a55);
+  margin: 0 auto 1rem;
+  height: 120px;
+  opacity: 1;
+  filter: drop-shadow(0 0 14px #3a88cc88);
 }
 
 .setup-note {
@@ -122,10 +122,10 @@ input[type="file"] { display: none; }
 }
 
 .setup-credit {
-  margin-top: 0.6rem;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  color: #2a4a6a;
+  margin-top: 0.8rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  color: #5a8ab0;
   text-transform: uppercase;
 }
 
@@ -183,8 +183,8 @@ input[type="file"] { display: none; }
   position: absolute;
   bottom: 1rem;
   left: 1rem;
-  height: 40px;
-  opacity: 0.3;
+  height: 64px;
+  opacity: 0.7;
   pointer-events: none;
   z-index: 10;
 }
@@ -268,13 +268,13 @@ input[type="file"] { display: none; }
 
 .slide-credit {
   margin-top: 1.5rem;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   letter-spacing: 0.1em;
-  color: #2a4a6a;
+  color: #5a8ab0;
   text-align: right;
   text-transform: uppercase;
-  border-top: 1px solid #0e2035;
-  padding-top: 0.5rem;
+  border-top: 1px solid #1a3a5a;
+  padding-top: 0.6rem;
 }
 
 /* KaTeX color override */
