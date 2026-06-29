@@ -367,6 +367,14 @@ input[type="file"] { display: none; }
   cursor: default;
 }
 
+#panel-credit {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5a8ab0;
+  text-align: center;
+}
+
 /* ── CSS2D axis labels ── */
 .label3d {
   font-size: 0.8rem;
