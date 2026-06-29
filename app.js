@@ -2929,6 +2929,7 @@ const SLIDES = [
       <p style="color:#3a6a9a;font-size:0.8rem;margin-top:1rem;">
         Source: Hicks, K. D. <em>Introduction to Astrodynamic Reentry, 2nd ed.</em> 2014.
       </p>
+      <p class="slide-credit">Created by Maj &ldquo;MOAB&rdquo; Olsen &middot; MECH 637 &middot; Fall 2022</p>
       <div style="margin-top:0.75rem;border-top:1px solid #0e2035;padding-top:0.55rem;">
         <div style="font-size:0.68rem;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:0.35rem;">Reference Frames</div>
         <div style="display:flex;gap:0.3rem;flex-wrap:wrap;margin-bottom:0.45rem;">

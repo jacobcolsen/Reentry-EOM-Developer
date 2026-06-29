@@ -106,11 +106,27 @@ input[type="file"] { display: none; }
 }
 #btn-launch:disabled { opacity: 0.35; cursor: default; }
 
+.setup-tps-logo {
+  display: block;
+  margin: 0 auto 0.8rem;
+  height: 72px;
+  opacity: 0.85;
+  filter: drop-shadow(0 0 8px #1a4a8a55);
+}
+
 .setup-note {
   margin-top: 1rem;
   font-size: 0.75rem;
   color: #2a4a6a;
   line-height: 1.5;
+}
+
+.setup-credit {
+  margin-top: 0.6rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: #2a4a6a;
+  text-transform: uppercase;
 }
 
 .btn-folder {
@@ -163,6 +179,16 @@ input[type="file"] { display: none; }
   width: 100% !important;
   height: 100% !important;
 }
+#canvas-logo {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  height: 40px;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 10;
+}
+
 /* CSS2DRenderer sits absolutely over the canvas */
 #canvas-container .css2d-layer {
   position: absolute;
@@ -238,6 +264,17 @@ input[type="file"] { display: none; }
   margin: 1.2rem 0 0.5rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.slide-credit {
+  margin-top: 1.5rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: #2a4a6a;
+  text-align: right;
+  text-transform: uppercase;
+  border-top: 1px solid #0e2035;
+  padding-top: 0.5rem;
 }
 
 /* KaTeX color override */
