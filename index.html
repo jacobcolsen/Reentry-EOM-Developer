@@ -143,6 +143,9 @@ const STATE = {
   bankAnim:       null,        // GSAP tween for bank-angle animation on slide 12
   spacecraft:     null,
   slideObjects:   [],          // objects added by current slide; cleared on exit
+  zoomRatio:      parseFloat(localStorage.getItem('reentry_zoomRatio')) || 1,  // user's zoom preference, carried across slides
+  programmaticCameraMove: false,  // true while a tween/snap we triggered is in flight (ignore for zoom-ratio tracking)
+  lastCamDefault: { pos: [0, 12, 20], target: [0, 0, 0] },  // unadjusted default cam for whatever is currently shown
   persistent: {
     earthMesh:    null,
     eciGroup:     null,        // THREE.Group of 3 ArrowHelpers
@@ -265,6 +268,18 @@ function initScene() {
   controls.minDistance = 1.5;
   controls.maxDistance = 40;
   controls.target.set(0, 0, 0);
+
+  // Track the user's zoom preference (distance ratio vs. each view's default)
+  // so it carries over across slide/substep transitions instead of resetting.
+  controls.addEventListener('change', () => {
+    if (STATE.programmaticCameraMove) return;
+    const defTarget = new THREE.Vector3(...STATE.lastCamDefault.target);
+    const defDist   = new THREE.Vector3(...STATE.lastCamDefault.pos).sub(defTarget).length();
+    if (defDist < 1e-6) return;
+    const dist = camera.position.distanceTo(controls.target);
+    STATE.zoomRatio = THREE.MathUtils.clamp(dist / defDist, 0.3, 3);
+    localStorage.setItem('reentry_zoomRatio', STATE.zoomRatio);
+  });
 
   // Clock
   clock = new THREE.Clock();
@@ -687,19 +702,37 @@ function makeArc(center, normal, radius, startAngle, endAngle, hexColor, segment
   return line;
 }
 
+// Rescales a default cam position by the user's carried-over zoom ratio,
+// keeping the same direction from target and clamped to controls' distance limits.
+function applyZoomRatio(pos, target) {
+  const t = new THREE.Vector3(...target);
+  const dir = new THREE.Vector3(...pos).sub(t);
+  const dist = dir.length();
+  if (dist < 1e-6) return pos;
+  const newDist = THREE.MathUtils.clamp(dist * STATE.zoomRatio, controls.minDistance, controls.maxDistance);
+  dir.setLength(newDist);
+  return t.add(dir).toArray();
+}
+
 function tweenCamera(toPos, toTarget, duration) {
   if (STATE.gsapTween) STATE.gsapTween.kill();
+  STATE.lastCamDefault = { pos: toPos, target: toTarget };
+  const adjustedPos = applyZoomRatio(toPos, toTarget);
   const fromPos    = camera.position.clone();
   const fromTarget = controls.target.clone();
   const proxy = { t: 0 };
+  STATE.programmaticCameraMove = true;
   STATE.gsapTween = gsap.to(proxy, {
     t: 1, duration, ease: 'power2.inOut',
     onUpdate() {
       camera.position.lerpVectors(fromPos,
-        new THREE.Vector3(...toPos), proxy.t);
+        new THREE.Vector3(...adjustedPos), proxy.t);
       controls.target.lerpVectors(fromTarget,
         new THREE.Vector3(...toTarget), proxy.t);
       controls.update();
+    },
+    onComplete() {
+      STATE.programmaticCameraMove = false;
     },
   });
 }
@@ -954,7 +987,8 @@ const SLIDES = [
       <ul>
         <li><strong>← →</strong> or buttons below — advance slides</li>
         <li><strong>Mouse drag</strong> — orbit the 3D scene</li>
-        <li><strong>Scroll</strong> — zoom in/out</li>
+        <li><strong>Scroll</strong> — zoom in/out (your zoom level carries over between slides)</li>
+        <li><strong>0</strong> — reset zoom to this slide's default</li>
       </ul>
       <p style="color:#3a6a9a;font-size:0.8rem;margin-top:1rem;">
         Astrodynamic Reentry
@@ -3200,9 +3234,12 @@ function goToSlide(idx) {
   if (cam.dur > 0) {
     tweenCamera(cam.pos, cam.target, cam.dur);
   } else {
-    camera.position.set(...cam.pos);
+    STATE.lastCamDefault = { pos: cam.pos, target: cam.target };
+    STATE.programmaticCameraMove = true;
+    camera.position.set(...applyZoomRatio(cam.pos, cam.target));
     controls.target.set(...cam.target);
     controls.update();
+    STATE.programmaticCameraMove = false;
   }
 
   if (slide.enter) slide.enter();
@@ -3655,6 +3692,11 @@ async function boot() {
       ANNOT_API.clearAll();
     if (e.key === 'h' || e.key === 'H')
       ANNOT_API.toggleToolbar();
+    if (e.key === '0') {
+      STATE.zoomRatio = 1;
+      localStorage.setItem('reentry_zoomRatio', 1);
+      tweenCamera(STATE.lastCamDefault.pos, STATE.lastCamDefault.target, 0.6);
+    }
     if (e.key >= '1' && e.key <= '5' && ANNOT.mode !== 'off') {
       ANNOT.colorIdx = +e.key - 1;
       document.querySelectorAll('.annot-swatch').forEach((s, i) =>
