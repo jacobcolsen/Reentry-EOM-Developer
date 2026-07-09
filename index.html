@@ -286,6 +286,7 @@ function initScene() {
 
   // Resize
   window.addEventListener('resize', onResize);
+  window.addEventListener('resize', fitSlideBody);
 
   // Loading indicator
   const loader = document.createElement('div');
@@ -931,6 +932,23 @@ function setSlidePanel(html) {
       ],
       throwOnError: false,
     });
+  }
+}
+
+// Shrink #slide-body's font size just enough to eliminate vertical scrolling,
+// never below the pre-bump baseline (0.72rem of the 21px root ≈ the original 15px).
+const SLIDE_BODY_MAX_REM = 1.0;
+const SLIDE_BODY_MIN_REM = 0.72;
+function fitSlideBody() {
+  const panel = document.getElementById('slide-body');
+  if (!panel) return;
+  let scale = SLIDE_BODY_MAX_REM;
+  panel.style.fontSize = scale + 'rem';
+  let guard = 0;
+  while (panel.scrollHeight > panel.clientHeight && scale > SLIDE_BODY_MIN_REM && guard < 24) {
+    scale = Math.max(SLIDE_BODY_MIN_REM, scale - 0.03);
+    panel.style.fontSize = scale + 'rem';
+    guard++;
   }
 }
 
@@ -3288,6 +3306,7 @@ function goToSlide(idx) {
   }
 
   if (slide.enter) slide.enter();
+  fitSlideBody();
 }
 
 // Restore RST to Earth-center build position (L=2.1) for static slides.
