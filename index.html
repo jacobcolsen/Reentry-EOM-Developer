@@ -1051,7 +1051,7 @@ const SLIDES = [
       <p>The scene is frozen at a moment in time — the
       <span class="chip chip-ecef">amber OX₁Y₁Z₁ axes</span> are offset from the
       <span class="chip chip-eci">white OXYZ axes</span> by the current Earth rotation
-      angle \\(\\omega_\\oplus\\Delta t\\). As Earth spins, this offset grows continuously.</p>`,
+      angle \\(\\omega_\\oplus\\Delta t\\). As Earth spins, this offset grows continuously.</p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-omega">ω Earth's rotation rate</span></div>`,
     camera: { pos: [8, 8, 6], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -1096,7 +1096,7 @@ const SLIDES = [
       </div>
       <p style="font-size:0.8rem;color:#6a90b0;">
         Any time you see a force vector with subscript <em>RST</em>, its three
-        components are along R̂, Ŝ, T̂ = x₂, y₂, z₂ of the Vehicle-Pointing Frame.</p>`,
+        components are along R̂, Ŝ, T̂ = x₂, y₂, z₂ of the Vehicle-Pointing Frame.</p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-phi">φ latitude</span><span class="chip chip-theta">θ longitude rotation angle</span></div>`,
     camera: { pos: [6, 5, 10], target: [0, 0, 0], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -1106,7 +1106,118 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 4: Longitude & Latitude ────────────────────────────────────────────
+  // ── 4: Velocity-Referenced Frame ───────────────────────────────────────
+  {
+    title: 'Velocity-Referenced Frame (VRF)',
+    html: `
+      <p>The <span class="chip chip-vrf">VRF</span> (<strong>OX″Y″Z″</strong>) is obtained from the Vehicle-Pointing Frame <strong>OX₂Y₂Z₂</strong> by two successive rotations defined by the velocity vector direction.</p>
+      <div class="eq-block">
+        <div class="eq-label">Two-step rotation from OX₂Y₂Z₂</div>
+        \\[\\text{Step 1: rotate }\\textcolor{#FF44CC}{\\psi}\\text{ about }\\hat{e}_{x_2}=\\hat{R}\\quad(\\text{heading azimuth})\\]
+        \\[\\text{Step 2: rotate }\\textcolor{#FFEE77}{-\\gamma}\\text{ about new }z'\\quad(\\text{flight-path angle})\\]
+        \\[\\mathbf{T}_{\\text{OX}_2 \\to \\text{OX}''} = R_{z'}(\\textcolor{#FFEE77}{-\\gamma})\\,R_{x_2}(\\textcolor{#FF44CC}{\\psi})\\]
+      </div>
+      <p style="font-size:0.82rem;color:#6a90b0;">
+        <span style="color:#FF44CC">\\(\\psi\\)</span> is the <strong>heading angle</strong> — the compass
+        direction of horizontal travel — and <span style="color:#FFEE77">\\(\\gamma\\)</span> is the
+        <strong>flight-path angle</strong> — how steeply the vehicle is climbing or descending. Both are
+        defined precisely in the next few slides; for now, just the two rotations that build the VRF.</p>
+      <div class="eq-block">
+        <div class="eq-label">Axis definitions (this presentation)</div>
+        \\[\\hat{x}_v \\parallel \\vec{v}\\quad(\\text{along velocity})\\]
+        \\[\\hat{z}_v \\perp \\vec{v},\\; \\hat{z}_v \\text{ lies in local horizontal plane}\\]
+        \\[\\hat{y}_v = \\hat{z}_v \\times \\hat{x}_v\\quad(\\text{completes right-hand system})\\]
+      </div>
+      <p style="font-size:0.82rem;color:#6a90b0;border-left:2px solid #1e3a5f;padding-left:0.7rem;margin-top:0.8rem;">
+        <strong style="color:#8ab8d8">Convention note:</strong> Velocity is along x̂<sub>v</sub>. All force equations use this convention consistently.
+      </p>
+      <p style="margin-top:0.9rem;">Forces expressed in VRF use frame-native scalars
+      (\\(\\textcolor{#FF9944}{D}\\), \\(\\textcolor{#FF6699}{L}\\), \\(\\textcolor{#FF4444}{T}\\)),
+      then rotated back to RST via the transpose of this rotation chain.</p>
+      <div style="margin-top:1.1rem;">
+        <div style="font-size:0.72rem;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:0.5rem">Toggle Frames</div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <button id="toggle-rst" style="padding:.35rem .8rem;background:#160a2a;border:1px solid #CC44FF;border-radius:6px;color:#DD88FF;font-size:.8rem;cursor:pointer;letter-spacing:.04em;transition:opacity .15s,border-color .15s;">● RST</button>
+          <button id="toggle-vrf" style="padding:.35rem .8rem;background:#0a1a0a;border:1px solid #44FF44;border-radius:6px;color:#88FF88;font-size:.8rem;cursor:pointer;letter-spacing:.04em;transition:opacity .15s,border-color .15s;">● VRF</button>
+          <button id="toggle-vel8" style="padding:.35rem .8rem;background:#1a1200;border:1px solid #FFD700;border-radius:6px;color:#FFD700;font-size:.8rem;cursor:pointer;letter-spacing:.04em;transition:opacity .15s,border-color .15s;">● Velocity</button>
+        </div>
+      </div><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span></div>`,
+    camera: { pos: [3, 3, 7], target: [1.17, 0.72, 0.72], dur: 1.0 },
+    enter() {
+      STATE.persistent.orbitLine.visible = true;
+      setFrameVisibility({ rst: true, vrf: true, vel: true });
+
+      const s = getSpacecraftState(0.72);
+      tweenCamera([3, 3, 7], [s.pos.x, s.pos.y, s.pos.z], 1.0);
+
+      const x_v = s.vel.clone().normalize();
+      const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
+      const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
+
+      const vrfGroup = STATE.persistent.vrfGroup;
+      const arrows   = vrfGroup.children.filter(c => c.type === 'ArrowHelper');
+
+      const startDirs = [s.R_hat.clone(), s.S_hat.clone(), s.T_hat.clone()];
+      const endDirs   = [x_v.clone(),    y_v.clone(),    z_v.clone()];
+
+      if (arrows[0]) arrows[0].setDirection(startDirs[0]);
+      if (arrows[1]) arrows[1].setDirection(startDirs[1]);
+      if (arrows[2]) arrows[2].setDirection(startDirs[2]);
+
+      // Labels stay visible throughout the rotation animation
+      const proxy = { t: 0 };
+      STATE.vrfAnim = gsap.to(proxy, {
+        t: 1, duration: 1.5, ease: 'power2.inOut', delay: 0.5,
+        onUpdate() {
+          arrows.forEach((arrow, i) => {
+            if (!arrow) return;
+            arrow.setDirection(new THREE.Vector3().lerpVectors(startDirs[i], endDirs[i], proxy.t).normalize());
+          });
+        },
+      });
+
+      // ── Frame toggle buttons ──
+      function wireToggle(id, grp) {
+        const btn = document.getElementById(id);
+        if (!btn || !grp) return;
+        btn.addEventListener('click', () => {
+          const show = !grp.visible;
+          grp.visible = show;
+          grp.traverse(c => {
+            if (c.isCSS2DObject) { c.visible = show; c.element.style.display = show ? '' : 'none'; }
+          });
+          btn.style.opacity = show ? '1' : '0.35';
+        });
+      }
+      wireToggle('toggle-rst',  STATE.persistent.rstGroup);
+      wireToggle('toggle-vrf',  STATE.persistent.vrfGroup);
+
+      const btnVel = document.getElementById('toggle-vel8');
+      if (btnVel) {
+        btnVel.addEventListener('click', () => {
+          const show = !STATE.persistent.velArrow.visible;
+          STATE.persistent.velArrow.visible = show;
+          btnVel.style.opacity = show ? '1' : '0.35';
+        });
+      }
+    },
+    exit() {
+      if (STATE.vrfAnim) { STATE.vrfAnim.kill(); STATE.vrfAnim = null; }
+      // Restore VRF arrows to their built directions so later slides see correct state
+      const s = getSpacecraftState(0.72);
+      const x_v = s.vel.clone().normalize();
+      const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
+      const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
+      const arrows = STATE.persistent.vrfGroup
+        ? STATE.persistent.vrfGroup.children.filter(c => c.type === 'ArrowHelper')
+        : [];
+      if (arrows[0]) arrows[0].setDirection(x_v);
+      if (arrows[1]) arrows[1].setDirection(y_v);
+      if (arrows[2]) arrows[2].setDirection(z_v);
+    },
+  },
+
+  // ── 5: Longitude & Latitude ────────────────────────────────────────────
   {
     title: 'Geocentric Longitude λ & Latitude ϕ',
     html: `
@@ -1120,7 +1231,7 @@ const SLIDES = [
       <em>and</em> grows longer through periapsis, shrinks near apoapsis.
       This is Kepler&rsquo;s second law in action.</p>
       <p style="font-size:0.82rem;color:#6a90b0;">Press <strong>Next →</strong>
-      to decompose <em>v</em> into its \\(\\lambda\\) and \\(\\phi\\) rate components.</p>`,
+      to decompose <em>v</em> into its \\(\\lambda\\) and \\(\\phi\\) rate components.</p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-phi">φ latitude</span><span class="chip chip-lambda">λ longitude</span></div>`,
     camera: { pos: [0, -4.5, 4.5], target: [0, 0, 0], dur: 0 },
     enter() {
       // Hide the circular persistent orbit; this slide uses its own eccentric orbit
@@ -1219,7 +1330,7 @@ const SLIDES = [
     },
   },
 
-  // ── 5: Velocity Decomposition — Radial & Horizontal ────────────────────
+  // ── 6: Velocity Decomposition — Radial & Horizontal ────────────────────
   {
     title: 'Velocity Decomposition — Radial & Horizontal',
     html: `
@@ -1228,7 +1339,7 @@ const SLIDES = [
         \\[\\underbrace{\\textcolor{#FF5555}{v\\sin\\gamma}}_{\\dot{r}\\ =\\ \\text{radial rate}}
           \\qquad
           \\underbrace{\\textcolor{#00DDFF}{v\\cos\\gamma}}_{v_h\\ =\\ \\text{horizontal speed}}\\]
-      </div>`,
+      </div><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-gamma">γ flight-path angle</span></div>`,
     camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 0 },
     enter() {
       clearSlideObjects();
@@ -1319,7 +1430,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 6: Velocity Decomposition — Heading Split ──────────────────────────
+  // ── 7: Velocity Decomposition — Heading Split ──────────────────────────
   {
     title: 'Velocity Decomposition — Heading Split',
     html: `
@@ -1339,7 +1450,7 @@ const SLIDES = [
         \\(\\textcolor{#FF44CC}{\\dot\\lambda}\\):
         a latitude circle at \\(\\textcolor{#44FFEE}{\\phi}\\) has radius
         \\(r\\cos\\textcolor{#44FFEE}{\\phi}\\) — same eastward speed covers more
-        \\(\\textcolor{#FF44CC}{\\lambda}\\) degrees near the equator than near the poles.</p>`,
+        \\(\\textcolor{#FF44CC}{\\lambda}\\) degrees near the equator than near the poles.</p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-phi">φ latitude</span><span class="chip chip-lambda">λ longitude</span><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span></div>`,
     camera: { pos: [3, 5, 7], target: [0, 0, 0], dur: 0 },
     enter() {
       clearSlideObjects();
@@ -1416,6 +1527,41 @@ const SLIDES = [
       psiArc.material = psiArcMat;
       addSlideObj(psiArc);
 
+      // ── Ground track: latitude circle (φ) & longitude meridian (λ) through the vehicle's nadir ──
+      const phiAngle = Math.asin(R.y);
+      const azimuth  = Math.atan2(R.z, R.x);
+      const horizDir = new THREE.Vector3(R.x, 0, R.z).normalize();
+
+      const latMat = new THREE.LineBasicMaterial({ color: 0x44FFEE, transparent: true, opacity: 0 });
+      const latCircle = makeArc(
+        new THREE.Vector3(0, EARTH_RADIUS * R.y, 0), new THREE.Vector3(0, 1, 0),
+        EARTH_RADIUS * Math.cos(phiAngle) * 1.003, 0, Math.PI * 2, 0x44FFEE
+      );
+      latCircle.material = latMat;
+      addSlideObj(latCircle);
+
+      const lonMat = new THREE.LineBasicMaterial({ color: 0xFF44CC, transparent: true, opacity: 0 });
+      const lonMeridian = makeArc(
+        new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1, 0).cross(horizDir).normalize(),
+        EARTH_RADIUS * 1.003, 0, Math.PI * 2, 0xFF44CC
+      );
+      lonMeridian.material = lonMat;
+      addSlideObj(lonMeridian);
+
+      const nadirMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+      const nadirMarker = new THREE.Mesh(new THREE.SphereGeometry(0.018, 12, 12), nadirMat);
+      nadirMarker.position.copy(R).multiplyScalar(EARTH_RADIUS * 1.004);
+      addSlideObj(nadirMarker);
+
+      const phiLabelAz  = azimuth + Math.PI / 2;
+      const phiLabelPos = new THREE.Vector3(
+        Math.cos(phiAngle) * Math.cos(phiLabelAz), Math.sin(phiAngle), Math.cos(phiAngle) * Math.sin(phiLabelAz)
+      ).multiplyScalar(EARTH_RADIUS * 1.02);
+      const lonLabelPhi = THREE.MathUtils.clamp(phiAngle + (phiAngle >= 0 ? 0.35 : -0.35), -1.4, 1.4);
+      const lambdaLabelPos = new THREE.Vector3(
+        Math.cos(lonLabelPhi) * Math.cos(azimuth), Math.sin(lonLabelPhi), Math.cos(lonLabelPhi) * Math.sin(azimuth)
+      ).multiplyScalar(EARTH_RADIUS * 1.02);
+
       const enG = new THREE.Group();
       enG.add(makeFloatLabel('v', s.pos.clone().addScaledVector(vHat, vLen * 0.55).addScaledVector(R, 0.10), 0xFFD700));
       enG.add(makeFloatLabel('v cosγ', s.pos.clone().addScaledVector(hDir, hLen * 0.5).addScaledVector(R, -0.13), 0x00DDFF));
@@ -1426,6 +1572,8 @@ const SLIDES = [
       enG.add(makeFloatLabel('ψ', s.pos.clone()
         .addScaledVector(s.S_hat, (0.22 + 0.10) * Math.cos(psi / 2))
         .addScaledVector(s.T_hat, (0.22 + 0.10) * Math.sin(psi / 2)), 0xFFEE77));
+      enG.add(makeFloatLabel('φ', phiLabelPos, 0x44FFEE));
+      enG.add(makeFloatLabel('λ', lambdaLabelPos, 0xFF44CC));
       enG.visible = false;
       addSlideObj(enG);
 
@@ -1438,6 +1586,9 @@ const SLIDES = [
         gsap.to(ng.scale,  { x:1,y:1,z:1, duration:0.60, delay:1.65, ease:'power2.out' });
         gsap.to(rbMat, { opacity:0.55, duration:0.35, delay:2.25 });
         gsap.to(psiArcMat, { opacity:0.90, duration:0.35, delay:2.25 });
+        gsap.to(latMat,   { opacity:0.65, duration:0.5, delay:2.25 });
+        gsap.to(lonMat,   { opacity:0.65, duration:0.5, delay:2.25 });
+        gsap.to(nadirMat, { opacity:1.0,  duration:0.35, delay:2.25 });
         gsap.delayedCall(2.35, () => {
           if (STATE.slideGen !== gen1) return;
           enG.visible = true;
@@ -1448,7 +1599,7 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 7: Flight-Path Angle γ ─────────────────────────────────────────────
+  // ── 8: Flight-Path Angle γ ─────────────────────────────────────────────
   {
     title: 'Flight-Path Angle γ',
     html: `
@@ -1467,7 +1618,7 @@ const SLIDES = [
       </ul>
       <p>Watch the <span style="color:#FFD700">gold velocity arrow</span> sweep as
       <span style="color:#FFEE77">\\(\\gamma\\)</span> varies.</p>
-      <div id="gamma-readout" style="margin-top:0.9rem;padding:0.7rem 1.1rem;background:#07162a;border:1px solid #1e3a5f;border-radius:8px;text-align:center;line-height:1.7;"></div>`,
+      <div id="gamma-readout" style="margin-top:0.9rem;padding:0.7rem 1.1rem;background:#07162a;border:1px solid #1e3a5f;border-radius:8px;text-align:center;line-height:1.7;"></div><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-gamma">γ flight-path angle</span></div>`,
     camera: { pos: [2.0, 1.5, 2.5], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -1513,7 +1664,7 @@ const SLIDES = [
 
       // ── γ label floating near the arc midpoint in 3D space ──
       const gammaLblEl = document.createElement('div');
-      gammaLblEl.style.cssText = 'font-size:13px;font-weight:700;font-family:Segoe UI,system-ui,sans-serif;pointer-events:none;text-shadow:0 0 8px rgba(0,0,0,1);white-space:nowrap;';
+      gammaLblEl.style.cssText = 'font-size:18px;font-weight:700;font-family:Segoe UI,system-ui,sans-serif;pointer-events:none;text-shadow:0 0 8px rgba(0,0,0,1);white-space:nowrap;';
       const gammaLblObj = new CSS2DObject(gammaLblEl);
       addSlideObj(gammaLblObj);
 
@@ -1537,9 +1688,9 @@ const SLIDES = [
         if (readout) {
           readout.style.borderColor = color;
           readout.innerHTML = `
-            <div style="font-size:10px;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:2px">Live Flight-Path Angle</div>
-            <div style="font-size:26px;font-weight:700;color:${color};letter-spacing:.02em">γ = ${sign}${deg.toFixed(1)}°</div>
-            <div style="font-size:13px;color:${color}">${arrow}&nbsp;${label}</div>
+            <div style="font-size:14px;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:2px">Live Flight-Path Angle</div>
+            <div style="font-size:36px;font-weight:700;color:${color};letter-spacing:.02em">γ = ${sign}${deg.toFixed(1)}°</div>
+            <div style="font-size:18px;color:${color}">${arrow}&nbsp;${label}</div>
           `;
         }
       }
@@ -1573,12 +1724,12 @@ const SLIDES = [
     },
   },
 
-  // ── 8: Heading Angle ψ ─────────────────────────────────────────────────
+  // ── 9: Heading Angle ψ ─────────────────────────────────────────────────
   {
     title: 'Heading Angle ψ',
     html: `
       <p>The <strong>heading angle</strong>
-      <span style="color:#FFEE77">\\(\\psi\\)</span> describes the direction of
+      <span style="color:#FF7799">\\(\\psi\\)</span> describes the direction of
       horizontal flight — measured from
       <span style="color:#FF44CC">East (S)</span> toward
       <span style="color:#44FFEE">North (T)</span>.</p>
@@ -1604,7 +1755,7 @@ const SLIDES = [
       <p style="font-size:0.82rem;color:#6a90b0">
         The arrows in the scene are the two components — their lengths are
         proportional to <span style="color:#FF44CC">cos ψ</span> and
-        <span style="color:#44FFEE">sin ψ</span>.</p>`,
+        <span style="color:#44FFEE">sin ψ</span>.</p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-phi">φ latitude</span><span class="chip chip-lambda">λ longitude</span><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span></div>`,
     camera: { pos: [2.5, 1.5, 1.5], target: [0, 0, 0], dur: 1.2 },
     enter() {
       STATE.orbitT = 0.72;
@@ -1689,112 +1840,6 @@ const SLIDES = [
     exit() {},
   },
 
-  // ── 9: Velocity-Referenced Frame ───────────────────────────────────────
-  {
-    title: 'Velocity-Referenced Frame (VRF)',
-    html: `
-      <p>The <span class="chip chip-vrf">VRF</span> (<strong>OX″Y″Z″</strong>) is obtained from the Vehicle-Pointing Frame <strong>OX₂Y₂Z₂</strong> by two successive rotations defined by the velocity vector direction.</p>
-      <div class="eq-block">
-        <div class="eq-label">Two-step rotation from OX₂Y₂Z₂</div>
-        \\[\\text{Step 1: rotate }\\textcolor{#FF44CC}{\\psi}\\text{ about }\\hat{e}_{x_2}=\\hat{R}\\quad(\\text{heading azimuth})\\]
-        \\[\\text{Step 2: rotate }\\textcolor{#FFEE77}{-\\gamma}\\text{ about new }z'\\quad(\\text{flight-path angle})\\]
-        \\[\\mathbf{T}_{\\text{OX}_2 \\to \\text{OX}''} = R_{z'}(\\textcolor{#FFEE77}{-\\gamma})\\,R_{x_2}(\\textcolor{#FF44CC}{\\psi})\\]
-      </div>
-      <div class="eq-block">
-        <div class="eq-label">Axis definitions (this presentation)</div>
-        \\[\\hat{x}_v \\parallel \\vec{v}\\quad(\\text{along velocity})\\]
-        \\[\\hat{z}_v \\perp \\vec{v},\\; \\hat{z}_v \\text{ lies in local horizontal plane}\\]
-        \\[\\hat{y}_v = \\hat{z}_v \\times \\hat{x}_v\\quad(\\text{completes right-hand system})\\]
-      </div>
-      <p style="font-size:0.82rem;color:#6a90b0;border-left:2px solid #1e3a5f;padding-left:0.7rem;margin-top:0.8rem;">
-        <strong style="color:#8ab8d8">Convention note:</strong> Velocity is along x̂<sub>v</sub>. All force equations use this convention consistently.
-      </p>
-      <p style="margin-top:0.9rem;">Forces expressed in VRF use frame-native scalars
-      (\\(\\textcolor{#FF9944}{D}\\), \\(\\textcolor{#FF6699}{L}\\), \\(\\textcolor{#FF4444}{T}\\)),
-      then rotated back to RST via the transpose of this rotation chain.</p>
-      <div style="margin-top:1.1rem;">
-        <div style="font-size:0.72rem;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:0.5rem">Toggle Frames</div>
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-          <button id="toggle-rst" style="padding:.35rem .8rem;background:#160a2a;border:1px solid #CC44FF;border-radius:6px;color:#DD88FF;font-size:.8rem;cursor:pointer;letter-spacing:.04em;transition:opacity .15s,border-color .15s;">● RST</button>
-          <button id="toggle-vrf" style="padding:.35rem .8rem;background:#0a1a0a;border:1px solid #44FF44;border-radius:6px;color:#88FF88;font-size:.8rem;cursor:pointer;letter-spacing:.04em;transition:opacity .15s,border-color .15s;">● VRF</button>
-          <button id="toggle-vel8" style="padding:.35rem .8rem;background:#1a1200;border:1px solid #FFD700;border-radius:6px;color:#FFD700;font-size:.8rem;cursor:pointer;letter-spacing:.04em;transition:opacity .15s,border-color .15s;">● Velocity</button>
-        </div>
-      </div>`,
-    camera: { pos: [3, 3, 7], target: [1.17, 0.72, 0.72], dur: 1.0 },
-    enter() {
-      STATE.persistent.orbitLine.visible = true;
-      setFrameVisibility({ rst: true, vrf: true, vel: true });
-
-      const s = getSpacecraftState(0.72);
-      tweenCamera([3, 3, 7], [s.pos.x, s.pos.y, s.pos.z], 1.0);
-
-      const x_v = s.vel.clone().normalize();
-      const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
-      const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
-
-      const vrfGroup = STATE.persistent.vrfGroup;
-      const arrows   = vrfGroup.children.filter(c => c.type === 'ArrowHelper');
-
-      const startDirs = [s.R_hat.clone(), s.S_hat.clone(), s.T_hat.clone()];
-      const endDirs   = [x_v.clone(),    y_v.clone(),    z_v.clone()];
-
-      if (arrows[0]) arrows[0].setDirection(startDirs[0]);
-      if (arrows[1]) arrows[1].setDirection(startDirs[1]);
-      if (arrows[2]) arrows[2].setDirection(startDirs[2]);
-
-      // Labels stay visible throughout the rotation animation
-      const proxy = { t: 0 };
-      STATE.vrfAnim = gsap.to(proxy, {
-        t: 1, duration: 1.5, ease: 'power2.inOut', delay: 0.5,
-        onUpdate() {
-          arrows.forEach((arrow, i) => {
-            if (!arrow) return;
-            arrow.setDirection(new THREE.Vector3().lerpVectors(startDirs[i], endDirs[i], proxy.t).normalize());
-          });
-        },
-      });
-
-      // ── Frame toggle buttons ──
-      function wireToggle(id, grp) {
-        const btn = document.getElementById(id);
-        if (!btn || !grp) return;
-        btn.addEventListener('click', () => {
-          const show = !grp.visible;
-          grp.visible = show;
-          grp.traverse(c => {
-            if (c.isCSS2DObject) { c.visible = show; c.element.style.display = show ? '' : 'none'; }
-          });
-          btn.style.opacity = show ? '1' : '0.35';
-        });
-      }
-      wireToggle('toggle-rst',  STATE.persistent.rstGroup);
-      wireToggle('toggle-vrf',  STATE.persistent.vrfGroup);
-
-      const btnVel = document.getElementById('toggle-vel8');
-      if (btnVel) {
-        btnVel.addEventListener('click', () => {
-          const show = !STATE.persistent.velArrow.visible;
-          STATE.persistent.velArrow.visible = show;
-          btnVel.style.opacity = show ? '1' : '0.35';
-        });
-      }
-    },
-    exit() {
-      if (STATE.vrfAnim) { STATE.vrfAnim.kill(); STATE.vrfAnim = null; }
-      // Restore VRF arrows to their built directions so later slides see correct state
-      const s = getSpacecraftState(0.72);
-      const x_v = s.vel.clone().normalize();
-      const z_v = new THREE.Vector3().crossVectors(s.R_hat, x_v).normalize();
-      const y_v = new THREE.Vector3().crossVectors(z_v, x_v).normalize();
-      const arrows = STATE.persistent.vrfGroup
-        ? STATE.persistent.vrfGroup.children.filter(c => c.type === 'ArrowHelper')
-        : [];
-      if (arrows[0]) arrows[0].setDirection(x_v);
-      if (arrows[1]) arrows[1].setDirection(y_v);
-      if (arrows[2]) arrows[2].setDirection(z_v);
-    },
-  },
-
   // ── 10: Frame Rotation Matrices ────────────────────────────────────────
   {
     title: 'Coordinate Frame Transformations',
@@ -1823,7 +1868,7 @@ const SLIDES = [
           <span class="chip chip-vrf" style="white-space:nowrap">OX″Y″Z″</span>
         </div>
       </div>
-      <p style="font-size:0.82rem;color:#6a90b0;">Press <strong>Next →</strong> to step through each animated DCM.</p>`,
+      <p style="font-size:0.82rem;color:#6a90b0;">Press <strong>Next →</strong> to step through each animated DCM.</p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-phi">φ latitude</span><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span><span class="chip chip-theta">θ longitude rotation angle</span><span class="chip chip-omega">ω Earth's rotation rate</span></div>`,
     camera: { pos: [7, 5, 10], target: [1.17, 0.72, 0.72], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -1880,7 +1925,7 @@ const SLIDES = [
                     padding:0.5rem 1rem;display:flex;align-items:center;gap:1rem;margin-top:0.7rem;">
           <span style="font-size:0.7rem;letter-spacing:.12em;color:#3a6a9a;text-transform:uppercase;">Live angle</span>
           <span id="dcm-angle-readout" style="font-size:1.3rem;font-weight:700;color:#FF8800;font-family:monospace;">ω⊕Δt = 0.0°</span>
-        </div>`);
+        </div><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-omega">ω Earth's rotation rate</span></div>`);
     },
     exit() { STATE.suppressEarthUpdate = false; },
   },
@@ -1984,7 +2029,7 @@ const SLIDES = [
         <div style="background:#07121f;border:1px solid #1a4a6a;border-radius:8px;padding:0.5rem 1rem;margin-top:0.6rem;">
           <div id="dcm-step-readout" style="font-size:0.72rem;letter-spacing:.1em;color:#3a6a9a;text-transform:uppercase;margin-bottom:0.2rem;">Step 1: longitude  R_z₁(θ)</div>
           <span id="dcm-ang-readout" style="font-size:1.3rem;font-weight:700;font-family:monospace;color:#44FFFF;">θ = 0.0°</span>
-        </div>`);
+        </div><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-phi">φ latitude</span><span class="chip chip-theta">θ longitude rotation angle</span></div>`);
     },
     exit() { STATE.suppressEarthUpdate = false; },
   },
@@ -2108,7 +2153,7 @@ const SLIDES = [
           <span id="dcm-vrf-ang" style="font-size:1.3rem;font-weight:700;font-family:monospace;color:#FF44CC;">ψ = 0.0°</span>
         </div>
         <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.5rem;">
-          ê<sub>y″</sub> corresponds to x̂<sub>v</sub> in this presentation.</p>`);
+          ê<sub>y″</sub> corresponds to x̂<sub>v</sub> in this presentation.</p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span></div>`);
     },
     exit() {},
   },
@@ -2185,7 +2230,7 @@ const SLIDES = [
 
         <p style="font-size:0.8rem;color:#6a90b0;margin-top:0.4rem;">
           <strong style="color:#8ab8d8;">C⁻¹ = Cᵀ</strong> — every DCM is orthonormal.
-          To go OX″→OXYZ, transpose each matrix and multiply in reverse.</p>`);
+          To go OX″→OXYZ, transpose each matrix and multiply in reverse.</p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-phi">φ latitude</span><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span><span class="chip chip-theta">θ longitude rotation angle</span></div>`);
     },
     exit() {},
   },
@@ -2212,7 +2257,7 @@ const SLIDES = [
       <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.4rem;">
         These three equations complete the six-state system once Newton&rsquo;s law supplies
         v̇, γ̇, ψ̇. The <em>r</em>cosφ denominator in λ̇ accounts for meridian convergence
-        — longitude circles shrink toward the poles.</p>`,
+        — longitude circles shrink toward the poles.</p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-phi">φ latitude</span><span class="chip chip-lambda">λ longitude</span><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span></div>`,
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 1.0 },
     enter() {
       clearSlideObjects();
@@ -2279,7 +2324,7 @@ const SLIDES = [
         <li><span class="chip" style="background:#120a1a;border:1px solid #AA44FF;color:#AA44FF" data-force-hover="cen">Centripetal</span> — depends on distance from spin axis</li>
       </ul>
       <p>Both terms update in real-time as the spacecraft moves — watch the arrows change
-      direction along the orbit.</p>`,
+      direction along the orbit.</p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-omega">ω Earth's rotation rate</span></div>`,
     camera: { pos: [5, 5, 8], target: [0, 0, 0], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -2335,7 +2380,7 @@ const SLIDES = [
         \\[\\vec{g} = -\\frac{\\mu}{r^2}\\hat{R} = \\begin{bmatrix}-g \\\\ 0 \\\\ 0\\end{bmatrix}_{\\text{RST}}\\]
       </div>
       <p>The <span class="chip chip-grav" data-force-hover="grav">gravity arrow</span> grows longer as the spacecraft
-      descends closer to Earth.</p>`,
+      descends closer to Earth.</p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-mu">μ gravitational parameter</span></div>`,
     camera: { pos: [4, 2, 9], target: [0, 0, 0], dur: 1.2 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -2382,7 +2427,7 @@ const SLIDES = [
           <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
           <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
           <span style="color:#3399FF">&#9632;</span> Ẑ
-        </p>`);
+        </p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-mu">μ gravitational parameter</span></div>`);
       buildECIChain(gDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
     },
         exit() {
@@ -2412,7 +2457,7 @@ const SLIDES = [
         \\[\\vec{F}_D = \\begin{bmatrix}
           \\textcolor{#FF9944}{-D}\\sin\\textcolor{#FFEE77}{\\gamma} \\\\ \\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\cos\\textcolor{#FF44CC}{\\psi} \\\\ \\textcolor{#FF9944}{-D}\\cos\\textcolor{#FFEE77}{\\gamma}\\sin\\textcolor{#FF44CC}{\\psi}
         \\end{bmatrix}_{\\text{RST}}\\]
-      </div>`,
+      </div><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span><span class="chip chip-rho">ρ atmospheric density</span></div>`,
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -2463,7 +2508,7 @@ const SLIDES = [
           <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
           <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
           <span style="color:#3399FF">&#9632;</span> Ẑ
-        </p>`);
+        </p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-phi">φ latitude</span><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span><span class="chip chip-theta">θ bank angle</span></div>`);
       buildECIChain(dDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
     },
         exit() {
@@ -2494,7 +2539,7 @@ const SLIDES = [
       </div>
       <p style="margin-top:0.7rem;font-size:0.82rem;color:#6a90b0;">Varying \\(\\textcolor{#44FFFF}{\\theta}\\) is the primary guidance mechanism for
       lifting entry — it modulates both downrange and cross-range acceleration without
-      changing lift magnitude.</p>`,
+      changing lift magnitude.</p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-theta">θ bank angle</span></div>`,
     camera: { pos: [1.83, 0.19, 0.19], target: [1.165, 0.722, 0.722], dur: 1.0 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -2619,7 +2664,7 @@ const SLIDES = [
           <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
           <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
           <span style="color:#3399FF">&#9632;</span> Ẑ
-        </p>`);
+        </p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-phi">φ latitude</span><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span><span class="chip chip-theta">θ bank angle</span></div>`);
       buildECIChain(liftDir.clone().multiplyScalar(0.52), s.pos, gen, 0.45);
     },
         exit() {
@@ -2651,7 +2696,7 @@ const SLIDES = [
         <span class="chip chip-drag"   data-force-hover="drag">Drag</span>
         <span class="chip chip-lift"   data-force-hover="lift">Lift</span>
         <span class="chip chip-thrust" data-force-hover="thrust">Thrust</span>
-      </div>`,
+      </div><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-alpha">α thrust pitch angle</span><span class="chip chip-beta">β thrust bank angle</span></div>`,
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
     enter() {
       STATE.persistent.orbitLine.visible = true;
@@ -2713,7 +2758,7 @@ const SLIDES = [
           <span style="color:#FF3333">&#9632;</span> X̂ &ensp;
           <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
           <span style="color:#3399FF">&#9632;</span> Ẑ
-        </p>`);
+        </p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-phi">φ latitude</span><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span><span class="chip chip-theta">θ bank angle</span></div>`);
       buildECIChain(tDir.clone().multiplyScalar(0.48), s.pos, gen, 0.45);
     },
         exit() {
@@ -2752,7 +2797,7 @@ const SLIDES = [
           \\[m\\ddot{\\vec{r}}_I = \\vec{F}_g + \\vec{F}_{aero} + \\vec{F}_T\\]
         </div>
         <p>The cream arrow <strong>F<sub>net</sub></strong> is their vector sum &mdash;
-        ready to integrate for \\(r(t),\\,v(t),\\,\\gamma(t),\\,\\psi(t)\\).</p>`);
+        ready to integrate for \\(r(t),\\,v(t),\\,\\gamma(t),\\,\\psi(t)\\).</p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span></div>`);
 
       const s        = getSpacecraftState(0.72);
       const v_hat    = s.vel.clone().normalize();
@@ -2825,7 +2870,7 @@ const SLIDES = [
           <span style="color:#33FF33">&#9632;</span> Ŷ &ensp;
           <span style="color:#3399FF">&#9632;</span> Ẑ &ensp;&ensp;
           Then: \\(\\;m\\ddot{\\vec{r}}_I = \\vec{F}_{net}\\)
-        </p>`);
+        </p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span><span class="chip chip-theta">θ bank angle</span><span class="chip chip-mu">μ gravitational parameter</span></div>`);
       buildECIChain(netDir.clone().multiplyScalar(netLen), s.pos, gen, 0.35);
     },
         exit() {
@@ -2863,7 +2908,7 @@ const SLIDES = [
         <span class="chip chip-drag">Drag</span>
         <span class="chip chip-lift">Lift</span>
         <span class="chip chip-thrust">Thrust</span>
-      </div>`,
+      </div><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span><span class="chip chip-theta">θ bank angle</span><span class="chip chip-mu">μ gravitational parameter</span></div>`,
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.8 },
     enter() {
       clearSlideObjects();
@@ -2907,7 +2952,7 @@ const SLIDES = [
       <p style="font-size:0.82rem;color:#6a90b0;margin-top:0.4rem;">
         Dividing through by <em>m</em> and <em>mv</em>, <em>mv</em>cosγ respectively gives
         v̇, γ̇, ψ̇. Adding the three kinematic equations (ṙ, λ̇, φ̇) completes the
-        six-state system on the next slide.</p>`,
+        six-state system on the next slide.</p><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-phi">φ latitude</span><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span><span class="chip chip-omega">ω Earth's rotation rate</span></div>`,
     camera: { pos: [4, 3, 7], target: [0, 0, 0], dur: 0.0 },
     enter() {
       clearSlideObjects();
@@ -2973,7 +3018,7 @@ const SLIDES = [
           <button id="eom-thrust" style="padding:.28rem .65rem;background:#1a0a0a;border:1px solid #FF4444;border-radius:5px;color:#FF9999;font-size:.75rem;cursor:pointer;transition:opacity .15s">● Thrust</button>
         </div>
         <button id="eom-all-off" style="margin-top:0.45rem;width:100%;padding:.32rem 0;background:#0a0a0a;border:1px solid #3a3a3a;border-radius:5px;color:#666;font-size:.75rem;cursor:pointer;letter-spacing:.06em;transition:opacity .15s">ALL OFF</button>
-      </div>`,
+      </div><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-phi">φ latitude</span><span class="chip chip-lambda">λ longitude</span><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span><span class="chip chip-theta">θ bank angle</span><span class="chip chip-omega">ω Earth's rotation rate</span><span class="chip chip-alpha">α thrust pitch angle</span></div>`,
     camera: { pos: [6, 5, 10], target: [0, 0, 0], dur: 1.5 },
     enter() {
       STATE.orbitT = 0.72;
@@ -3088,7 +3133,7 @@ const SLIDES = [
           <button id="sum-thrust" style="padding:.28rem .65rem;background:#1a0a0a;border:1px solid #FF4444;border-radius:5px;color:#FF9999;font-size:.75rem;cursor:pointer;transition:opacity .15s">● Thrust</button>
         </div>
         <button id="sum-all-off" style="margin-top:0.45rem;width:100%;padding:.32rem 0;background:#0a0a0a;border:1px solid #3a3a3a;border-radius:5px;color:#666;font-size:.75rem;cursor:pointer;letter-spacing:.06em;transition:opacity .15s">ALL OFF</button>
-      </div>`,
+      </div><div class="var-legend"><div class="var-legend-title">Variables</div><span class="chip chip-phi">φ latitude</span><span class="chip chip-lambda">λ longitude</span><span class="chip chip-gamma">γ flight-path angle</span><span class="chip chip-psi">ψ heading angle</span></div>`,
     camera: { pos: [0, 12, 20], target: [0, 0, 0], dur: 2.0 },
     enter() {
       STATE.orbitT = 0.72;
