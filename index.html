@@ -363,18 +363,29 @@ function loadAssets() {
 
 // Atmosphere rim-glow shader — brightens toward the planet's silhouette edge
 // and fades near-zero facing the camera, additive-blended on a BackSide shell
-// so it reads as a soft halo rather than a flat tinted sphere.
+// so it reads as a soft halo rather than a flat tinted sphere. Uses the true
+// per-fragment view vector (same pattern as _FRESNEL_FRAG below) rather than
+// a fixed (0,0,1) approximation — that shortcut made the ring's apparent
+// thickness balloon at long camera distances since it ignored perspective.
 const _ATMO_VERT = `
   varying vec3 vNormal;
+  varying vec3 vViewPos;
   void main() {
-    vNormal = normalize(normalMatrix * normal);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vNormal  = normalize(normalMatrix * normal);
+    vec4 mv  = modelViewMatrix * vec4(position, 1.0);
+    vViewPos = -mv.xyz;
+    gl_Position = projectionMatrix * mv;
   }`;
 const _ATMO_FRAG = `
   uniform vec3 glowColor;
   varying vec3 vNormal;
+  varying vec3 vViewPos;
   void main() {
-    float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 4.0);
+    // BackSide faces have outward normals pointing away from the camera, so
+    // dot(N, viewDir) is <= 0 here; add 1 to map silhouette(~0) -> bright(1)
+    // and far-side-center(~-1) -> dark(0).
+    float rim = clamp(1.0 + dot(normalize(vNormal), normalize(vViewPos)), 0.0, 1.0);
+    float intensity = pow(rim, 4.0);
     gl_FragColor = vec4(glowColor, 1.0) * intensity * 0.85;
   }`;
 
