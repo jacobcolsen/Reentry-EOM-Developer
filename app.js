@@ -254,6 +254,23 @@ function loadAssets() {
   });
 }
 
+// Atmosphere rim-glow shader — brightens toward the planet's silhouette edge
+// and fades near-zero facing the camera, additive-blended on a BackSide shell
+// so it reads as a soft halo rather than a flat tinted sphere.
+const _ATMO_VERT = `
+  varying vec3 vNormal;
+  void main() {
+    vNormal = normalize(normalMatrix * normal);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }`;
+const _ATMO_FRAG = `
+  uniform vec3 glowColor;
+  varying vec3 vNormal;
+  void main() {
+    float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.2);
+    gl_FragColor = vec4(glowColor, 1.0) * intensity;
+  }`;
+
 function buildEarth(texture) {
   const mat = new THREE.MeshPhongMaterial({
     color: texture ? 0xffffff : 0x2244aa,
@@ -266,14 +283,18 @@ function buildEarth(texture) {
   scene.add(mesh);
   STATE.persistent.earthMesh = mesh;
 
-  // Subtle atmosphere glow
-  const atmoMat = new THREE.MeshPhongMaterial({
-    color: 0x3388ff,
-    transparent: true,
-    opacity: 0.07,
+  // Realistic atmosphere glow — Fresnel rim shader, additive + BackSide
+  const atmoMat = new THREE.ShaderMaterial({
+    uniforms: { glowColor: { value: new THREE.Color(0x5ab4ff) } },
+    vertexShader: _ATMO_VERT,
+    fragmentShader: _ATMO_FRAG,
     side: THREE.BackSide,
+    blending: THREE.AdditiveBlending,
+    transparent: true,
+    depthWrite: false,
+    toneMapped: false,
   });
-  scene.add(new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS * 1.04, 32, 32), atmoMat));
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS * 1.1, 64, 64), atmoMat));
 }
 
 function placeSpacecraft(ship) {

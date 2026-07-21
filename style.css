@@ -168,6 +168,12 @@ input[type="file"] { display: none; }
   height: 100vh;
   height: 100dvh;
 }
+/* iOS/iPadOS Safari: 100vh/100dvh can still measure past the visible area.
+   -webkit-touch-callout only exists on iOS Safari, so this block reliably
+   targets it (any version) without affecting other browsers. */
+@supports (-webkit-touch-callout: none) {
+  #app { height: -webkit-fill-available; }
+}
 
 /* ── Canvas container ── */
 #canvas-container {
