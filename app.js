@@ -267,8 +267,8 @@ const _ATMO_FRAG = `
   uniform vec3 glowColor;
   varying vec3 vNormal;
   void main() {
-    float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.2);
-    gl_FragColor = vec4(glowColor, 1.0) * intensity;
+    float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 5.5);
+    gl_FragColor = vec4(glowColor, 1.0) * intensity * 0.55;
   }`;
 
 function buildEarth(texture) {
@@ -294,7 +294,7 @@ function buildEarth(texture) {
     depthWrite: false,
     toneMapped: false,
   });
-  scene.add(new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS * 1.1, 64, 64), atmoMat));
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS * 1.06, 64, 64), atmoMat));
 }
 
 function placeSpacecraft(ship) {
