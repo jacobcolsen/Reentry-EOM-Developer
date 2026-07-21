@@ -166,6 +166,7 @@ input[type="file"] { display: none; }
   display: grid;
   grid-template-columns: 65fr 35fr;
   height: 100vh;
+  height: 100dvh;
 }
 
 /* ── Canvas container ── */
