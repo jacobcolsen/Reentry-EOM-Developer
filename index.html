@@ -385,8 +385,8 @@ const _ATMO_FRAG = `
     // dot(N, viewDir) is <= 0 here; add 1 to map silhouette(~0) -> bright(1)
     // and far-side-center(~-1) -> dark(0).
     float rim = clamp(1.0 + dot(normalize(vNormal), normalize(vViewPos)), 0.0, 1.0);
-    float intensity = pow(rim, 4.0);
-    gl_FragColor = vec4(glowColor, 1.0) * intensity * 0.85;
+    float intensity = pow(rim, 8.0);
+    gl_FragColor = vec4(glowColor, 1.0) * intensity * 0.5;
   }`;
 
 function buildEarth(texture) {
@@ -412,7 +412,7 @@ function buildEarth(texture) {
     depthWrite: false,
     toneMapped: false,
   });
-  scene.add(new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS * 1.07, 64, 64), atmoMat));
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS * 1.02, 64, 64), atmoMat));
 }
 
 function placeSpacecraft(ship) {
